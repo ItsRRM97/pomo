@@ -10,12 +10,18 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    MenuBarPlugin.register(
+      with: flutterViewController.registrar(forPlugin: "MenuBarPlugin")
+    )
     OverlayPlugin.register(
       with: flutterViewController.registrar(forPlugin: "OverlayPlugin")
     )
 
     FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
       RegisterGeneratedPlugins(registry: controller)
+      MenuBarPlugin.register(
+        with: controller.registrar(forPlugin: "MenuBarPlugin")
+      )
       OverlayPlugin.register(
         with: controller.registrar(forPlugin: "OverlayPlugin")
       )

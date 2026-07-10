@@ -1,9 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,16 +13,15 @@ import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/session_helper.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
-import 'package:tray_manager/tray_manager.dart';
 
-class MacosMenuBarService with TrayListener {
+class MacosMenuBarService {
   MacosMenuBarService._();
 
   static final MacosMenuBarService instance = MacosMenuBarService._();
 
+  static const _channel = MethodChannel('pomo/menu_bar');
   static const _trayIconAsset = 'assets/images/pomo_splash_64.png';
   static const _idleTrayTitle = 'Pomo';
-  static const _maxTrayInitAttempts = 6;
 
   static bool _iconReady = false;
   static bool _listenerAttached = false;
@@ -35,32 +34,42 @@ class MacosMenuBarService with TrayListener {
       return;
     }
 
-    try {
-      await const MethodChannel('pomo/overlay')
-          .invokeMethod<void>('ensureRegularActivation');
-    } catch (error, stackTrace) {
-      developer.log(
-        'ensureRegularActivation failed: $error',
-        name: 'MacosMenuBarService',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    final timerCubit = context.read<TimerCubit>();
 
     try {
-      // Release builds can initialize faster than AppKit lays out status items.
-      // Showing the tray synchronously on the first frame leaves a 0-height item.
-      await _installTrayIconWithRetry();
-
       if (!_listenerAttached) {
-        trayManager.addListener(instance);
+        _channel.setMethodCallHandler(_handleNativeCallback);
         _listenerAttached = true;
       }
 
+      await _channel.invokeMethod<void>('install');
+
+      final imageData = await rootBundle.load(_trayIconAsset);
+      await _channel.invokeMethod<void>('setIcon', {
+        'base64Icon': base64Encode(imageData.buffer.asUint8List()),
+        'iconSize': 22,
+        'isTemplate': false,
+      });
+      await _channel.invokeMethod<void>('setTitle', {'title': _idleTrayTitle});
+      await _channel.invokeMethod<void>('setToolTip', {
+        'toolTip': 'Pomo - Pomodoro timer',
+      });
+
+      final bounds = await _getBounds();
+      if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
+        throw StateError(
+          'Menu bar item has invalid bounds: $bounds',
+        );
+      }
+
       _iconReady = true;
+      developer.log(
+        'Menu bar ready: ${bounds.width}x${bounds.height}',
+        name: 'MacosMenuBarService',
+      );
     } catch (error, stackTrace) {
       developer.log(
-        'tray icon setup failed: $error',
+        'Menu bar setup failed: $error',
         name: 'MacosMenuBarService',
         error: error,
         stackTrace: stackTrace,
@@ -69,11 +78,11 @@ class MacosMenuBarService with TrayListener {
     }
 
     try {
-      instance._timerCubit = context.read<TimerCubit>();
+      instance._timerCubit = timerCubit;
       await instance._syncMenuIfNeeded(force: true);
     } catch (error, stackTrace) {
       developer.log(
-        'tray menu setup failed: $error',
+        'Menu bar menu setup failed: $error',
         name: 'MacosMenuBarService',
         error: error,
         stackTrace: stackTrace,
@@ -81,41 +90,34 @@ class MacosMenuBarService with TrayListener {
     }
   }
 
-  static Future<void> _installTrayIconWithRetry() async {
-    Object? lastError;
-    StackTrace? lastStackTrace;
-
-    for (var attempt = 0; attempt < _maxTrayInitAttempts; attempt++) {
-      if (attempt == 0) {
-        await Future<void>.delayed(Duration.zero);
-        await SchedulerBinding.instance.endOfFrame;
-      } else {
-        await Future<void>.delayed(Duration(milliseconds: 80 * attempt));
-      }
-
-      try {
-        // Use the 64x64 tray asset. The full pomo_logo.png is 4096x4096 (~5MB)
-        // and exceeds the Flutter method channel payload when base64-encoded.
-        await trayManager.setIcon(
-          _trayIconAsset,
-          iconSize: 22,
-        );
-        await trayManager.setTitle(_idleTrayTitle);
-        await trayManager.setToolTip('Pomo - Pomodoro timer');
-
-        final bounds = await trayManager.getBounds();
-        if (bounds != null && bounds.width > 0) {
-          return;
+  static Future<void> _handleNativeCallback(MethodCall call) async {
+    switch (call.method) {
+      case 'onTrayIconMouseDown':
+        await instance._popUpContextMenu();
+      case 'onTrayIconRightMouseDown':
+        unawaited(DesktopWindowService.showMainWindow());
+      case 'onTrayMenuItemClick':
+        final args = call.arguments as Map<dynamic, dynamic>?;
+        final key = args?['key'] as String?;
+        if (key != null) {
+          instance._handleMenuItemClick(key);
         }
-      } catch (error, stackTrace) {
-        lastError = error;
-        lastStackTrace = stackTrace;
-      }
+    }
+  }
+
+  static Future<Rect?> _getBounds() async {
+    final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+      'getBounds',
+    );
+    if (result == null) {
+      return null;
     }
 
-    Error.throwWithStackTrace(
-      lastError ?? StateError('Tray icon never received valid bounds'),
-      lastStackTrace ?? StackTrace.current,
+    return Rect.fromLTWH(
+      (result['x'] as num).toDouble(),
+      (result['y'] as num).toDouble(),
+      (result['width'] as num).toDouble(),
+      (result['height'] as num).toDouble(),
     );
   }
 
@@ -136,7 +138,7 @@ class MacosMenuBarService with TrayListener {
     }
 
     final tooltip = _tooltip(timerState, settingsState);
-    await trayManager.setToolTip(tooltip);
+    await _channel.invokeMethod<void>('setToolTip', {'toolTip': tooltip});
 
     final time = DurationHelper.negativeFormat(
       duration: timerState.duration,
@@ -145,7 +147,7 @@ class MacosMenuBarService with TrayListener {
     );
     final title =
         SessionHelper.isSessionActive(timerState) ? time : _idleTrayTitle;
-    await trayManager.setTitle(title);
+    await _channel.invokeMethod<void>('setTitle', {'title': title});
 
     await _syncMenuIfNeeded(timerState: timerState);
   }
@@ -200,60 +202,52 @@ class MacosMenuBarService with TrayListener {
     _menuIsRunning = isRunning;
     _menuSessionActive = sessionActive;
 
-    final menu = Menu(
-      items: [
-        MenuItem(
-          key: 'toggle',
-          label: isRunning ? 'Pause timer' : 'Start timer',
-        ),
-        MenuItem(
-          key: 'reset',
-          label: 'Reset',
-          disabled: !sessionActive,
-        ),
-        MenuItem.separator(),
-        MenuItem(
-          key: 'open',
-          label: 'Open Pomo',
-        ),
-        MenuItem(
-          key: 'settings',
-          label: 'Settings',
-        ),
-        MenuItem.separator(),
-        MenuItem(
-          key: 'quit',
-          label: 'Quit',
-        ),
+    await _channel.invokeMethod<void>('setContextMenu', {
+      'items': [
+        {
+          'key': 'toggle',
+          'label': isRunning ? 'Pause timer' : 'Start timer',
+          'type': 'normal',
+        },
+        {
+          'key': 'reset',
+          'label': 'Reset',
+          'type': 'normal',
+          'disabled': !sessionActive,
+        },
+        {'type': 'separator'},
+        {
+          'key': 'open',
+          'label': 'Open Pomo',
+          'type': 'normal',
+        },
+        {
+          'key': 'settings',
+          'label': 'Settings',
+          'type': 'normal',
+        },
+        {'type': 'separator'},
+        {
+          'key': 'quit',
+          'label': 'Quit',
+          'type': 'normal',
+        },
       ],
-    );
-
-    await trayManager.setContextMenu(menu);
-  }
-
-  @override
-  void onTrayIconMouseDown() {
-    unawaited(_popUpContextMenu());
+    });
   }
 
   Future<void> _popUpContextMenu() async {
     await _syncMenuIfNeeded(force: _menuIsRunning == null);
-    await trayManager.popUpContextMenu();
+    await _channel.invokeMethod<void>('popUpContextMenu');
   }
 
-  @override
-  void onTrayIconRightMouseDown() {
-    unawaited(DesktopWindowService.showMainWindow());
-  }
-
-  @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
+  void _handleMenuItemClick(String key) {
     final timerCubit = _timerCubit;
     if (timerCubit == null) {
       return;
     }
 
-    switch (menuItem.key) {
+    switch (key) {
       case 'toggle':
         timerCubit.toggle();
       case 'reset':

@@ -7,6 +7,7 @@ class AppDelegate: FlutterAppDelegate {
     // Keep the app in the Dock as a regular foreground application.
     NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
+    MenuBarController.shared.installEarlyIfNeeded()
     OverlayPlugin.startObservingWorkspace()
     super.applicationDidFinishLaunching(notification)
   }
