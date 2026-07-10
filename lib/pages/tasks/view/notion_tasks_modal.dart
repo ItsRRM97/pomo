@@ -22,6 +22,7 @@ class NotionTasksModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final isCompact = MediaQuery.of(context).size.width < 450;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -29,7 +30,7 @@ class NotionTasksModal extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isCompact ? 14 : 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -121,23 +122,37 @@ class _TabSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final activeTab = context.select((NotionTasksCubit c) => c.state.activeTab);
+    final isCompact = MediaQuery.of(context).size.width < 450;
 
     return SegmentedButton<String>(
+      showSelectedIcon: false,
+      style: SegmentedButton.styleFrom(
+        padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 12),
+      ),
       segments: [
         ButtonSegment<String>(
           value: 'today',
-          label: Text(l10n.dueToday),
-          icon: const Icon(Icons.today, size: 18),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(l10n.dueToday),
+          ),
+          icon: Icon(Icons.today, size: isCompact ? 16 : 18),
         ),
         ButtonSegment<String>(
           value: 'week',
-          label: Text(l10n.dueThisWeek),
-          icon: const Icon(Icons.date_range, size: 18),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(l10n.dueThisWeek),
+          ),
+          icon: Icon(Icons.date_range, size: isCompact ? 16 : 18),
         ),
-        const ButtonSegment<String>(
+        ButtonSegment<String>(
           value: 'all',
-          label: Text('All'),
-          icon: Icon(Icons.list, size: 18),
+          label: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('All'),
+          ),
+          icon: Icon(Icons.list, size: isCompact ? 16 : 18),
         ),
       ],
       selected: {activeTab},
@@ -254,9 +269,12 @@ class _TaskTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (task.status.isNotEmpty) ...[
+                        if (task.status.isNotEmpty)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -273,25 +291,26 @@ class _TaskTile extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (task.due != null) ...[
-                          Icon(
-                            Icons.event,
-                            size: 14,
-                            color: theme.colorScheme.onSurfaceVariant,
+                        if (task.due != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.event,
+                                size: 14,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${task.due!.year}-'
+                                '${task.due!.month.toString().padLeft(2, '0')}-'
+                                '${task.due!.day.toString().padLeft(2, '0')}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${task.due!.year}-'
-                            '${task.due!.month.toString().padLeft(2, '0')}-'
-                            '${task.due!.day.toString().padLeft(2, '0')}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
                         if (task.timeHours > 0 || task.timeMinutes > 0)
                           Text(
                             'Logged: ${task.timeLoggedFormatted}',

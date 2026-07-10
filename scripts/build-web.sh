@@ -26,6 +26,7 @@ fi
 
 flutter build web \
   --release \
+  --no-web-resources-cdn \
   --no-wasm-dry-run \
   --base-href=/focus/ \
   --target lib/main_production.dart \
