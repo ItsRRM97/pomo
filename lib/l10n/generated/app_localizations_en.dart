@@ -235,4 +235,51 @@ class SEn extends S {
   @override
   String get overlayCornerDescription =>
       'Default corner for the floating timer widget';
+
+  @override
+  String get notionIntegration => 'Notion Integration';
+
+  @override
+  String get enableNotionSync => 'Enable Notion Sync';
+
+  @override
+  String get enableNotionSyncDescription =>
+      'Sync completed Pomodoro sessions and partial time logs back to your PARA Dashboard Notion database';
+
+  @override
+  String get notionApiKey => 'Notion API Token';
+
+  @override
+  String get notionApiKeyHint => 'secret_...';
+
+  @override
+  String get notionProxyUrl => 'Notion Proxy URL (Optional)';
+
+  @override
+  String get notionProxyUrlHint => 'e.g. /api/notion/ or proxy server';
+
+  @override
+  String get selectTask => 'Select Task';
+
+  @override
+  String get activeTask => 'Active Task';
+
+  @override
+  String get clearTask => 'Clear Task';
+
+  @override
+  String get dueToday => 'Due Today';
+
+  @override
+  String get dueThisWeek => 'Due This Week';
+
+  @override
+  String get searchTasks => 'Search Tasks...';
+
+  @override
+  String get noTasksFound => 'No tasks found.';
+
+  @override
+  String get notionNotConfigured =>
+      'Please configure your Notion API Token in Settings.';
 }

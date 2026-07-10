@@ -16,6 +16,7 @@ import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 
 enum NotificationType {
   workStart,
@@ -514,13 +515,20 @@ class _TimerViewState extends State<TimerView> {
                                     .lap(settingsState: state);
                             }
                           },
-                          child: Stack(
-                            alignment: Alignment.center,
+                          child: Column(
                             children: [
-                              const Center(child: TimerProgress()),
-                              Center(
-                                child: TimerText(
-                                  notify: widget.notify,
+                              const _ActiveTaskPill(),
+                              Expanded(
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    const Center(child: TimerProgress()),
+                                    Center(
+                                      child: TimerText(
+                                        notify: widget.notify,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -534,6 +542,75 @@ class _TimerViewState extends State<TimerView> {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _ActiveTaskPill extends StatelessWidget {
+  const _ActiveTaskPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final activeTask = context.select((TimerCubit c) => c.state.activeTask);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: activeTask != null
+            ? theme.colorScheme.primaryContainer.withOpacity(0.85)
+            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () => NotionTasksModal.show(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  activeTask != null ? Icons.task_alt : Icons.add_task,
+                  size: 18,
+                  color: activeTask != null
+                      ? theme.colorScheme.onPrimaryContainer
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    activeTask != null ? activeTask.title : l10n.selectTask,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: activeTask != null
+                          ? theme.colorScheme.onPrimaryContainer
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (activeTask != null) ...[
+                  const SizedBox(width: 8),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => context.read<TimerCubit>().clearTask(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -4,6 +4,8 @@ export 'color_picker.dart';
 export 'custom_sound_expansion.dart';
 export 'lap_count_slider.dart';
 export 'long_break_duration_slider.dart';
+export 'notion_expansion.dart';
+export 'notion_toggle.dart';
 export 'overlay_corner_dropdown.dart';
 export 'short_break_duration_slider.dart';
 export 'show_floating_timer_toggle.dart';

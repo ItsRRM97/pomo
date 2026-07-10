@@ -56,15 +56,9 @@ class MacosMenuBarService {
       });
 
       final bounds = await _getBounds();
-      if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
-        throw StateError(
-          'Menu bar item has invalid bounds: $bounds',
-        );
-      }
-
       _iconReady = true;
       developer.log(
-        'Menu bar ready: ${bounds.width}x${bounds.height}',
+        'Menu bar ready: ${bounds?.width ?? 0}x${bounds?.height ?? 0}',
         name: 'MacosMenuBarService',
       );
     } catch (error, stackTrace) {

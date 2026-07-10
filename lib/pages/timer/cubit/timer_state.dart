@@ -17,24 +17,28 @@ class TimerState extends Equatable {
     this.duration = Duration.zero,
     this.lapNumber = 0,
     this.lap = TimerLap.work,
+    this.activeTask,
   });
 
   final TimerStatus status;
   final Duration duration;
   final int lapNumber;
   final TimerLap lap;
+  final NotionTask? activeTask;
 
   TimerState copyWith({
     TimerStatus Function()? status,
     Duration Function()? duration,
     int Function()? lapNumber,
     TimerLap Function()? lap,
+    NotionTask? Function()? activeTask,
   }) {
     return TimerState(
       status: status != null ? status() : this.status,
       duration: duration != null ? duration() : this.duration,
       lapNumber: lapNumber != null ? lapNumber() : this.lapNumber,
       lap: lap != null ? lap() : this.lap,
+      activeTask: activeTask != null ? activeTask() : this.activeTask,
     );
   }
 
@@ -44,5 +48,6 @@ class TimerState extends Equatable {
         status,
         lapNumber,
         lap,
+        activeTask,
       ];
 }

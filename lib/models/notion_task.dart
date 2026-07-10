@@ -1,0 +1,184 @@
+import 'package:equatable/equatable.dart';
+
+class NotionTask extends Equatable {
+  const NotionTask({
+    required this.id,
+    required this.title,
+    this.status = 'To Do',
+    this.priority = '',
+    this.due,
+    this.projectId,
+    this.projectTitle,
+    this.timeHours = 0,
+    this.timeMinutes = 0,
+  });
+
+  factory NotionTask.fromJson(Map<String, dynamic> json) {
+    return NotionTask(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      status: json['status'] as String? ?? 'To Do',
+      priority: json['priority'] as String? ?? '',
+      due: json['due'] != null && (json['due'] as String).isNotEmpty
+          ? DateTime.tryParse(json['due'] as String)
+          : null,
+      projectId: json['projectId'] as String?,
+      projectTitle: json['projectTitle'] as String?,
+      timeHours: json['timeHours'] as int? ?? 0,
+      timeMinutes: json['timeMinutes'] as int? ?? 0,
+    );
+  }
+
+  /// Parses a raw Notion API page object into a [NotionTask].
+  factory NotionTask.fromNotionApi(Map<String, dynamic> page) {
+    final id = page['id'] as String? ?? '';
+    final props = page['properties'] as Map<String, dynamic>? ?? {};
+
+    // Name / title
+    var title = 'Untitled Task';
+    final nameProp = props['Name'] as Map<String, dynamic>?;
+    if (nameProp != null && nameProp['title'] is List) {
+      final titleList = nameProp['title'] as List;
+      if (titleList.isNotEmpty && titleList.first is Map) {
+        final textMap = (titleList.first as Map)['text'] as Map?;
+        if (textMap != null && textMap['content'] is String) {
+          title = textMap['content'] as String;
+        }
+      }
+    }
+
+    // Done status
+    var status = 'To Do';
+    final doneProp = props['Done'] as Map<String, dynamic>?;
+    if (doneProp != null && doneProp['status'] is Map) {
+      status = (doneProp['status'] as Map)['name'] as String? ?? 'To Do';
+    }
+
+    // Priority
+    var priority = '';
+    final prioProp = props['Priority'] as Map<String, dynamic>?;
+    if (prioProp != null && prioProp['select'] is Map) {
+      priority = (prioProp['select'] as Map)['name'] as String? ?? '';
+    }
+
+    // Due date
+    DateTime? due;
+    final dueProp = props['Due'] as Map<String, dynamic>?;
+    if (dueProp != null && dueProp['date'] is Map) {
+      final startStr = (dueProp['date'] as Map)['start'] as String?;
+      if (startStr != null && startStr.isNotEmpty) {
+        due = DateTime.tryParse(startStr);
+      }
+    }
+
+    // Project relation
+    String? projectId;
+    final projProp = props['Project'] as Map<String, dynamic>?;
+    if (projProp != null && projProp['relation'] is List) {
+      final relList = projProp['relation'] as List;
+      if (relList.isNotEmpty && relList.first is Map) {
+        projectId = (relList.first as Map)['id'] as String?;
+      }
+    }
+
+    // Time (hours) & Time (minutes)
+    var timeHours = 0;
+    final hoursProp = props['Time (hours)'] as Map<String, dynamic>?;
+    if (hoursProp != null && hoursProp['number'] is num) {
+      timeHours = (hoursProp['number'] as num).toInt();
+    }
+
+    var timeMinutes = 0;
+    final minsProp = props['Time (minutes)'] as Map<String, dynamic>?;
+    if (minsProp != null && minsProp['number'] is num) {
+      timeMinutes = (minsProp['number'] as num).toInt();
+    }
+
+    return NotionTask(
+      id: id,
+      title: title,
+      status: status,
+      priority: priority,
+      due: due,
+      projectId: projectId,
+      timeHours: timeHours,
+      timeMinutes: timeMinutes,
+    );
+  }
+
+  final String id;
+  final String title;
+  final String status;
+  final String priority;
+  final DateTime? due;
+  final String? projectId;
+  final String? projectTitle;
+  final int timeHours;
+  final int timeMinutes;
+
+  int get timeTotalMin => timeHours * 60 + timeMinutes;
+
+  String get timeLoggedFormatted {
+    if (timeHours == 0 && timeMinutes == 0) {
+      return '0m';
+    }
+    if (timeHours == 0) {
+      return '${timeMinutes}m';
+    }
+    if (timeMinutes == 0) {
+      return '${timeHours}h';
+    }
+    return '${timeHours}h ${timeMinutes}m';
+  }
+
+  NotionTask copyWith({
+    String Function()? id,
+    String Function()? title,
+    String Function()? status,
+    String Function()? priority,
+    DateTime? Function()? due,
+    String? Function()? projectId,
+    String? Function()? projectTitle,
+    int Function()? timeHours,
+    int Function()? timeMinutes,
+  }) {
+    return NotionTask(
+      id: id != null ? id() : this.id,
+      title: title != null ? title() : this.title,
+      status: status != null ? status() : this.status,
+      priority: priority != null ? priority() : this.priority,
+      due: due != null ? due() : this.due,
+      projectId: projectId != null ? projectId() : this.projectId,
+      projectTitle: projectTitle != null ? projectTitle() : this.projectTitle,
+      timeHours: timeHours != null ? timeHours() : this.timeHours,
+      timeMinutes: timeMinutes != null ? timeMinutes() : this.timeMinutes,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'status': status,
+      'priority': priority,
+      'due': due?.toIso8601String(),
+      'projectId': projectId,
+      'projectTitle': projectTitle,
+      'timeHours': timeHours,
+      'timeMinutes': timeMinutes,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        title,
+        status,
+        priority,
+        due,
+        projectId,
+        projectTitle,
+        timeHours,
+        timeMinutes,
+      ];
+}

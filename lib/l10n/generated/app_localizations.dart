@@ -512,6 +512,96 @@ abstract class S {
   /// In en, this message translates to:
   /// **'Default corner for the floating timer widget'**
   String get overlayCornerDescription;
+
+  /// No description provided for @notionIntegration.
+  ///
+  /// In en, this message translates to:
+  /// **'Notion Integration'**
+  String get notionIntegration;
+
+  /// No description provided for @enableNotionSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Notion Sync'**
+  String get enableNotionSync;
+
+  /// No description provided for @enableNotionSyncDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync completed Pomodoro sessions and partial time logs back to your PARA Dashboard Notion database'**
+  String get enableNotionSyncDescription;
+
+  /// No description provided for @notionApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Notion API Token'**
+  String get notionApiKey;
+
+  /// No description provided for @notionApiKeyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'secret_...'**
+  String get notionApiKeyHint;
+
+  /// No description provided for @notionProxyUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Notion Proxy URL (Optional)'**
+  String get notionProxyUrl;
+
+  /// No description provided for @notionProxyUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. /api/notion/ or proxy server'**
+  String get notionProxyUrlHint;
+
+  /// No description provided for @selectTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Task'**
+  String get selectTask;
+
+  /// No description provided for @activeTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Task'**
+  String get activeTask;
+
+  /// No description provided for @clearTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Task'**
+  String get clearTask;
+
+  /// No description provided for @dueToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Due Today'**
+  String get dueToday;
+
+  /// No description provided for @dueThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Due This Week'**
+  String get dueThisWeek;
+
+  /// No description provided for @searchTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Tasks...'**
+  String get searchTasks;
+
+  /// No description provided for @noTasksFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks found.'**
+  String get noTasksFound;
+
+  /// No description provided for @notionNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Please configure your Notion API Token in Settings.'**
+  String get notionNotConfigured;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

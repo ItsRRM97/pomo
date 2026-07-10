@@ -42,6 +42,9 @@ class SettingsCubit extends Cubit<SettingsState> {
         customLongBreakEndSound: Prefs.customLongBreakEndSound,
         showFloatingTimer: Prefs.showFloatingTimer,
         overlayCorner: Prefs.overlayCorner,
+        notionApiKey: Prefs.notionApiKey,
+        enableNotionSync: Prefs.enableNotionSync,
+        notionProxyUrl: Prefs.notionProxyUrl,
       ),
     );
   }
@@ -204,5 +207,21 @@ class SettingsCubit extends Cubit<SettingsState> {
   void setOverlayCorner(String value) {
     Prefs.overlayCorner = value;
     emit(state.copyWith(overlayCorner: () => value));
+  }
+
+  void setNotionApiKey(String value) {
+    Prefs.notionApiKey = value;
+    emit(state.copyWith(notionApiKey: () => value));
+  }
+
+  // ignore: avoid_positional_boolean_parameters
+  void setEnableNotionSync(bool value) {
+    Prefs.enableNotionSync = value;
+    emit(state.copyWith(enableNotionSync: () => value));
+  }
+
+  void setNotionProxyUrl(String value) {
+    Prefs.notionProxyUrl = value;
+    emit(state.copyWith(notionProxyUrl: () => value));
   }
 }

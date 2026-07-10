@@ -146,5 +146,20 @@
     "showFloatingTimer": "Show floating timer",
     "showFloatingTimerDescription": "Display a small countdown pill over other apps while a session is active",
     "overlayCorner": "Overlay position",
-    "overlayCornerDescription": "Default corner for the floating timer widget"
+    "overlayCornerDescription": "Default corner for the floating timer widget",
+    "notionIntegration": "Notion Integration",
+    "enableNotionSync": "Enable Notion Sync",
+    "enableNotionSyncDescription": "Sync completed Pomodoro sessions and partial time logs back to your PARA Dashboard Notion database",
+    "notionApiKey": "Notion API Token",
+    "notionApiKeyHint": "secret_...",
+    "notionProxyUrl": "Notion Proxy URL (Optional)",
+    "notionProxyUrlHint": "e.g. /api/notion/ or proxy server",
+    "selectTask": "Select Task",
+    "activeTask": "Active Task",
+    "clearTask": "Clear Task",
+    "dueToday": "Due Today",
+    "dueThisWeek": "Due This Week",
+    "searchTasks": "Search Tasks...",
+    "noTasksFound": "No tasks found.",
+    "notionNotConfigured": "Please configure your Notion API Token in Settings."
 }

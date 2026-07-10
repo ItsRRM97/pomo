@@ -22,7 +22,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
   }
 
   func attachChannel(_ channel: FlutterMethodChannel) {
-    self.channel = channel
+    if self.channel == nil {
+      self.channel = channel
+    }
   }
 
   func installEarlyIfNeeded() {
@@ -31,6 +33,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    item.isVisible = true
     guard let button = item.button else {
       NSLog("Pomo MenuBar: failed to create NSStatusItem button")
       return
@@ -113,11 +116,19 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     image.size = NSSize(width: iconSize, height: iconSize)
     image.isTemplate = isTemplate
     button.image = image
+    statusItem?.length = NSStatusItem.variableLength
+    statusItem?.isVisible = true
+    button.needsLayout = true
+    button.needsDisplay = true
   }
 
   func setTitle(_ title: String) {
     installEarlyIfNeeded()
     statusItem?.button?.title = title
+    statusItem?.length = NSStatusItem.variableLength
+    statusItem?.isVisible = true
+    statusItem?.button?.needsLayout = true
+    statusItem?.button?.needsDisplay = true
   }
 
   func setToolTip(_ toolTip: String) {
@@ -187,8 +198,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     let screenFrame = screen.frame
-    let height = frameInWindow.size.height
-    let width = frameInWindow.size.width
+    var height = frameInWindow.size.height
+    var width = frameInWindow.size.width
+
+    if width <= 0 || height <= 0 {
+      let buttonFrame = button.frame
+      width = buttonFrame.size.width > 0 ? buttonFrame.size.width : 22.0
+      height = buttonFrame.size.height > 0 ? buttonFrame.size.height : 22.0
+    }
 
     return [
       "x": Double(frameInWindow.origin.x),

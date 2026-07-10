@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -126,8 +129,46 @@ class Prefs {
   static const String _timerLapVarName = 'pomo_timer_lap';
   static const String _showFloatingTimerVarName = 'pomo_show_floating_timer';
   static const String _overlayCornerVarName = 'pomo_overlay_corner';
+  static const String _notionApiKeyVarName = 'pomo_notion_api_key';
+  static const String _enableNotionSyncVarName = 'pomo_enable_notion_sync';
+  static const String _notionProxyUrlVarName = 'pomo_notion_proxy_url';
+  static const String _notionDatabaseIdVarName = 'pomo_notion_database_id';
+  static const String _activeTaskJsonVarName = 'pomo_active_task_json';
 
   //* Getters
+
+  static String get notionApiKey {
+    return Prefs().sharedPreferences.getString(_notionApiKeyVarName) ?? '';
+  }
+
+  static bool get enableNotionSync {
+    return Prefs().sharedPreferences.getBool(_enableNotionSyncVarName) ?? false;
+  }
+
+  static String get notionProxyUrl {
+    return Prefs().sharedPreferences.getString(_notionProxyUrlVarName) ?? '';
+  }
+
+  static String get notionDatabaseId {
+    return Prefs().sharedPreferences.getString(_notionDatabaseIdVarName) ??
+        '1d33dffe-a139-81c6-8ce5-ee843fbf3579';
+  }
+
+  static String get activeTaskJson {
+    return Prefs().sharedPreferences.getString(_activeTaskJsonVarName) ?? '';
+  }
+
+  static NotionTask? get activeTask {
+    final jsonStr = activeTaskJson;
+    if (jsonStr.isEmpty) return null;
+    try {
+      return NotionTask.fromJson(
+        jsonDecode(jsonStr) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   //* Getters
   static ThemeMode get themeMode {
@@ -489,6 +530,34 @@ class Prefs {
 
   static set overlayCorner(String value) {
     Prefs().sharedPreferences.setString(_overlayCornerVarName, value);
+  }
+
+  static set notionApiKey(String value) {
+    Prefs().sharedPreferences.setString(_notionApiKeyVarName, value);
+  }
+
+  static set enableNotionSync(bool value) {
+    Prefs().sharedPreferences.setBool(_enableNotionSyncVarName, value);
+  }
+
+  static set notionProxyUrl(String value) {
+    Prefs().sharedPreferences.setString(_notionProxyUrlVarName, value);
+  }
+
+  static set notionDatabaseId(String value) {
+    Prefs().sharedPreferences.setString(_notionDatabaseIdVarName, value);
+  }
+
+  static set activeTaskJson(String value) {
+    Prefs().sharedPreferences.setString(_activeTaskJsonVarName, value);
+  }
+
+  static set activeTask(NotionTask? value) {
+    if (value == null) {
+      Prefs().sharedPreferences.remove(_activeTaskJsonVarName);
+    } else {
+      activeTaskJson = jsonEncode(value.toJson());
+    }
   }
 
   static void resetTimer() {

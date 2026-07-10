@@ -34,6 +34,9 @@ class SettingsState extends Equatable {
     this.customLongBreakEndSound = '',
     this.showFloatingTimer = true,
     this.overlayCorner = 'topRight',
+    this.notionApiKey = '',
+    this.enableNotionSync = false,
+    this.notionProxyUrl = '',
   });
 
   final ThemeMode themeMode;
@@ -42,6 +45,10 @@ class SettingsState extends Equatable {
   final bool autoAdvance;
   final bool enableWebHooks;
   final bool enableSound;
+  final bool enableNotionSync;
+
+  final String notionApiKey;
+  final String notionProxyUrl;
 
   final int workMinutes;
   final int shortBreakMinutes;
@@ -112,6 +119,9 @@ class SettingsState extends Equatable {
     String Function()? customLongBreakEndSound,
     bool Function()? showFloatingTimer,
     String Function()? overlayCorner,
+    String Function()? notionApiKey,
+    bool Function()? enableNotionSync,
+    String Function()? notionProxyUrl,
   }) {
     return SettingsState(
       themeMode: themeMode != null ? themeMode() : this.themeMode,
@@ -182,6 +192,11 @@ class SettingsState extends Equatable {
           : this.showFloatingTimer,
       overlayCorner:
           overlayCorner != null ? overlayCorner() : this.overlayCorner,
+      notionApiKey: notionApiKey != null ? notionApiKey() : this.notionApiKey,
+      enableNotionSync:
+          enableNotionSync != null ? enableNotionSync() : this.enableNotionSync,
+      notionProxyUrl:
+          notionProxyUrl != null ? notionProxyUrl() : this.notionProxyUrl,
     );
   }
 
@@ -219,6 +234,9 @@ class SettingsState extends Equatable {
         customLongBreakEndSound,
         showFloatingTimer,
         overlayCorner,
+        notionApiKey,
+        enableNotionSync,
+        notionProxyUrl,
       ];
 }
 
