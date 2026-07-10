@@ -41,6 +41,8 @@ class SettingsView extends StatelessWidget {
               TimerFontDropdown(),
               SizedBox(height: 16),
               AlwaysOnTopToggle(),
+              ShowFloatingTimerToggle(),
+              OverlayCornerDropdown(),
               AutoAdvanceToggle(),
               SizedBox(height: 16),
               WorkDurationSlider(),

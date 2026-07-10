@@ -81,6 +81,29 @@ action:
 mode: single
 ```
 
+## macOS menu bar and floating timer
+
+The native macOS app (`Pomo.app`) includes desktop-only features not available in the browser PWA:
+
+- **Menu bar icon**: start/pause, reset, open the main window, settings, and quit from the menu bar
+- **Background mode**: closing the main window hides it; the app keeps running in the menu bar
+- **Floating timer**: a small countdown pill appears over other apps (including fullscreen Spaces) while a session is running or paused
+
+### Build and run on macOS
+
+```sh
+flutter build macos --release -t lib/main_production.dart
+open build/macos/Build/Products/Release/Pomo.app
+```
+
+For local development:
+
+```sh
+flutter run -d macos --target lib/main_production.dart
+```
+
+Configure the floating widget under **Settings** (macOS only): toggle visibility and pick a default screen corner.
+
 ## Installing
 
 You can either download and install one of the already-built [releases](https://github.com/recoskyler/pomo/releases), or [build it yourself](#building).

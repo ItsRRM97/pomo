@@ -124,6 +124,8 @@ class Prefs {
   static const String _timerStatusVarName = 'pomo_timer_status';
   static const String _durationVarName = 'pomo_duration';
   static const String _timerLapVarName = 'pomo_timer_lap';
+  static const String _showFloatingTimerVarName = 'pomo_show_floating_timer';
+  static const String _overlayCornerVarName = 'pomo_overlay_corner';
 
   //* Getters
 
@@ -321,6 +323,15 @@ class Prefs {
     return TimerLap.values[storedVal ?? 0];
   }
 
+  static bool get showFloatingTimer {
+    return Prefs().sharedPreferences.getBool(_showFloatingTimerVarName) ?? true;
+  }
+
+  static String get overlayCorner {
+    return Prefs().sharedPreferences.getString(_overlayCornerVarName) ??
+        'topRight';
+  }
+
   //* Setters
 
   static set themeMode(ThemeMode value) {
@@ -470,6 +481,14 @@ class Prefs {
 
   static set duration(Duration value) {
     Prefs().sharedPreferences.setInt(_durationVarName, value.inSeconds);
+  }
+
+  static set showFloatingTimer(bool value) {
+    Prefs().sharedPreferences.setBool(_showFloatingTimerVarName, value);
+  }
+
+  static set overlayCorner(String value) {
+    Prefs().sharedPreferences.setString(_overlayCornerVarName, value);
   }
 
   static void resetTimer() {

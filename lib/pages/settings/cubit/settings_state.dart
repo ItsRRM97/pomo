@@ -32,6 +32,8 @@ class SettingsState extends Equatable {
     this.customShortBreakEndSound = '',
     this.customLongBreakStartSound = '',
     this.customLongBreakEndSound = '',
+    this.showFloatingTimer = true,
+    this.overlayCorner = 'topRight',
   });
 
   final ThemeMode themeMode;
@@ -74,6 +76,9 @@ class SettingsState extends Equatable {
 
   final Color? colorSeed;
 
+  final bool showFloatingTimer;
+  final String overlayCorner;
+
   SettingsState copyWith({
     ThemeMode Function()? themeMode,
     bool Function()? alwaysOnTop,
@@ -105,6 +110,8 @@ class SettingsState extends Equatable {
     String Function()? customShortBreakEndSound,
     String Function()? customLongBreakStartSound,
     String Function()? customLongBreakEndSound,
+    bool Function()? showFloatingTimer,
+    String Function()? overlayCorner,
   }) {
     return SettingsState(
       themeMode: themeMode != null ? themeMode() : this.themeMode,
@@ -170,6 +177,11 @@ class SettingsState extends Equatable {
       customLongBreakEndSound: customLongBreakEndSound != null
           ? customLongBreakEndSound()
           : this.customLongBreakEndSound,
+      showFloatingTimer: showFloatingTimer != null
+          ? showFloatingTimer()
+          : this.showFloatingTimer,
+      overlayCorner:
+          overlayCorner != null ? overlayCorner() : this.overlayCorner,
     );
   }
 
@@ -205,6 +217,8 @@ class SettingsState extends Equatable {
         customShortBreakEndSound,
         customLongBreakStartSound,
         customLongBreakEndSound,
+        showFloatingTimer,
+        overlayCorner,
       ];
 }
 

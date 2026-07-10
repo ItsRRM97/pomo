@@ -40,6 +40,8 @@ class SettingsCubit extends Cubit<SettingsState> {
         customShortBreakEndSound: Prefs.customShortBreakEndSound,
         customLongBreakStartSound: Prefs.customLongBreakStartSound,
         customLongBreakEndSound: Prefs.customLongBreakEndSound,
+        showFloatingTimer: Prefs.showFloatingTimer,
+        overlayCorner: Prefs.overlayCorner,
       ),
     );
   }
@@ -191,5 +193,16 @@ class SettingsCubit extends Cubit<SettingsState> {
   void setCustomLongBreakEndSound(String value) {
     Prefs.customLongBreakEndSound = value;
     emit(state.copyWith(customLongBreakEndSound: () => value));
+  }
+
+  // ignore: avoid_positional_boolean_parameters
+  void setShowFloatingTimer(bool value) {
+    Prefs.showFloatingTimer = value;
+    emit(state.copyWith(showFloatingTimer: () => value));
+  }
+
+  void setOverlayCorner(String value) {
+    Prefs.overlayCorner = value;
+    emit(state.copyWith(overlayCorner: () => value));
   }
 }
