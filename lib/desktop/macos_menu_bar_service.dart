@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,6 +21,8 @@ class MacosMenuBarService with TrayListener {
   static final MacosMenuBarService instance = MacosMenuBarService._();
 
   static const _trayIconAsset = 'assets/images/pomo_splash_64.png';
+  static const _idleTrayTitle = 'Pomo';
+  static const _maxTrayInitAttempts = 6;
 
   static bool _iconReady = false;
   static bool _listenerAttached = false;
@@ -31,37 +35,88 @@ class MacosMenuBarService with TrayListener {
       return;
     }
 
-    instance._timerCubit = context.read<TimerCubit>();
-
     try {
       await const MethodChannel('pomo/overlay')
           .invokeMethod<void>('ensureRegularActivation');
     } catch (error, stackTrace) {
-      debugPrint(
-        'MacosMenuBarService: ensureRegularActivation failed: $error',
+      developer.log(
+        'ensureRegularActivation failed: $error',
+        name: 'MacosMenuBarService',
+        error: error,
+        stackTrace: stackTrace,
       );
-      debugPrint('$stackTrace');
     }
 
     try {
-      // Use the 64x64 tray asset. The full pomo_logo.png is 4096x4096 (~5MB)
-      // and exceeds the Flutter method channel payload when base64-encoded.
-      await trayManager.setIcon(
-        _trayIconAsset,
-        iconSize: 22,
-      );
+      // Release builds can initialize faster than AppKit lays out status items.
+      // Showing the tray synchronously on the first frame leaves a 0-height item.
+      await _installTrayIconWithRetry();
 
       if (!_listenerAttached) {
         trayManager.addListener(instance);
         _listenerAttached = true;
       }
 
-      await instance._syncMenuIfNeeded(force: true);
       _iconReady = true;
     } catch (error, stackTrace) {
-      debugPrint('MacosMenuBarService.init failed: $error');
-      debugPrint('$stackTrace');
+      developer.log(
+        'tray icon setup failed: $error',
+        name: 'MacosMenuBarService',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return;
     }
+
+    try {
+      instance._timerCubit = context.read<TimerCubit>();
+      await instance._syncMenuIfNeeded(force: true);
+    } catch (error, stackTrace) {
+      developer.log(
+        'tray menu setup failed: $error',
+        name: 'MacosMenuBarService',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  static Future<void> _installTrayIconWithRetry() async {
+    Object? lastError;
+    StackTrace? lastStackTrace;
+
+    for (var attempt = 0; attempt < _maxTrayInitAttempts; attempt++) {
+      if (attempt == 0) {
+        await Future<void>.delayed(Duration.zero);
+        await SchedulerBinding.instance.endOfFrame;
+      } else {
+        await Future<void>.delayed(Duration(milliseconds: 80 * attempt));
+      }
+
+      try {
+        // Use the 64x64 tray asset. The full pomo_logo.png is 4096x4096 (~5MB)
+        // and exceeds the Flutter method channel payload when base64-encoded.
+        await trayManager.setIcon(
+          _trayIconAsset,
+          iconSize: 22,
+        );
+        await trayManager.setTitle(_idleTrayTitle);
+        await trayManager.setToolTip('Pomo - Pomodoro timer');
+
+        final bounds = await trayManager.getBounds();
+        if (bounds != null && bounds.width > 0) {
+          return;
+        }
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastStackTrace = stackTrace;
+      }
+    }
+
+    Error.throwWithStackTrace(
+      lastError ?? StateError('Tray icon never received valid bounds'),
+      lastStackTrace ?? StackTrace.current,
+    );
   }
 
   static void attachContext(BuildContext context) {
@@ -88,7 +143,8 @@ class MacosMenuBarService with TrayListener {
       lap: timerState.lap,
       settingsState: settingsState,
     );
-    final title = SessionHelper.isSessionActive(timerState) ? time : '';
+    final title =
+        SessionHelper.isSessionActive(timerState) ? time : _idleTrayTitle;
     await trayManager.setTitle(title);
 
     await _syncMenuIfNeeded(timerState: timerState);

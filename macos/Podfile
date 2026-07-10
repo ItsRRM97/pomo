@@ -35,8 +35,27 @@ target 'Runner' do
   end
 end
 
+def patch_tray_manager_status_item_length
+  tray_icon_path = File.expand_path(
+    'Flutter/ephemeral/.symlinks/plugins/tray_manager/macos/tray_manager/Classes/TrayIcon.swift',
+    __dir__,
+  )
+  return unless File.exist?(tray_icon_path)
+
+  content = File.read(tray_icon_path)
+  return if content.include?('POMO_TRAY_FIX')
+
+  patched = content.gsub(
+    'statusItem = NSStatusBar.system.statusItem(withLength:NSStatusItem.variableLength)',
+    'statusItem = NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength) // POMO_TRAY_FIX',
+  )
+  File.write(tray_icon_path, patched)
+end
+
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
   end
+
+  patch_tray_manager_status_item_length
 end
