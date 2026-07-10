@@ -26,15 +26,7 @@ class NotionService {
       if (proxy.isNotEmpty) {
         return proxy.endsWith('/') ? proxy : '$proxy/';
       }
-      try {
-        final host = Uri.base.host;
-        // When running web app locally via flutter run / debug server on localhost,
-        // automatically fallback to our working live Vercel proxy.
-        if (host == 'localhost' || host == '127.0.0.1' || host.isEmpty) {
-          return 'https://pomo-focus-sand.vercel.app/api/notion/';
-        }
-      } catch (_) {}
-      return '/api/notion/';
+      return 'https://pomo-focus-sand.vercel.app/api/notion/';
     }
     if (proxy.isNotEmpty) {
       if (proxy.startsWith('http')) {
