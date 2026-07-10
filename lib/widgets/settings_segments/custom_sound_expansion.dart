@@ -115,8 +115,7 @@ class _SoundPresetFieldState extends State<_SoundPresetField> {
   }
 
   String get _selectedId {
-    if (widget.value.isEmpty ||
-        TimerSoundPreset.isBundledAsset(widget.value)) {
+    if (widget.value.isEmpty || TimerSoundPreset.isBundledAsset(widget.value)) {
       return widget.value;
     }
     return _customFileId;

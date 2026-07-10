@@ -1,0 +1,19 @@
+---
+description: Operating guidelines for Cursor AI agent working on the Pomo Flutter application
+globs: **/*.dart, **/*.yaml, **/*.sh, **/*.md
+---
+# Cursor Agent Guidance for Pomo
+
+## 1. Core Operating Principles
+- **Read First**: Consult `CLAUDE.md`, `AGENTS.md`, and `ARCHITECTURE.md` before making architectural changes.
+- **Run Setup First**: Always run `flutter pub get` and `flutter gen-l10n` (`./scripts/setup.sh`) before attempting `flutter test` or `flutter analyze`.
+- **Target & Flavor Required**: When running or building, use `--flavor development --target lib/main_development.dart`. `lib/main.dart` is only a stub.
+
+## 2. Command Rules
+- Prefix terminal inspection commands with `rtk` (e.g., `rtk git status`, `rtk grep <query>`).
+- Run `./scripts/verify.sh` to validate formatting, static analysis, and regression tests.
+
+## 3. Style & Code Rules
+- Follow `very_good_analysis` lints strictly.
+- Keep helper logic (`DurationHelper`, `LapHelper`, `SoundHelper`) purely logic-driven and unit-testable.
+- Do **not** use em dashes (`\u2014`) anywhere in generated text, comments, or UI strings. Use hyphens (`-`), colons (`:`), or semicolons.

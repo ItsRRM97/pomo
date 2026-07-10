@@ -84,9 +84,9 @@ class AboutPage extends StatelessWidget {
                       TextSpan(
                         text: 'recoskyler',
                         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                         recognizer: TapGestureRecognizer()..onTap = _launchUrl,
                       ),
                       TextSpan(text: l10n.madeBy2),

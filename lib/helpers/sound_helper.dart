@@ -1,12 +1,27 @@
 import 'package:audioplayers/audioplayers.dart';
 
-/// Bundled timer alert sounds. All royalty-free generated tones or existing assets.
+/// Bundled timer alert sounds. All royalty-free generated tones or existing
+/// assets.
 class TimerSoundPreset {
   const TimerSoundPreset({
     required this.id,
     required this.label,
     this.assetPath,
   });
+
+  factory TimerSoundPreset.presetFor(String storedValue) {
+    if (storedValue.isEmpty) {
+      return presets.first;
+    }
+
+    return presets.firstWhere(
+      (preset) => preset.id == storedValue,
+      orElse: () => TimerSoundPreset(
+        id: storedValue,
+        label: storedValue.split('/').last,
+      ),
+    );
+  }
 
   /// Value stored in preferences. Empty string means default ding dong.
   final String id;
@@ -54,20 +69,6 @@ class TimerSoundPreset {
     ),
   ];
 
-  static TimerSoundPreset presetFor(String storedValue) {
-    if (storedValue.isEmpty) {
-      return presets.first;
-    }
-
-    return presets.firstWhere(
-      (preset) => preset.id == storedValue,
-      orElse: () => TimerSoundPreset(
-        id: storedValue,
-        label: storedValue.split('/').last,
-      ),
-    );
-  }
-
   static bool isBundledAsset(String storedValue) {
     return storedValue.isEmpty ||
         presets.any(
@@ -91,7 +92,10 @@ class SoundHelper {
     return DeviceFileSource(storedValue);
   }
 
-  static Future<void> playPreview(AudioPlayer player, String storedValue) async {
+  static Future<void> playPreview(
+    AudioPlayer player,
+    String storedValue,
+  ) async {
     await player.stop();
     await player.play(resolveSource(storedValue));
   }

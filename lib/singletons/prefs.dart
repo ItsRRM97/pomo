@@ -434,7 +434,7 @@ class Prefs {
       return;
     }
 
-    Prefs().sharedPreferences.setInt(_colorSeedVarName, value.value);
+    Prefs().sharedPreferences.setInt(_colorSeedVarName, value.toARGB32());
   }
 
   static set customShortBreakStartSound(String value) {

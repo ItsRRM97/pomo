@@ -53,7 +53,7 @@ class ColorPicker extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  if (state.colorSeed?.value == e.value)
+                  if (state.colorSeed?.toARGB32() == e.toARGB32())
                     const Icon(
                       Icons.circle,
                       // shadows: [BoxShadow(blurRadius: 3)],

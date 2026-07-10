@@ -64,7 +64,8 @@ class MacosMenuBarService with TrayListener {
       settingsState: settingsState,
     );
     final emoji = _lapEmoji(timerState.lap);
-    final status = timerState.status == TimerStatus.running ? 'Running' : 'Paused';
+    final status =
+        timerState.status == TimerStatus.running ? 'Running' : 'Paused';
 
     return '$emoji $time ($status)';
   }

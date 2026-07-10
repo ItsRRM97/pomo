@@ -153,8 +153,8 @@ class _ActionButtonsState extends State<ActionButtons>
                           .then((_) => _skipController.reverse());
 
                       context.read<TimerCubit>().lap(
-                          autoAdvance: state.status == TimerStatus.running,
-                          settingsState: settingsState,
+                            autoAdvance: state.status == TimerStatus.running,
+                            settingsState: settingsState,
                           );
                     },
                     icon: SlideTransition(

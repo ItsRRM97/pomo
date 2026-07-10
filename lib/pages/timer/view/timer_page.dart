@@ -118,9 +118,9 @@ class TimerPage extends StatelessWidget {
 
     return {
       'rgb': [
-        color.red,
-        color.green,
-        color.blue,
+        (color.r * 255.0).round().clamp(0, 255),
+        (color.g * 255.0).round().clamp(0, 255),
+        (color.b * 255.0).round().clamp(0, 255),
       ],
     };
   }

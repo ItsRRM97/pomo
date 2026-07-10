@@ -119,7 +119,8 @@ class _OverlayAppState extends State<OverlayApp> {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

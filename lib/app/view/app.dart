@@ -39,7 +39,8 @@ class App extends StatelessWidget {
         collapsedIconColor: colorScheme.onSurface,
       ),
       inputDecorationTheme: InputDecorationTheme(
-        labelStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
+        labelStyle:
+            textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
         hintStyle:
             textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
       ),
@@ -63,38 +64,38 @@ class App extends StatelessWidget {
       ],
       child: DesktopShell(
         child: BlocBuilder<SettingsCubit, SettingsState>(
-        buildWhen: (previous, current) =>
-            previous.themeMode != current.themeMode ||
-            previous.colorSeed != current.colorSeed ||
-            previous.locale != current.locale,
-        builder: (context, state) {
-          final lightScheme = ColorScheme.fromSeed(
-            seedColor: state.colorSeed ?? Colors.redAccent,
-          );
-          final darkScheme = ColorScheme.fromSeed(
-            seedColor: state.colorSeed ?? Colors.redAccent,
-            brightness: Brightness.dark,
-          );
+          buildWhen: (previous, current) =>
+              previous.themeMode != current.themeMode ||
+              previous.colorSeed != current.colorSeed ||
+              previous.locale != current.locale,
+          builder: (context, state) {
+            final lightScheme = ColorScheme.fromSeed(
+              seedColor: state.colorSeed ?? Colors.redAccent,
+            );
+            final darkScheme = ColorScheme.fromSeed(
+              seedColor: state.colorSeed ?? Colors.redAccent,
+              brightness: Brightness.dark,
+            );
 
-          return MaterialApp(
-            navigatorKey: navigatorKey,
-            theme: _buildTheme(colorScheme: lightScheme),
-            darkTheme: _buildTheme(colorScheme: darkScheme),
-            themeMode: state.themeMode,
-            locale: state.locale,
-            debugShowCheckedModeBanner: false,
-            localizationsDelegates: S.localizationsDelegates,
-            supportedLocales: S.supportedLocales,
-            routes: {
-              '/': (context) => const TimerPage(),
-              '/settings': (context) => const SettingsPage(),
-              '/about': (context) => const AboutPage(),
-              '/deniz': (context) => const DenizPage(),
-            },
-            initialRoute: '/',
-          );
-        },
-      ),
+            return MaterialApp(
+              navigatorKey: navigatorKey,
+              theme: _buildTheme(colorScheme: lightScheme),
+              darkTheme: _buildTheme(colorScheme: darkScheme),
+              themeMode: state.themeMode,
+              locale: state.locale,
+              debugShowCheckedModeBanner: false,
+              localizationsDelegates: S.localizationsDelegates,
+              supportedLocales: S.supportedLocales,
+              routes: {
+                '/': (context) => const TimerPage(),
+                '/settings': (context) => const SettingsPage(),
+                '/about': (context) => const AboutPage(),
+                '/deniz': (context) => const DenizPage(),
+              },
+              initialRoute: '/',
+            );
+          },
+        ),
       ),
     );
   }
