@@ -34,14 +34,13 @@ class MacosMenuBarService {
       return;
     }
 
-    // On a hot-restart the Dart isolate is torn down and all static fields reset
-    // to their initial values, so _iconReady and _listenerAttached will both be
-    // false. On a normal second call (e.g. widget rebuild) they remain true from
-    // the first successful init and we can skip work.
-    if (_iconReady) {
-      // Already initialised in this isolate lifetime - nothing to do.
-      return;
-    }
+    // Always reset on every init() call. When flutter run re-attaches to an
+    // already-running process (hot-reload reconnect, Dart VM resume, or
+    // DesktopShell remount) the static _iconReady flag from the previous
+    // session is still true, which silently skips sending setIcon/setTitle to
+    // the native layer even though the NSStatusItem button title was cleared.
+    _iconReady = false;
+    _listenerAttached = false;
 
     final timerCubit = context.read<TimerCubit>();
 
