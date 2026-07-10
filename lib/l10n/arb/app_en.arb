@@ -126,6 +126,8 @@
     "shortBreakStartSound": "Short break start sound",
     "longBreakStartSound": "Long break start sound",
     "customSounds": "Custom sounds",
+    "customSoundFile": "Custom file...",
+    "previewSound": "Preview sound",
     "fileNotFound": "File not found",
     "sourceCode": "Source code",
 
@@ -139,5 +141,10 @@
                 "type": "String"
             }
         }
-    }
+    },
+
+    "showFloatingTimer": "Show floating timer",
+    "showFloatingTimerDescription": "Display a small countdown pill over other apps while a session is active",
+    "overlayCorner": "Overlay position",
+    "overlayCornerDescription": "Default corner for the floating timer widget"
 }

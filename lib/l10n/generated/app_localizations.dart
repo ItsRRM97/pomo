@@ -459,6 +459,18 @@ abstract class S {
   /// **'Custom sounds'**
   String get customSounds;
 
+  /// No description provided for @customSoundFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom file...'**
+  String get customSoundFile;
+
+  /// No description provided for @previewSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview sound'**
+  String get previewSound;
+
   /// No description provided for @fileNotFound.
   ///
   /// In en, this message translates to:
@@ -476,6 +488,30 @@ abstract class S {
   /// In en, this message translates to:
   /// **'{time} {stoppedEmoji} | Pomo - Pomodoro timer'**
   String timerTitle(String time, String stoppedEmoji);
+
+  /// No description provided for @showFloatingTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show floating timer'**
+  String get showFloatingTimer;
+
+  /// No description provided for @showFloatingTimerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Display a small countdown pill over other apps while a session is active'**
+  String get showFloatingTimerDescription;
+
+  /// No description provided for @overlayCorner.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay position'**
+  String get overlayCorner;
+
+  /// No description provided for @overlayCornerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Default corner for the floating timer widget'**
+  String get overlayCornerDescription;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

@@ -25,4 +25,11 @@ rm -rf deploy/focus
 mkdir -p deploy/focus
 cp -R build/web/. deploy/focus/
 
+# Flutter 3.44+ ships a stub flutter_service_worker.js that unregisters itself and
+# reloads the page. Load the app directly via flutter_bootstrap instead.
+perl -i -0pe 's/_flutter\.loader\.load\(\{\s*serviceWorkerSettings:\s*\{[^}]+\}\s*\}\);/_flutter.loader.load();/s' deploy/focus/flutter_bootstrap.js
+
+VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)"
+sed "s/focus-pwa-v1/focus-pwa-${VERSION}/" web/pwa_service_worker.js > deploy/focus/pwa_service_worker.js
+
 echo "Web build ready at deploy/focus"

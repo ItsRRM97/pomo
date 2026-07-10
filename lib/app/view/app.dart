@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pomo/desktop/desktop_shell_stub.dart'
+    if (dart.library.io) 'package:pomo/desktop/desktop_shell.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/about/view/about_page.dart';
 import 'package:pomo/pages/deniz/deniz.dart';
@@ -8,6 +10,45 @@ import 'package:pomo/pages/timer/timer.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
+
+  static final navigatorKey = GlobalKey<NavigatorState>();
+
+  static ThemeData _buildTheme({
+    required ColorScheme colorScheme,
+  }) {
+    final base = ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+    );
+    final textTheme = base.textTheme.apply(
+      bodyColor: colorScheme.onSurface,
+      displayColor: colorScheme.onSurface,
+    );
+
+    return base.copyWith(
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
+      appBarTheme: AppBarTheme(
+        centerTitle: true,
+        foregroundColor: colorScheme.onSurface,
+      ),
+      expansionTileTheme: ExpansionTileThemeData(
+        textColor: colorScheme.onSurface,
+        collapsedTextColor: colorScheme.onSurface,
+        iconColor: colorScheme.onSurface,
+        collapsedIconColor: colorScheme.onSurface,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        labelStyle: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
+        hintStyle:
+            textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: colorScheme.onSurface,
+        iconColor: colorScheme.onSurfaceVariant,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,28 +61,25 @@ class App extends StatelessWidget {
           create: (context) => SettingsCubit()..loadSettings(),
         ),
       ],
-      child: BlocBuilder<SettingsCubit, SettingsState>(
+      child: DesktopShell(
+        child: BlocBuilder<SettingsCubit, SettingsState>(
         buildWhen: (previous, current) =>
             previous.themeMode != current.themeMode ||
             previous.colorSeed != current.colorSeed ||
             previous.locale != current.locale,
         builder: (context, state) {
+          final lightScheme = ColorScheme.fromSeed(
+            seedColor: state.colorSeed ?? Colors.redAccent,
+          );
+          final darkScheme = ColorScheme.fromSeed(
+            seedColor: state.colorSeed ?? Colors.redAccent,
+            brightness: Brightness.dark,
+          );
+
           return MaterialApp(
-            theme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: state.colorSeed ?? Colors.redAccent,
-              ),
-              appBarTheme: const AppBarTheme(centerTitle: true),
-            ),
-            darkTheme: ThemeData(
-              useMaterial3: true,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: state.colorSeed ?? Colors.redAccent,
-                brightness: Brightness.dark,
-              ),
-              appBarTheme: const AppBarTheme(centerTitle: true),
-            ),
+            navigatorKey: navigatorKey,
+            theme: _buildTheme(colorScheme: lightScheme),
+            darkTheme: _buildTheme(colorScheme: darkScheme),
             themeMode: state.themeMode,
             locale: state.locale,
             debugShowCheckedModeBanner: false,
@@ -56,6 +94,7 @@ class App extends StatelessWidget {
             initialRoute: '/',
           );
         },
+      ),
       ),
     );
   }

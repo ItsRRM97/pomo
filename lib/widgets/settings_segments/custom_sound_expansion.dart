@@ -1,8 +1,10 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
+import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/settings.dart';
 
@@ -21,63 +23,57 @@ class CustomSoundExpansion extends StatelessWidget {
           shape: const Border(),
           childrenPadding: const EdgeInsets.all(16),
           children: [
-            _CustomSoundField(
-              initialValue: state.customWorkStartSound,
+            _SoundPresetField(
+              value: state.customWorkStartSound,
               onChanged: (value) {
                 context.read<SettingsCubit>().setCustomWorkStartSound(value);
               },
-              value: state.customWorkStartSound,
               title: l10n.workStartSound,
             ),
             const SizedBox(height: 16),
-            _CustomSoundField(
-              initialValue: state.customShortBreakStartSound,
+            _SoundPresetField(
+              value: state.customShortBreakStartSound,
               onChanged: (value) {
                 context
                     .read<SettingsCubit>()
                     .setCustomShortBreakStartSound(value);
               },
-              value: state.customShortBreakStartSound,
               title: l10n.shortBreakStartSound,
             ),
             const SizedBox(height: 16),
-            _CustomSoundField(
-              initialValue: state.customLongBreakStartSound,
+            _SoundPresetField(
+              value: state.customLongBreakStartSound,
               onChanged: (value) {
                 context
                     .read<SettingsCubit>()
                     .setCustomLongBreakStartSound(value);
               },
-              value: state.customLongBreakStartSound,
               title: l10n.longBreakStartSound,
             ),
             const SizedBox(height: 16),
-            _CustomSoundField(
-              initialValue: state.customWorkEndSound,
+            _SoundPresetField(
+              value: state.customWorkEndSound,
               onChanged: (value) {
                 context.read<SettingsCubit>().setCustomWorkEndSound(value);
               },
-              value: state.customWorkEndSound,
               title: l10n.workEndSound,
             ),
             const SizedBox(height: 16),
-            _CustomSoundField(
-              initialValue: state.customShortBreakEndSound,
+            _SoundPresetField(
+              value: state.customShortBreakEndSound,
               onChanged: (value) {
                 context
                     .read<SettingsCubit>()
                     .setCustomShortBreakEndSound(value);
               },
-              value: state.customShortBreakEndSound,
               title: l10n.shortBreakEndSound,
             ),
             const SizedBox(height: 16),
-            _CustomSoundField(
-              initialValue: state.customLongBreakEndSound,
+            _SoundPresetField(
+              value: state.customLongBreakEndSound,
               onChanged: (value) {
                 context.read<SettingsCubit>().setCustomLongBreakEndSound(value);
               },
-              value: state.customLongBreakEndSound,
               title: l10n.longBreakEndSound,
             ),
           ],
@@ -87,110 +83,144 @@ class CustomSoundExpansion extends StatelessWidget {
   }
 }
 
-class _CustomSoundField extends StatefulWidget {
-  const _CustomSoundField({
+class _SoundPresetField extends StatefulWidget {
+  const _SoundPresetField({
     required this.onChanged,
-    this.initialValue,
-    this.title = 'Custom Sound',
-    // ignore: unused_element
-    this.hintText = '/home/user/sounds/example.mp3',
-    this.value = '',
+    required this.title,
+    required this.value,
   });
 
-  final String? initialValue;
   final String title;
-  final String hintText;
   final String value;
   final void Function(String) onChanged;
 
   @override
-  State<_CustomSoundField> createState() => _CustomSoundFieldState();
+  State<_SoundPresetField> createState() => _SoundPresetFieldState();
 }
 
-class _CustomSoundFieldState extends State<_CustomSoundField> {
-  late TextEditingController _controller;
+class _SoundPresetFieldState extends State<_SoundPresetField> {
   late AudioPlayer _player;
+  static const _customFileId = '__custom_file__';
 
   @override
   void initState() {
     super.initState();
-
     _player = AudioPlayer();
-    _controller = TextEditingController(text: widget.initialValue);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
     _player.dispose();
-
     super.dispose();
   }
 
-  Widget _buildButton(BuildContext context) {
-    if (widget.value.trim().isEmpty) {
-      return IconButton(
-        onPressed: () {
-          FilePicker.platform.pickFiles(type: FileType.audio).then((value) {
-            if (value != null) {
-              _controller.text = value.files.single.path!;
+  String get _selectedId {
+    if (widget.value.isEmpty ||
+        TimerSoundPreset.isBundledAsset(widget.value)) {
+      return widget.value;
+    }
+    return _customFileId;
+  }
 
-              Logger().i('Selected file: ${value.files.single.path}');
-
-              widget.onChanged(value.files.single.path!);
-            }
-          });
-        },
-        icon: const Icon(Icons.folder),
-      );
+  Future<void> _pickCustomFile() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    if (result == null) {
+      return;
     }
 
-    return IconButton(
-      onPressed: () {
-        if (_player.state == PlayerState.playing) {
-          _player.stop();
-        } else {
-          _player.play(DeviceFileSource(widget.value));
-        }
-      },
-      icon: Icon(
-        _player.state == PlayerState.playing ? Icons.stop : Icons.play_arrow,
-      ),
-    );
+    final path = result.files.single.path;
+    if (path == null) {
+      return;
+    }
+
+    Logger().i('Selected file: $path');
+    widget.onChanged(path);
+  }
+
+  Future<void> _previewSound() async {
+    if (_player.state == PlayerState.playing) {
+      await _player.stop();
+      return;
+    }
+
+    await SoundHelper.playPreview(_player, widget.value);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final labelStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+        );
+    final items = [
+      ...TimerSoundPreset.presets.map(
+        (preset) => DropdownMenuItem<String>(
+          value: preset.id,
+          child: Text(preset.label),
+        ),
+      ),
+      if (!kIsWeb)
+        DropdownMenuItem<String>(
+          value: _customFileId,
+          child: Text(l10n.customSoundFile),
+        ),
+    ];
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           widget.title,
-          style: Theme.of(context).textTheme.labelLarge,
+          style: labelStyle,
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: _controller,
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            border: const OutlineInputBorder(),
-            prefixIcon: StreamBuilder(
-              stream: _player.onPlayerStateChanged,
-              builder: (context, _) => _buildButton(context),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButton<String>(
+                value: _selectedId,
+                isExpanded: true,
+                items: items,
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  if (value == _customFileId) {
+                    _pickCustomFile();
+                    return;
+                  }
+                  widget.onChanged(value);
+                },
+              ),
             ),
-            suffixIcon: widget.value.isEmpty
-                ? null
-                : IconButton(
-                    onPressed: () {
-                      widget.onChanged('');
-                      _controller.text = '';
-                    },
-                    icon: const Icon(Icons.clear),
-                  ),
-          ),
-          onChanged: widget.onChanged,
+            IconButton(
+              tooltip: l10n.previewSound,
+              onPressed: widget.value.isEmpty ? null : _previewSound,
+              icon: StreamBuilder<PlayerState>(
+                stream: _player.onPlayerStateChanged,
+                builder: (context, snapshot) {
+                  final playing = snapshot.data == PlayerState.playing;
+                  return Icon(playing ? Icons.stop : Icons.play_arrow);
+                },
+              ),
+            ),
+          ],
         ),
+        if (!kIsWeb &&
+            widget.value.isNotEmpty &&
+            !TimerSoundPreset.isBundledAsset(widget.value))
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              widget.value,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
       ],
     );
   }

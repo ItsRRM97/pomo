@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/web.dart';
 import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/timer.dart';
@@ -93,19 +96,15 @@ class TimerPage extends StatelessWidget {
           break;
       }
 
-      final source = sourceFile == ''
-          ? AssetSource('sounds/ding_dong.aac')
-          : DeviceFileSource(sourceFile);
-
       if (type != NotificationType.startStop &&
           type != NotificationType.tick &&
           type != NotificationType.nextLap &&
           sourceFile != '') {
-        await player.play(source);
+        await player.play(SoundHelper.resolveSource(sourceFile));
       }
     } catch (e) {
       await player.stop();
-      await player.play(AssetSource('sounds/ding_dong.aac'));
+      await player.play(AssetSource(SoundHelper.defaultAsset));
     }
   }
 
@@ -385,23 +384,26 @@ class TimerView extends StatefulWidget {
 }
 
 class _TimerViewState extends State<TimerView> {
-  late Timer _timer;
+  Timer? _timer;
   late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      context.read<TimerCubit>().tick(context.read<SettingsCubit>().state);
-    });
+    // macOS uses the app-level TimerTickService so ticks continue when hidden.
+    if (!kIsWeb && !Platform.isMacOS) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        context.read<TimerCubit>().tick(context.read<SettingsCubit>().state);
+      });
+    }
 
     _focusNode = FocusNode();
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     _focusNode.dispose();
 
     super.dispose();

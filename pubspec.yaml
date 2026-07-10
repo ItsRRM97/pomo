@@ -25,6 +25,8 @@ dependencies:
   shared_preferences: ^2.2.3
   url_launcher: ^6.3.1
   window_manager: ^0.4.3
+  tray_manager: ^0.5.0
+  desktop_multi_window: ^0.2.1
 
 dev_dependencies:
   bloc_test: ^9.1.6
@@ -56,6 +58,9 @@ flutter:
     - 'assets/sounds/click.aac'
     - 'assets/sounds/pop.aac'
     - 'assets/sounds/ding_dong.aac'
+    - 'assets/sounds/chime.wav'
+    - 'assets/sounds/bell.wav'
+    - 'assets/sounds/digital_beep.wav'
     - 'assets/images/pomo_logo.svg'
     - 'assets/images/pomo_logo.png'
     - 'assets/images/pomo_splash.png'

@@ -31,6 +31,19 @@
       ]
     },
     {
+      "source": "/focus/pwa_service_worker.js",
+      "headers": [
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/focus/"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
       "source": "/focus/(.*)",
       "headers": [
         {

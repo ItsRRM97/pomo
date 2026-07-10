@@ -206,6 +206,12 @@ class SEn extends S {
   String get customSounds => 'Custom sounds';
 
   @override
+  String get customSoundFile => 'Custom file...';
+
+  @override
+  String get previewSound => 'Preview sound';
+
+  @override
   String get fileNotFound => 'File not found';
 
   @override
@@ -215,4 +221,18 @@ class SEn extends S {
   String timerTitle(String time, String stoppedEmoji) {
     return '$time $stoppedEmoji | Pomo - Pomodoro timer';
   }
+
+  @override
+  String get showFloatingTimer => 'Show floating timer';
+
+  @override
+  String get showFloatingTimerDescription =>
+      'Display a small countdown pill over other apps while a session is active';
+
+  @override
+  String get overlayCorner => 'Overlay position';
+
+  @override
+  String get overlayCornerDescription =>
+      'Default corner for the floating timer widget';
 }
