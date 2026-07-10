@@ -5,7 +5,9 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pomo/desktop/desktop_window_service.dart';
+import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/session_helper.dart';
+import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -49,6 +51,37 @@ class FloatingOverlayController {
     } else if (!shouldShow && _visible) {
       await _hide();
     }
+
+    if (_visible) {
+      final controller = _controller;
+      if (controller != null) {
+        final settings = SettingsState(
+          workMinutes: Prefs.workMinutes,
+          shortBreakMinutes: Prefs.shortBreakMinutes,
+          longBreakMinutes: Prefs.longBreakMinutes,
+          colorSeed: Prefs.colorSeed,
+        );
+        final time = DurationHelper.negativeFormat(
+          duration: state.duration,
+          lap: state.lap,
+          settingsState: settings,
+        );
+        try {
+          await DesktopMultiWindow.invokeMethod(
+            controller.windowId,
+            'updateTimer',
+            {
+              'time': time,
+              'lap': state.lap.index,
+              'status': state.status.index,
+              'colorSeed': Prefs.colorSeed?.toARGB32(),
+              'timerFont': Prefs.timerFont.name,
+              'timerCustomFont': Prefs.timerCustomFont,
+            },
+          );
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> _show() async {
@@ -83,6 +116,13 @@ class FloatingOverlayController {
       return;
     }
 
-    await DesktopMultiWindow.invokeMethod(0, 'showMainWindow');
+    try {
+      await DesktopMultiWindow.invokeMethod(0, 'showMainWindow');
+    } catch (_) {}
+
+    try {
+      await const MethodChannel('pomo/overlay')
+          .invokeMethod<void>('showMainWindow');
+    } catch (_) {}
   }
 }

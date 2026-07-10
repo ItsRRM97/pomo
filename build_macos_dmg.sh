@@ -3,33 +3,56 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DMG_PATH="$PROJECT_ROOT/Pomo.dmg"
-APP_PATH="$PROJECT_ROOT/build/macos/Build/Products/Release/Pomo.app"
+APP_PATH_FLAVOR="$PROJECT_ROOT/build/macos/Build/Products/Release-production/Pomo.app"
+APP_PATH_DEFAULT="$PROJECT_ROOT/build/macos/Build/Products/Release/Pomo.app"
 
 export PATH="$HOME/homebrew/bin:$PATH"
 
-echo "--> Checking Xcode installation..."
+echo "--> Checking Xcode developer directory and license status..."
+if [ -z "$DEVELOPER_DIR" ]; then
+  for xcode_path in /Applications/Xcode*.app/Contents/Developer; do
+    if [ -d "$xcode_path" ]; then
+      export DEVELOPER_DIR="$xcode_path"
+      echo "--> Automatically using detected Xcode path: $DEVELOPER_DIR"
+      break
+    fi
+  done
+fi
+
 if ! xcodebuild -version >/dev/null 2>&1; then
   echo "ERROR: Xcode ('xcodebuild') is not available in the current developer path."
-  echo "Because native Flutter macOS apps compile Swift and Objective-C files (`Runner.xcworkspace`),"
-  echo "the full Xcode application (~12GB) is required."
-  echo ""
-  echo "How to resolve:"
-  echo "1. Download and install Xcode from the Mac App Store (or https://developer.apple.com/xcode/)."
-  echo "2. Switch the command-line developer directory from CommandLineTools to Xcode.app:"
-  echo "   sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer"
-  echo "3. Accept the Xcode license agreements:"
+  echo "Please switch your active developer tool directory to Xcode:"
+  echo "   sudo xcode-select -s /Applications/Xcode-26.6.0.app/Contents/Developer"
+  exit 1
+fi
+
+if xcodebuild -sdk macosx -version 2>&1 | grep -i -q "license agreements"; then
+  echo "ERROR: You have not agreed to the Xcode license agreements."
+  echo "Please run the following commands in terminal to accept the license and set the default Xcode path:"
+  echo "   sudo xcodebuild -license accept"
+  echo "   sudo xcode-select -s /Applications/Xcode-26.6.0.app/Contents/Developer"
+  exit 1
+fi
+
+if ! [ -e "/Library/Developer/PrivateFrameworks/CoreSimulator.framework" ] || xcodebuild -sdk macosx -version 2>&1 | grep -i -q -E "runFirstLaunch|CoreSimulator"; then
+  echo "ERROR: Xcode first-launch system frameworks (CoreSimulator) are not installed yet."
+  echo "Please run the following command in terminal to install Apple's required system frameworks:"
   echo "   sudo xcodebuild -runFirstLaunch"
-  echo "4. Re-run this script: ./build_macos_dmg.sh"
   exit 1
 fi
 
-echo "--> Building native macOS application (Pomo.app)..."
-flutter build macos --release -t lib/main_production.dart
+flutter config --no-enable-swift-package-manager >/dev/null 2>&1 || true
+flutter build macos --release --flavor production -t lib/main_production.dart
 
-if [ ! -d "$APP_PATH" ]; then
-  echo "ERROR: Build finished but $APP_PATH was not found."
+if [ -d "$APP_PATH_FLAVOR" ]; then
+  APP_PATH="$APP_PATH_FLAVOR"
+elif [ -d "$APP_PATH_DEFAULT" ]; then
+  APP_PATH="$APP_PATH_DEFAULT"
+else
+  echo "ERROR: Build finished but Pomo.app was not found in Release-production or Release."
   exit 1
 fi
+echo "--> Found compiled app at: $APP_PATH"
 
 echo "--> Removing old .dmg if present..."
 rm -f "$DMG_PATH"

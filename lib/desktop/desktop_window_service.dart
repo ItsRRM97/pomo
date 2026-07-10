@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Handles main-window lifecycle on macOS: hide to menu bar instead of quit.
@@ -24,6 +25,11 @@ class DesktopWindowService with WindowListener {
     if (kIsWeb || !Platform.isMacOS) {
       return;
     }
+
+    try {
+      await const MethodChannel('pomo/overlay')
+          .invokeMethod<void>('showMainWindow');
+    } catch (_) {}
 
     await windowManager.show();
     await windowManager.focus();

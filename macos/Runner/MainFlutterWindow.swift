@@ -11,17 +11,23 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     OverlayPlugin.register(
-      with: flutterViewController.registrar(forPlugin: "OverlayPlugin")!
+      with: flutterViewController.registrar(forPlugin: "OverlayPlugin")
     )
 
     FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
       RegisterGeneratedPlugins(registry: controller)
       OverlayPlugin.register(
-        with: controller.registrar(forPlugin: "OverlayPlugin")!
+        with: controller.registrar(forPlugin: "OverlayPlugin")
       )
 
-      if let window = controller.view?.window {
+      if let window = controller.view.window {
         OverlayPlugin.attachOverlayWindow(window)
+      } else {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          if let window = controller.view.window ?? NSApp.windows.first(where: { $0 != NSApp.mainWindow && $0 != self }) {
+            OverlayPlugin.attachOverlayWindow(window)
+          }
+        }
       }
     }
 

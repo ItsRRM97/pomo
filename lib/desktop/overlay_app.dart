@@ -1,11 +1,11 @@
-import 'dart:async';
 import 'dart:io';
 
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pomo/desktop/floating_overlay_controller.dart';
-import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/lap_color_helper.dart';
+import 'package:pomo/helpers/timer_helper.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -20,17 +20,21 @@ class OverlayApp extends StatefulWidget {
 }
 
 class _OverlayAppState extends State<OverlayApp> {
-  late Timer _timer;
-  String _time = '00:00';
-  TimerLap _lap = TimerLap.work;
-  TimerStatus _status = TimerStatus.stopped;
+  String _time = '25:00';
+  int _lapIndex = 0;
+  int _statusIndex = 0;
+  Color? _colorSeed;
+  TimerFont _timerFont = TimerFont.boldMono;
+  String _timerCustomFont = '';
 
   @override
   void initState() {
     super.initState();
-    _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _refresh());
+    _colorSeed = Prefs.colorSeed;
+    _timerFont = Prefs.timerFont;
+    _timerCustomFont = Prefs.timerCustomFont;
     _initWindow();
+    _setupMethodHandler();
   }
 
   Future<void> _initWindow() async {
@@ -50,47 +54,61 @@ class _OverlayAppState extends State<OverlayApp> {
     );
     await windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
+      await windowManager.setMovable(true);
     });
   }
 
-  void _refresh() {
-    final settings = SettingsState(
-      workMinutes: Prefs.workMinutes,
-      shortBreakMinutes: Prefs.shortBreakMinutes,
-      longBreakMinutes: Prefs.longBreakMinutes,
-      colorSeed: Prefs.colorSeed,
-    );
+  void _setupMethodHandler() {
+    if (kIsWeb || !Platform.isMacOS) {
+      return;
+    }
 
-    final lap = Prefs.timerLap;
-    final status = Prefs.timerStatus;
-    final duration = Prefs.duration;
-
-    setState(() {
-      _lap = lap;
-      _status = status;
-      _time = DurationHelper.negativeFormat(
-        duration: duration,
-        lap: lap,
-        settingsState: settings,
-      );
+    DesktopMultiWindow.setMethodHandler((call, fromWindowId) async {
+      if (call.method == 'updateTimer') {
+        final args = call.arguments as Map<dynamic, dynamic>;
+        if (mounted) {
+          setState(() {
+            _time = (args['time'] as String?) ?? _time;
+            _lapIndex = (args['lap'] as int?) ?? _lapIndex;
+            _statusIndex = (args['status'] as int?) ?? _statusIndex;
+            final seedArgb = args['colorSeed'] as int?;
+            _colorSeed = seedArgb != null ? Color(seedArgb) : _colorSeed;
+            final fontName = args['timerFont'] as String?;
+            if (fontName != null) {
+              _timerFont = TimerFont.values.firstWhere(
+                (f) => f.name == fontName,
+                orElse: () => TimerFont.boldMono,
+              );
+            }
+            _timerCustomFont =
+                (args['timerCustomFont'] as String?) ?? _timerCustomFont;
+          });
+        }
+      }
+      return null;
     });
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final brightness =
         WidgetsBinding.instance.platformDispatcher.platformBrightness;
+
+    final lap = TimerLap.values[_lapIndex.clamp(0, TimerLap.values.length - 1)];
+    final status = TimerStatus
+        .values[_statusIndex.clamp(0, TimerStatus.values.length - 1)];
+
     final lapColor = LapColorHelper.lapColor(
-      lap: _lap,
-      status: _status,
-      colorSeed: Prefs.colorSeed,
+      lap: lap,
+      status: status,
+      colorSeed: _colorSeed,
       brightness: brightness,
+    );
+
+    // Build a minimal SettingsState so TimerHelper can pick the right widget.
+    final settingsState = SettingsState(
+      timerFont: _timerFont,
+      timerCustomFont: _timerCustomFont,
     );
 
     return MaterialApp(
@@ -99,54 +117,90 @@ class _OverlayAppState extends State<OverlayApp> {
         backgroundColor: Colors.transparent,
         body: GestureDetector(
           onTap: FloatingOverlayController.requestMainWindow,
-          child: Center(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: brightness == Brightness.dark
-                    ? const Color(0xE61C1C1E)
-                    : const Color(0xE6F5F5F5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: lapColor.withValues(alpha: 0.8),
-                  width: 2,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x40000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: lapColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      _time,
-                      style: const TextStyle(
-                        fontFamily: 'Major Mono Display',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ],
-                ),
+          onPanStart: (_) => windowManager.startDragging(),
+          child: MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: Center(
+              child: _OverlayPill(
+                time: _time,
+                lapColor: lapColor,
+                brightness: brightness,
+                settingsState: settingsState,
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OverlayPill extends StatelessWidget {
+  const _OverlayPill({
+    required this.time,
+    required this.lapColor,
+    required this.brightness,
+    required this.settingsState,
+  });
+
+  final String time;
+  final Color lapColor;
+  final Brightness brightness;
+  final SettingsState settingsState;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        // Subtle translucent fill - no border
+        color: isDark
+            ? Colors.black.withValues(alpha: 0.55)
+            : Colors.white.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: lapColor.withValues(alpha: 0.3),
+            blurRadius: 14,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Status dot
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: lapColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: lapColor.withValues(alpha: 0.7),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Use the user's chosen font via TimerHelper
+            TimerHelper.buildTimerText(
+              duration: time,
+              settingsState: settingsState,
+              style: TextStyle(
+                fontSize: 20,
+                color: textColor,
+                height: 1,
+              ),
+            ),
+          ],
         ),
       ),
     );

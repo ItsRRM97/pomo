@@ -50,6 +50,15 @@ class MacosMenuBarService with TrayListener {
 
     final tooltip = _tooltip(timerState, settingsState);
     await trayManager.setToolTip(tooltip);
+
+    final time = DurationHelper.negativeFormat(
+      duration: timerState.duration,
+      lap: timerState.lap,
+      settingsState: settingsState,
+    );
+    final title = SessionHelper.isSessionActive(timerState) ? time : '';
+    await trayManager.setTitle(title);
+
     await _rebuildMenu(timerState: timerState);
   }
 
