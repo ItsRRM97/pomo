@@ -22,12 +22,6 @@ class NotionService {
         'pomo-focus-sand.vercel.app',
       );
     }
-    if (kIsWeb) {
-      if (proxy.isNotEmpty) {
-        return proxy.endsWith('/') ? proxy : '$proxy/';
-      }
-      return 'https://pomo-focus-sand.vercel.app/api/notion/';
-    }
     if (proxy.isNotEmpty) {
       if (proxy.startsWith('http')) {
         return proxy.endsWith('/') ? proxy : '$proxy/';
@@ -35,7 +29,8 @@ class NotionService {
         return 'https://pomo-focus-sand.vercel.app${proxy.endsWith('/') ? proxy : '$proxy/'}';
       }
     }
-    return 'https://api.notion.com/v1/';
+    // Default universally across Web and native macOS platforms to our Vercel proxy
+    return 'https://pomo-focus-sand.vercel.app/api/notion/';
   }
 
   Map<String, String> _getHeaders(String apiKey) {
