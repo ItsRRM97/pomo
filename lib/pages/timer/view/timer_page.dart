@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,11 +10,11 @@ import 'package:pomo/helpers/hook_helper.dart';
 import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
+import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 
 enum NotificationType {
   workStart,
@@ -385,28 +383,17 @@ class TimerView extends StatefulWidget {
 }
 
 class _TimerViewState extends State<TimerView> {
-  Timer? _timer;
   late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
-
-    // macOS uses the app-level TimerTickService so ticks continue when hidden.
-    if (!kIsWeb && !Platform.isMacOS) {
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        context.read<TimerCubit>().tick(context.read<SettingsCubit>().state);
-      });
-    }
-
     _focusNode = FocusNode();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _focusNode.dispose();
-
     super.dispose();
   }
 
@@ -560,8 +547,8 @@ class _ActiveTaskPill extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: activeTask != null
-            ? theme.colorScheme.primaryContainer.withOpacity(0.85)
-            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.85)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(24),
         child: InkWell(
           borderRadius: BorderRadius.circular(24),

@@ -55,19 +55,24 @@ class NotionTasksCubit extends Cubit<NotionTasksState> {
         ),
       );
     } catch (e) {
-      String message = e.toString();
+      var message = e.toString();
       if (e is DioException) {
         final uri = e.requestOptions.uri;
         final statusCode = e.response?.statusCode;
         if (statusCode == 404) {
-          message =
-              'Endpoint not found (404) at:\n$uri\n\nPlease verify that your Notion Proxy URL (`${Prefs.notionProxyUrl}`) or Database ID (`${Prefs.notionDatabaseId}`) in Settings are correct.';
+          message = 'Endpoint not found (404) at:\n$uri\n\n'
+              'Please verify that your Notion Proxy URL '
+              '(`${Prefs.notionProxyUrl}`) or Database ID '
+              '(`${Prefs.notionDatabaseId}`) in Settings are correct.';
         } else if (statusCode == 401) {
-          message =
-              'Unauthorized (401) from:\n$uri\n\nPlease check your Notion API Token (`${Prefs.notionApiKey.isNotEmpty ? "Configured" : "Empty"}`) in Settings.';
+          final configured = Prefs.notionApiKey.isNotEmpty;
+          message = 'Unauthorized (401) from:\n$uri\n\n'
+              'Please check your Notion API Token '
+              '(`${configured ? "Configured" : "Empty"}`) in Settings.';
         } else {
-          message =
-              'Network Error (${statusCode ?? "Unknown"}) calling:\n$uri\n\n${e.message ?? e.toString()}';
+          final code = statusCode ?? 'Unknown';
+          message = 'Network Error ($code) calling:\n$uri\n\n'
+              '${e.message ?? e.toString()}';
         }
       }
       emit(

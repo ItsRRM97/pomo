@@ -96,7 +96,8 @@ class _SearchBarState extends State<_SearchBar> {
               )
             : null,
         filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        fillColor:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -169,8 +170,11 @@ class _TaskList extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline,
-                  size: 48, color: theme.colorScheme.error),
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: theme.colorScheme.error,
+              ),
               const SizedBox(height: 12),
               Text(
                 state.errorMessage ?? l10n.notionNotConfigured,
@@ -218,8 +222,8 @@ class _TaskTile extends StatelessWidget {
 
     return Material(
       color: isSelected
-          ? theme.colorScheme.primaryContainer.withOpacity(0.4)
-          : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
+          : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -279,7 +283,9 @@ class _TaskTile extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${task.due!.year}-${task.due!.month.toString().padLeft(2, '0')}-${task.due!.day.toString().padLeft(2, '0')}',
+                            '${task.due!.year}-'
+                            '${task.due!.month.toString().padLeft(2, '0')}-'
+                            '${task.due!.day.toString().padLeft(2, '0')}',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),

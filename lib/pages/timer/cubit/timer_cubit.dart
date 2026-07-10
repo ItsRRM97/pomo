@@ -66,10 +66,12 @@ class TimerCubit extends Cubit<TimerState> {
       _syncActiveTaskIfEligible();
       Prefs.duration = Duration.zero;
       Prefs.activeTask = task;
-      emit(state.copyWith(
-        activeTask: () => task,
-        duration: () => Duration.zero,
-      ));
+      emit(
+        state.copyWith(
+          activeTask: () => task,
+          duration: () => Duration.zero,
+        ),
+      );
     }
   }
 
@@ -77,10 +79,12 @@ class TimerCubit extends Cubit<TimerState> {
     _syncActiveTaskIfEligible();
     Prefs.duration = Duration.zero;
     Prefs.activeTask = null;
-    emit(state.copyWith(
-      activeTask: () => null,
-      duration: () => Duration.zero,
-    ));
+    emit(
+      state.copyWith(
+        activeTask: () => null,
+        duration: () => Duration.zero,
+      ),
+    );
   }
 
   void lap({required SettingsState settingsState, bool autoAdvance = true}) {
