@@ -1,0 +1,43 @@
+{
+  "buildCommand": "chmod +x scripts/build-web.sh && ./scripts/build-web.sh",
+  "outputDirectory": "deploy",
+  "rewrites": [
+    {
+      "source": "/focus",
+      "destination": "/focus/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/focus/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/focus/flutter_service_worker.js",
+      "headers": [
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/focus/"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/focus/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    }
+  ]
+}
