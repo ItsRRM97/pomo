@@ -28,11 +28,14 @@ class NotionService {
   }
 
   Map<String, String> _getHeaders(String apiKey) {
-    return {
-      'Authorization': 'Bearer $apiKey',
+    final headers = <String, String>{
       'Notion-Version': '2022-06-28',
       'Content-Type': 'application/json',
     };
+    if (apiKey.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $apiKey';
+    }
+    return headers;
   }
 
   /// Calculates normalized `(newHours, newMinutes)` after adding [addMin]
@@ -66,7 +69,7 @@ class NotionService {
     bool dueThisWeek = false,
   }) async {
     final apiKey = Prefs.notionApiKey;
-    if (apiKey.isEmpty) {
+    if (!kIsWeb && apiKey.isEmpty) {
       throw Exception('Notion API key not configured in Settings.');
     }
 
@@ -154,7 +157,7 @@ class NotionService {
   /// Checks if a session with [externalId] is already logged in `Time Logs`.
   Future<bool> checkIdempotency(String externalId) async {
     final apiKey = Prefs.notionApiKey;
-    if (apiKey.isEmpty) return false;
+    if (!kIsWeb && apiKey.isEmpty) return false;
 
     final url = '${_getBaseUrl()}databases/$timeLogsDbId/query';
     final payload = {
@@ -190,7 +193,7 @@ class NotionService {
     String? customExternalId,
   }) async {
     final apiKey = Prefs.notionApiKey;
-    if (apiKey.isEmpty) {
+    if (!kIsWeb && apiKey.isEmpty) {
       throw Exception('Notion API key not set.');
     }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/services/notion_service.dart';
@@ -28,7 +29,7 @@ class NotionSyncService {
     }
 
     final apiKey = Prefs.notionApiKey;
-    if (apiKey.isEmpty) {
+    if (!kIsWeb && apiKey.isEmpty) {
       Logger().w('NotionSyncService: Notion API Key is empty.');
       return false;
     }

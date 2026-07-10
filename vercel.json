@@ -3,6 +3,10 @@
   "outputDirectory": "deploy",
   "rewrites": [
     {
+      "source": "/api/notion/:path*",
+      "destination": "/api/notion?path=:path*"
+    },
+    {
       "source": "/focus",
       "destination": "/focus/index.html"
     }

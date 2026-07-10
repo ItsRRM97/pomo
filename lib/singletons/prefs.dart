@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pomo/helpers/hook_helper.dart';
 import 'package:pomo/models/notion_task.dart';
@@ -147,6 +149,10 @@ class Prefs {
     final stored =
         Prefs().sharedPreferences.getString(_notionApiKeyVarName) ?? '';
     if (stored.isNotEmpty) return stored;
+    // Do not auto-seed during flutter test runs so unit tests can test missing API key.
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      return '';
+    }
     // Auto-seed from compile-time dart-define on first run.
     if (_kNotionTokenEnv.isNotEmpty) {
       Prefs().sharedPreferences.setString(
@@ -155,12 +161,23 @@ class Prefs {
           );
       return _kNotionTokenEnv;
     }
+    // Auto-seed from system environment variables on desktop / command-line.
+    if (!kIsWeb) {
+      final envToken = Platform.environment['NOTION_TOKEN'] ?? '';
+      if (envToken.isNotEmpty) {
+        Prefs().sharedPreferences.setString(
+              _notionApiKeyVarName,
+              envToken,
+            );
+        return envToken;
+      }
+    }
     return '';
   }
 
   static bool get enableNotionSync {
     // If the user has never explicitly toggled the setting, default to true
-    // whenever a token is available (either stored or injected via dart-define).
+    // whenever a token is available (either stored or injected via dart-define/env).
     if (!Prefs().sharedPreferences.containsKey(_enableNotionSyncVarName)) {
       return notionApiKey.isNotEmpty;
     }
