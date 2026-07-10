@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pomo/models/notion_task.dart';
@@ -54,10 +55,25 @@ class NotionTasksCubit extends Cubit<NotionTasksState> {
         ),
       );
     } catch (e) {
+      String message = e.toString();
+      if (e is DioException) {
+        final uri = e.requestOptions.uri;
+        final statusCode = e.response?.statusCode;
+        if (statusCode == 404) {
+          message =
+              'Endpoint not found (404) at:\n$uri\n\nPlease verify that your Notion Proxy URL (`${Prefs.notionProxyUrl}`) or Database ID (`${Prefs.notionDatabaseId}`) in Settings are correct.';
+        } else if (statusCode == 401) {
+          message =
+              'Unauthorized (401) from:\n$uri\n\nPlease check your Notion API Token (`${Prefs.notionApiKey.isNotEmpty ? "Configured" : "Empty"}`) in Settings.';
+        } else {
+          message =
+              'Network Error (${statusCode ?? "Unknown"}) calling:\n$uri\n\n${e.message ?? e.toString()}';
+        }
+      }
       emit(
         state.copyWith(
           status: () => NotionTasksStatus.failure,
-          errorMessage: () => e.toString(),
+          errorMessage: () => message,
         ),
       );
     }

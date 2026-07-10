@@ -110,7 +110,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     guard let data = Data(base64Encoded: base64Icon, options: .ignoreUnknownCharacters),
           let image = NSImage(data: data),
           let button = statusItem?.button else {
-      NSLog("Pomo MenuBar: setIcon failed")
+      NSLog("Pomo MenuBar: setIcon failed (data or button nil)")
       return
     }
 
@@ -121,6 +121,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     statusItem?.isVisible = true
     button.needsLayout = true
     button.needsDisplay = true
+    NSLog("Pomo MenuBar: setIcon completed (button=%.0fx%.0f visible=%d title=%@)", button.frame.width, button.frame.height, button.isHidden ? 0 : 1, button.title)
   }
 
   func setTitle(_ title: String) {
@@ -130,6 +131,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     statusItem?.isVisible = true
     statusItem?.button?.needsLayout = true
     statusItem?.button?.needsDisplay = true
+    let btn = statusItem?.button
+    NSLog("Pomo MenuBar: setTitle completed (title=%@ button=%.0fx%.0f visible=%d)", title, btn?.frame.width ?? 0, btn?.frame.height ?? 0, (btn?.isHidden ?? true) ? 0 : 1)
   }
 
   func setToolTip(_ toolTip: String) {

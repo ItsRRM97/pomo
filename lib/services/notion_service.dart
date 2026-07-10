@@ -14,15 +14,34 @@ class NotionService {
   static const String timeLogsDbId = 'acd9cab4-5560-456c-b9b5-86d9a5b391c';
 
   String _getBaseUrl() {
-    final proxy = Prefs.notionProxyUrl;
+    var proxy = Prefs.notionProxyUrl.trim();
+    // Auto-migrate any stored proxy pointing to the unaliased vercel domain
+    if (proxy.contains('pomo-focus.vercel.app')) {
+      proxy = proxy.replaceAll(
+        'pomo-focus.vercel.app',
+        'pomo-focus-sand.vercel.app',
+      );
+    }
     if (kIsWeb) {
       if (proxy.isNotEmpty) {
         return proxy.endsWith('/') ? proxy : '$proxy/';
       }
+      try {
+        final host = Uri.base.host;
+        // When running web app locally via flutter run / debug server on localhost,
+        // automatically fallback to our working live Vercel proxy.
+        if (host == 'localhost' || host == '127.0.0.1' || host.isEmpty) {
+          return 'https://pomo-focus-sand.vercel.app/api/notion/';
+        }
+      } catch (_) {}
       return '/api/notion/';
     }
-    if (proxy.isNotEmpty && proxy.startsWith('http')) {
-      return proxy.endsWith('/') ? proxy : '$proxy/';
+    if (proxy.isNotEmpty) {
+      if (proxy.startsWith('http')) {
+        return proxy.endsWith('/') ? proxy : '$proxy/';
+      } else if (proxy.startsWith('/')) {
+        return 'https://pomo-focus-sand.vercel.app${proxy.endsWith('/') ? proxy : '$proxy/'}';
+      }
     }
     return 'https://api.notion.com/v1/';
   }
