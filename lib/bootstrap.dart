@@ -54,6 +54,10 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
       await windowManager.show();
       await windowManager.focus();
     });
+
+    if (Platform.isMacOS) {
+      await windowManager.setSkipTaskbar(false);
+    }
   }
 
   runApp(await builder());

@@ -64,6 +64,7 @@ flutter:
     - 'assets/images/pomo_logo.svg'
     - 'assets/images/pomo_logo.png'
     - 'assets/images/pomo_splash.png'
+    - 'assets/images/pomo_splash_64.png'
     - 'fonts/MajorMonoDisplay-Regular.ttf'
     - 'fonts/RubikMonoOne-Regular.ttf'
     - 'fonts/LilitaOne-Regular.ttf'

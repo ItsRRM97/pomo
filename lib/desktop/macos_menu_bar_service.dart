@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pomo/app/view/app.dart';
@@ -16,20 +18,50 @@ class MacosMenuBarService with TrayListener {
 
   static final MacosMenuBarService instance = MacosMenuBarService._();
 
-  static bool _initialized = false;
-  BuildContext? _context;
+  static const _trayIconAsset = 'assets/images/pomo_splash_64.png';
+
+  static bool _iconReady = false;
+  static bool _listenerAttached = false;
+  TimerCubit? _timerCubit;
+  bool? _menuIsRunning;
+  bool? _menuSessionActive;
 
   static Future<void> init(BuildContext context) async {
-    if (kIsWeb || !Platform.isMacOS || _initialized) {
+    if (kIsWeb || !Platform.isMacOS || _iconReady) {
       return;
     }
 
-    _initialized = true;
-    instance._context = context;
+    instance._timerCubit = context.read<TimerCubit>();
 
-    await trayManager.setIcon('assets/images/pomo_logo.png');
-    trayManager.addListener(instance);
-    await instance._rebuildMenu();
+    try {
+      await const MethodChannel('pomo/overlay')
+          .invokeMethod<void>('ensureRegularActivation');
+    } catch (error, stackTrace) {
+      debugPrint(
+        'MacosMenuBarService: ensureRegularActivation failed: $error',
+      );
+      debugPrint('$stackTrace');
+    }
+
+    try {
+      // Use the 64x64 tray asset. The full pomo_logo.png is 4096x4096 (~5MB)
+      // and exceeds the Flutter method channel payload when base64-encoded.
+      await trayManager.setIcon(
+        _trayIconAsset,
+        iconSize: 22,
+      );
+
+      if (!_listenerAttached) {
+        trayManager.addListener(instance);
+        _listenerAttached = true;
+      }
+
+      await instance._syncMenuIfNeeded(force: true);
+      _iconReady = true;
+    } catch (error, stackTrace) {
+      debugPrint('MacosMenuBarService.init failed: $error');
+      debugPrint('$stackTrace');
+    }
   }
 
   static void attachContext(BuildContext context) {
@@ -37,14 +69,14 @@ class MacosMenuBarService with TrayListener {
       return;
     }
 
-    instance._context = context;
+    instance._timerCubit = context.read<TimerCubit>();
   }
 
   Future<void> updateFromState({
     required TimerState timerState,
     required SettingsState settingsState,
   }) async {
-    if (kIsWeb || !Platform.isMacOS) {
+    if (kIsWeb || !Platform.isMacOS || !_iconReady) {
       return;
     }
 
@@ -59,7 +91,7 @@ class MacosMenuBarService with TrayListener {
     final title = SessionHelper.isSessionActive(timerState) ? time : '';
     await trayManager.setTitle(title);
 
-    await _rebuildMenu(timerState: timerState);
+    await _syncMenuIfNeeded(timerState: timerState);
   }
 
   String _tooltip(TimerState timerState, SettingsState settingsState) {
@@ -90,15 +122,27 @@ class MacosMenuBarService with TrayListener {
     }
   }
 
-  Future<void> _rebuildMenu({TimerState? timerState}) async {
-    final context = _context;
-    if (context == null || !context.mounted) {
+  Future<void> _syncMenuIfNeeded({
+    TimerState? timerState,
+    bool force = false,
+  }) async {
+    final timerCubit = _timerCubit;
+    if (timerCubit == null) {
       return;
     }
 
-    final state = timerState ?? context.read<TimerCubit>().state;
+    final state = timerState ?? timerCubit.state;
     final isRunning = state.status == TimerStatus.running;
     final sessionActive = SessionHelper.isSessionActive(state);
+
+    if (!force &&
+        _menuIsRunning == isRunning &&
+        _menuSessionActive == sessionActive) {
+      return;
+    }
+
+    _menuIsRunning = isRunning;
+    _menuSessionActive = sessionActive;
 
     final menu = Menu(
       items: [
@@ -133,33 +177,38 @@ class MacosMenuBarService with TrayListener {
 
   @override
   void onTrayIconMouseDown() {
-    trayManager.popUpContextMenu();
+    unawaited(_popUpContextMenu());
+  }
+
+  Future<void> _popUpContextMenu() async {
+    await _syncMenuIfNeeded(force: _menuIsRunning == null);
+    await trayManager.popUpContextMenu();
   }
 
   @override
   void onTrayIconRightMouseDown() {
-    DesktopWindowService.showMainWindow();
+    unawaited(DesktopWindowService.showMainWindow());
   }
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
-    final context = _context;
-    if (context == null || !context.mounted) {
+    final timerCubit = _timerCubit;
+    if (timerCubit == null) {
       return;
     }
 
     switch (menuItem.key) {
       case 'toggle':
-        context.read<TimerCubit>().toggle();
+        timerCubit.toggle();
       case 'reset':
-        context.read<TimerCubit>().reset();
+        timerCubit.reset();
       case 'open':
-        DesktopWindowService.showMainWindow();
+        unawaited(DesktopWindowService.showMainWindow());
       case 'settings':
-        DesktopWindowService.showMainWindow();
+        unawaited(DesktopWindowService.showMainWindow());
         App.navigatorKey.currentState?.pushNamed('/settings');
       case 'quit':
-        DesktopWindowService.quit();
+        unawaited(DesktopWindowService.quit());
     }
   }
 }

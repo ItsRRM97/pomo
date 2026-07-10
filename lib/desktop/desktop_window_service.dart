@@ -28,6 +28,8 @@ class DesktopWindowService with WindowListener {
 
     try {
       await const MethodChannel('pomo/overlay')
+          .invokeMethod<void>('ensureRegularActivation');
+      await const MethodChannel('pomo/overlay')
           .invokeMethod<void>('showMainWindow');
     } catch (_) {}
 

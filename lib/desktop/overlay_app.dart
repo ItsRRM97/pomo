@@ -42,20 +42,10 @@ class _OverlayAppState extends State<OverlayApp> {
       return;
     }
 
+    // Only initialize window_manager for drag support. Do NOT pass
+    // skipTaskbar: true here - that sets NSApplication activation policy to
+    // .accessory for the entire process and removes the Dock icon.
     await windowManager.ensureInitialized();
-    const options = WindowOptions(
-      size: Size(148, 52),
-      minimumSize: Size(148, 52),
-      maximumSize: Size(148, 52),
-      titleBarStyle: TitleBarStyle.hidden,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: true,
-      alwaysOnTop: true,
-    );
-    await windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.setMovable(true);
-    });
   }
 
   void _setupMethodHandler() {
@@ -105,7 +95,6 @@ class _OverlayAppState extends State<OverlayApp> {
       brightness: brightness,
     );
 
-    // Build a minimal SettingsState so TimerHelper can pick the right widget.
     final settingsState = SettingsState(
       timerFont: _timerFont,
       timerCustomFont: _timerCustomFont,
@@ -155,7 +144,6 @@ class _OverlayPill extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        // Subtle translucent fill - no border
         color: isDark
             ? Colors.black.withValues(alpha: 0.55)
             : Colors.white.withValues(alpha: 0.75),
@@ -173,7 +161,6 @@ class _OverlayPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Status dot
             Container(
               width: 8,
               height: 8,
@@ -190,7 +177,6 @@ class _OverlayPill extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            // Use the user's chosen font via TimerHelper
             TimerHelper.buildTimerText(
               duration: time,
               settingsState: settingsState,

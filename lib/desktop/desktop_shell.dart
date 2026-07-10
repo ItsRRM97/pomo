@@ -28,13 +28,25 @@ class _DesktopShellState extends State<DesktopShell> {
   @override
   void initState() {
     super.initState();
-    _initDesktop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initDesktop();
+      }
+    });
   }
 
   Future<void> _initDesktop() async {
     if (kIsWeb || !Platform.isMacOS) {
       return;
     }
+
+    if (!mounted) {
+      return;
+    }
+
+    // Create the menu bar status item before other desktop integrations so a
+    // tray channel failure cannot be masked by unrelated setup work.
+    await MacosMenuBarService.init(context);
 
     await DesktopWindowService.init();
     FloatingOverlayController.initMainWindowHandler();
@@ -51,12 +63,11 @@ class _DesktopShellState extends State<DesktopShell> {
       settingsCubit: settingsCubit,
     );
 
-    await MacosMenuBarService.init(context);
-    await FloatingOverlayController.instance.sync(timerCubit.state);
     await MacosMenuBarService.instance.updateFromState(
       timerState: timerCubit.state,
       settingsState: settingsCubit.state,
     );
+    await FloatingOverlayController.instance.sync(timerCubit.state);
   }
 
   @override

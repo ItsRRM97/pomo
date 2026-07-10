@@ -20,13 +20,19 @@ class MainFlutterWindow: NSWindow {
         with: controller.registrar(forPlugin: "OverlayPlugin")
       )
 
-      if let window = controller.view.window {
+      let attachOverlay: (NSWindow?) -> Void = { window in
+        guard let window else { return }
         OverlayPlugin.attachOverlayWindow(window)
+      }
+
+      if let window = controller.view.window {
+        attachOverlay(window)
       } else {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-          if let window = controller.view.window ?? NSApp.windows.first(where: { $0 != NSApp.mainWindow && $0 != self }) {
-            OverlayPlugin.attachOverlayWindow(window)
-          }
+          attachOverlay(
+            controller.view.window
+              ?? NSApp.windows.first(where: { $0 != NSApp.mainWindow && $0 != self })
+          )
         }
       }
     }

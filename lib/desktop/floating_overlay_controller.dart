@@ -93,7 +93,13 @@ class FloatingOverlayController {
       await _channel.invokeMethod<void>('configureOverlayWindow', {
         'corner': Prefs.overlayCorner,
       });
-      await _controller!.show();
+      // Use native showOverlay instead of desktop_multi_window show().
+      // Plugin show() calls makeKeyAndOrderFront + NSApp.activate, which
+      // pins the overlay to the main Space and breaks full-screen visibility.
+      await _channel.invokeMethod<void>('showOverlay', {
+        'corner': Prefs.overlayCorner,
+      });
+      await _channel.invokeMethod<void>('ensureRegularActivation');
       _visible = true;
     } catch (_) {
       _visible = false;
@@ -102,7 +108,6 @@ class FloatingOverlayController {
 
   Future<void> _hide() async {
     try {
-      await _controller?.hide();
       await _channel.invokeMethod<void>('hideOverlay');
     } catch (_) {
       // Ignore overlay teardown errors.
