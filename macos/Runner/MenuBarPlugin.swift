@@ -22,6 +22,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
   }
 
   func attachChannel(_ channel: FlutterMethodChannel) {
+    // Always update: on a Flutter hot-restart the Dart isolate is torn down and
+    // a new FlutterMethodChannel is registered. We must replace the old
+    // (now dead) reference so native callbacks reach the new Dart handler.
     self.channel = channel
   }
 

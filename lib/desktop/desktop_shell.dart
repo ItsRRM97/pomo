@@ -44,9 +44,13 @@ class _DesktopShellState extends State<DesktopShell> {
       return;
     }
 
+    // ignore: avoid_print
+    print('[DesktopShell] _initDesktop starting...');
     // Create the menu bar status item before other desktop integrations so a
     // tray channel failure cannot be masked by unrelated setup work.
     await MacosMenuBarService.init(context);
+    // ignore: avoid_print
+    print('[DesktopShell] MacosMenuBarService.init completed');
 
     await DesktopWindowService.init();
     FloatingOverlayController.initMainWindowHandler();

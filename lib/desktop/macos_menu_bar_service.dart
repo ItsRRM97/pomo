@@ -34,12 +34,14 @@ class MacosMenuBarService {
       return;
     }
 
-    // Reset stale state in case the Flutter engine was restarted (hot-restart
-    // in dev mode tears down the Dart isolate but not the native plugin, so
-    // the Swift channel reference becomes stale and _iconReady would prevent
-    // re-initialisation).
-    _iconReady = false;
-    _listenerAttached = false;
+    // On a hot-restart the Dart isolate is torn down and all static fields reset
+    // to their initial values, so _iconReady and _listenerAttached will both be
+    // false. On a normal second call (e.g. widget rebuild) they remain true from
+    // the first successful init and we can skip work.
+    if (_iconReady) {
+      // Already initialised in this isolate lifetime - nothing to do.
+      return;
+    }
 
     final timerCubit = context.read<TimerCubit>();
 
