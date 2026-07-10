@@ -30,9 +30,16 @@ class MacosMenuBarService {
   bool? _menuSessionActive;
 
   static Future<void> init(BuildContext context) async {
-    if (kIsWeb || !Platform.isMacOS || _iconReady) {
+    if (kIsWeb || !Platform.isMacOS) {
       return;
     }
+
+    // Reset stale state in case the Flutter engine was restarted (hot-restart
+    // in dev mode tears down the Dart isolate but not the native plugin, so
+    // the Swift channel reference becomes stale and _iconReady would prevent
+    // re-initialisation).
+    _iconReady = false;
+    _listenerAttached = false;
 
     final timerCubit = context.read<TimerCubit>();
 

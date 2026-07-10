@@ -19,9 +19,10 @@ class MainFlutterWindow: NSWindow {
 
     FlutterMultiWindowPlugin.setOnWindowCreatedCallback { controller in
       RegisterGeneratedPlugins(registry: controller)
-      MenuBarPlugin.register(
-        with: controller.registrar(forPlugin: "MenuBarPlugin")
-      )
+      // Note: MenuBarPlugin is intentionally NOT registered for secondary windows.
+      // The menu bar communicates only with the main Flutter engine.
+      // Registering it for sub-windows would overwrite the main channel and
+      // break menu bar callbacks after a floating overlay window opens.
       OverlayPlugin.register(
         with: controller.registrar(forPlugin: "OverlayPlugin")
       )

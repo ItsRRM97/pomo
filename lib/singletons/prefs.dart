@@ -6,6 +6,12 @@ import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Compile-time constant injected via --dart-define=NOTION_TOKEN=<value>.
+// Falls back to empty string when not provided (e.g. production web builds
+// where the server-side Vercel env var is used instead).
+const String _kNotionTokenEnv =
+    String.fromEnvironment('NOTION_TOKEN', defaultValue: '');
+
 enum TimerFont {
   mono,
   fancyMono,
@@ -138,10 +144,26 @@ class Prefs {
   //* Getters
 
   static String get notionApiKey {
-    return Prefs().sharedPreferences.getString(_notionApiKeyVarName) ?? '';
+    final stored =
+        Prefs().sharedPreferences.getString(_notionApiKeyVarName) ?? '';
+    if (stored.isNotEmpty) return stored;
+    // Auto-seed from compile-time dart-define on first run.
+    if (_kNotionTokenEnv.isNotEmpty) {
+      Prefs().sharedPreferences.setString(
+            _notionApiKeyVarName,
+            _kNotionTokenEnv,
+          );
+      return _kNotionTokenEnv;
+    }
+    return '';
   }
 
   static bool get enableNotionSync {
+    // If the user has never explicitly toggled the setting, default to true
+    // whenever a token is available (either stored or injected via dart-define).
+    if (!Prefs().sharedPreferences.containsKey(_enableNotionSyncVarName)) {
+      return notionApiKey.isNotEmpty;
+    }
     return Prefs().sharedPreferences.getBool(_enableNotionSyncVarName) ?? false;
   }
 

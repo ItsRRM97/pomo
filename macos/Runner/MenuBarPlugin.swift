@@ -22,9 +22,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
   }
 
   func attachChannel(_ channel: FlutterMethodChannel) {
-    if self.channel == nil {
-      self.channel = channel
-    }
+    self.channel = channel
   }
 
   func installEarlyIfNeeded() {

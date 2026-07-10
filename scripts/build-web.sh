@@ -15,11 +15,21 @@ fi
 
 flutter pub get
 flutter gen-l10n
+
+# Inject NOTION_TOKEN at compile time if the env var is set.
+# On Vercel the server-side proxy uses process.env.NOTION_TOKEN directly,
+# so the dart-define is only needed for local dev / macOS / Android builds.
+DART_DEFINE_FLAGS=()
+if [ -n "${NOTION_TOKEN:-}" ]; then
+  DART_DEFINE_FLAGS+=(--dart-define="NOTION_TOKEN=${NOTION_TOKEN}")
+fi
+
 flutter build web \
   --release \
   --no-wasm-dry-run \
   --base-href=/focus/ \
-  --target lib/main_production.dart
+  --target lib/main_production.dart \
+  "${DART_DEFINE_FLAGS[@]}"
 
 rm -rf deploy/focus
 mkdir -p deploy/focus
