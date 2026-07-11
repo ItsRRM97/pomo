@@ -175,6 +175,8 @@ class _ActionButtonsState extends State<ActionButtons>
                   style: IconButton.styleFrom(
                     backgroundColor:
                         Theme.of(context).colorScheme.tertiaryContainer,
+                    foregroundColor:
+                        Theme.of(context).colorScheme.onTertiaryContainer,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
                   tooltip:
@@ -231,7 +233,12 @@ class _ActionButtonsState extends State<ActionButtons>
                   icon: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.sync, size: 20),
+                      Icon(
+                        Icons.sync,
+                        size: 20,
+                        color:
+                            Theme.of(context).colorScheme.onTertiaryContainer,
+                      ),
                       const SizedBox(width: 6),
                       SvgPicture.asset(
                         'assets/images/notion_logo.svg',
