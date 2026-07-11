@@ -4,6 +4,39 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+CLEAN_BUILD=false
+
+show_help() {
+  echo "Usage: ./scripts/build-web.sh [OPTIONS]"
+  echo ""
+  echo "Builds the Pomo web application (CanvasKit / PWA) and packages it into deploy/focus/."
+  echo ""
+  echo "Options:"
+  echo "  -h, --help    Show this help message and exit"
+  echo "  -c, --clean   Remove stale compilation artifacts before rebuilding"
+  echo ""
+  echo "Examples:"
+  echo "  ./scripts/build-web.sh"
+  echo "  ./scripts/build-web.sh --clean"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    -c|--clean)
+      CLEAN_BUILD=true
+      shift 1
+      ;;
+    *)
+      echo "Error: Unknown argument '$1'. Run with --help for usage."
+      exit 1
+      ;;
+  esac
+done
+
 # Install Flutter on Vercel when not present locally in CI
 if ! command -v flutter >/dev/null 2>&1; then
   echo "Installing Flutter SDK..."
@@ -11,6 +44,12 @@ if ! command -v flutter >/dev/null 2>&1; then
   export PATH="$HOME/flutter/bin:$PATH"
   flutter config --enable-web
   flutter precache --web
+fi
+
+if [ "$CLEAN_BUILD" = true ]; then
+  echo "Cleaning stale compilation artifacts..."
+  flutter clean >/dev/null 2>&1 || true
+  rm -rf build/web deploy/focus
 fi
 
 flutter pub get
