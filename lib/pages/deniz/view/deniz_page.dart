@@ -16,8 +16,8 @@ class DenizPage extends StatelessWidget {
               children: <Widget>[
                 Flexible(
                   child: Text(
-                    // ignore: lines_longer_than_80_chars
-                    '🐎\n\nIn loving memory of Deniz, my childhood and best friend.\n\n1999 - 2023',
+                    '🐎\n\nIn loving memory of Deniz, '
+                    'my childhood and best friend.\n\n1999 - 2023',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontStyle: FontStyle.italic,

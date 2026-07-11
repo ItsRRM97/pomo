@@ -12,6 +12,7 @@ import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 import 'package:pomo/pages/timer/timer.dart';
+import 'package:pomo/services/android_notification_service.dart';
 import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -160,7 +161,6 @@ class TimerPage extends StatelessWidget {
                   current.status == TimerStatus.running &&
                   previous.duration != current.duration,
               listener: (context, state) {
-                // Logger().i('Tick web hook');
                 _notify(
                   NotificationType.tick,
                   settingsState,
@@ -361,6 +361,14 @@ class TimerPage extends StatelessWidget {
                 );
               },
             ),
+            BlocListener<TimerCubit, TimerState>(
+              listener: (context, state) {
+                AndroidNotificationService().updateTimerState(
+                  timerState: state,
+                  settingsState: settingsState,
+                );
+              },
+            ),
           ],
           child: TimerView(notify: _notify),
         );
@@ -389,6 +397,7 @@ class _TimerViewState extends State<TimerView> {
   void initState() {
     super.initState();
     _focusNode = FocusNode();
+    AndroidNotificationService().init(context.read<TimerCubit>());
   }
 
   @override

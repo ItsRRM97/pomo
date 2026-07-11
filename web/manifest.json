@@ -10,6 +10,7 @@
     "theme_color": "#201a1b",
     "description": "A simple Pomodoro timer app for focused work sessions",
     "orientation": "any",
+    "categories": ["productivity", "utilities"],
     "prefer_related_applications": false,
     "icons": [
         {
@@ -35,6 +36,22 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/focus/icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Focus Timer screen"
+        },
+        {
+            "src": "/focus/icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Focus Timer mobile screen"
         }
     ]
 }

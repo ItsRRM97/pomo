@@ -178,8 +178,9 @@ class _ActionButtonsState extends State<ActionButtons>
                     foregroundColor:
                         Theme.of(context).colorScheme.onTertiaryContainer,
                   ),
-                  tooltip: 'Sync to Notion '
-                      '(${state.duration.inMinutes - state.syncedMinutes}m available)',
+                  tooltip: 'Sync to Notion ('
+                      '${state.duration.inMinutes - state.syncedMinutes}m '
+                      'available)',
                   onPressed: state.duration.inMinutes - state.syncedMinutes < 1
                       ? () {
                           ScaffoldMessenger.of(context).showSnackBar(

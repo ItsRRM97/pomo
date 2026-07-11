@@ -142,7 +142,6 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(enableWebHooks: () => value));
   }
 
-  // ignore: avoid_positional_boolean_parameters
   void toggleSound() {
     Prefs.enableSound = !state.enableSound;
     emit(state.copyWith(enableSound: () => !state.enableSound));

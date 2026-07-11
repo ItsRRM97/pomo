@@ -220,23 +220,17 @@ class TimerCubit extends Cubit<TimerState> {
     emit(state.copyWith(duration: () => newDuration));
     Prefs.duration = newDuration;
 
-    if (DurationHelper.isLapComplete(
-          duration: newDuration,
-          lap: state.lap,
-          settingsState: settingsState,
-        ) &&
-        settingsState.autoAdvance) {
-      lap(settingsState: settingsState);
-
-      return;
-    } else if (DurationHelper.isLapComplete(
+    final isLapComplete = DurationHelper.isLapComplete(
       duration: newDuration,
       lap: state.lap,
       settingsState: settingsState,
-    )) {
-      stop();
-      lap(settingsState: settingsState);
+    );
 
+    if (isLapComplete) {
+      if (!settingsState.autoAdvance) {
+        stop();
+      }
+      lap(settingsState: settingsState);
       return;
     }
   }

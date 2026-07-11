@@ -26,10 +26,12 @@ class NotionService {
       if (proxy.startsWith('http')) {
         return proxy.endsWith('/') ? proxy : '$proxy/';
       } else if (proxy.startsWith('/')) {
-        return 'https://pomo-focus-sand.vercel.app${proxy.endsWith('/') ? proxy : '$proxy/'}';
+        return 'https://pomo-focus-sand.vercel.app'
+            '${proxy.endsWith('/') ? proxy : '$proxy/'}';
       }
     }
-    // Default universally across Web and native macOS platforms to our Vercel proxy
+    // Default universally across Web and native macOS platforms to our
+    // Vercel proxy.
     return 'https://pomo-focus-sand.vercel.app/api/notion/';
   }
 
@@ -43,6 +45,10 @@ class NotionService {
     }
     return headers;
   }
+
+  String _formatDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   /// Calculates normalized `(newHours, newMinutes)` after adding [addMin]
   /// to [currentHours] and [currentMinutes].
@@ -93,8 +99,7 @@ class NotionService {
     ];
 
     final now = DateTime.now();
-    final todayStr =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final todayStr = _formatDate(now);
 
     if (dueToday) {
       filters.add({
@@ -109,23 +114,22 @@ class NotionService {
       final startOfWeek = now.subtract(Duration(days: weekday - 1));
       final endOfWeek = startOfWeek.add(const Duration(days: 6));
 
-      final startStr =
-          '${startOfWeek.year}-${startOfWeek.month.toString().padLeft(2, '0')}-${startOfWeek.day.toString().padLeft(2, '0')}';
-      final endStr =
-          '${endOfWeek.year}-${endOfWeek.month.toString().padLeft(2, '0')}-${endOfWeek.day.toString().padLeft(2, '0')}';
+      final startStr = _formatDate(startOfWeek);
+      final endStr = _formatDate(endOfWeek);
 
-      filters.add({
-        'property': 'Due',
-        'date': {
-          'on_or_after': startStr,
-        },
-      });
-      filters.add({
-        'property': 'Due',
-        'date': {
-          'on_or_before': endStr,
-        },
-      });
+      filters
+        ..add({
+          'property': 'Due',
+          'date': {
+            'on_or_after': startStr,
+          },
+        })
+        ..add({
+          'property': 'Due',
+          'date': {
+            'on_or_before': endStr,
+          },
+        });
     } else if (searchKeyword != null && searchKeyword.trim().isNotEmpty) {
       filters.add({
         'property': 'Name',
@@ -206,7 +210,7 @@ class NotionService {
     }
 
     final totalDuration = totalDurationMinutes ?? durationMinutes;
-    String? pageId = existingLogPageId;
+    var pageId = existingLogPageId;
 
     if (pageId != null && pageId.isNotEmpty) {
       try {

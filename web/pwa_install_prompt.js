@@ -13,7 +13,10 @@
   }
 
   function isIOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+    return (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
   }
 
   function isAndroid() {
@@ -31,10 +34,7 @@
     if (localStorage.getItem(STORAGE_KEY) === 'true') {
       return false;
     }
-    if (sessionStorage.getItem(SESSION_KEY) === 'true') {
-      return false;
-    }
-    return deferredPrompt || isIOS() || isAndroid();
+    return true;
   }
 
   function markShown() {
@@ -54,10 +54,12 @@
   }
 
   function createPrompt(options) {
-    if (!shouldShow() || document.getElementById('focus-pwa-install')) {
+    if (!shouldShow() || !document.body) {
       return;
     }
 
+    // If a prompt is already showing, remove it so we can upgrade it (e.g. manual -> native prompt)
+    removePrompt();
     markShown();
 
     var overlay = document.createElement('div');
@@ -96,7 +98,9 @@
     var primary = document.getElementById('focus-pwa-install-primary');
 
     if (later) {
-      later.addEventListener('click', removePrompt);
+      later.addEventListener('click', function () {
+        removePrompt();
+      });
     }
     if (never) {
       never.addEventListener('click', dismissForever);
@@ -148,22 +152,26 @@
     });
   }
 
-  function maybeShowPrompt() {
-    if (!shouldShow()) {
+  function maybeShowPrompt(forceNative) {
+    if (!shouldShow() || !isMobileBrowser()) {
       return;
     }
 
+    // If we have the native install prompt from Chrome/Edge
     if (deferredPrompt) {
       showAndroidPrompt();
       return;
     }
 
-    if (isIOS()) {
+    // If it's iOS, show manual instructions
+    if (isIOS() && !sessionStorage.getItem(SESSION_KEY)) {
       showIOSPrompt();
       return;
     }
 
-    if (isAndroid()) {
+    // If it's Android but beforeinstallprompt hasn't fired yet, only show manual instructions
+    // if forceNative is not true and session prompt wasn't shown yet
+    if (isAndroid() && !forceNative && !sessionStorage.getItem(SESSION_KEY)) {
       showAndroidManualPrompt();
     }
   }
@@ -171,14 +179,29 @@
   window.addEventListener('beforeinstallprompt', function (event) {
     event.preventDefault();
     deferredPrompt = event;
-    maybeShowPrompt();
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', function () {
+        window.setTimeout(function () { maybeShowPrompt(true); }, 1000);
+      }, { once: true });
+    } else {
+      window.setTimeout(function () { maybeShowPrompt(true); }, 500);
+    }
+  });
+
+  window.addEventListener('appinstalled', function () {
+    deferredPrompt = null;
+    dismissForever();
   });
 
   window.addEventListener('load', function () {
     if (!isMobileBrowser()) {
       return;
     }
-
-    window.setTimeout(maybeShowPrompt, 2500);
+    // Give Chrome/Edge 3.5 seconds to fire beforeinstallprompt before falling back to manual prompt on Android
+    window.setTimeout(function () {
+      if (!deferredPrompt) {
+        maybeShowPrompt(false);
+      }
+    }, 3500);
   });
 })();

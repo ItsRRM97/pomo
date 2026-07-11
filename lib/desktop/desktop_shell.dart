@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -30,9 +31,19 @@ class _DesktopShellState extends State<DesktopShell> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        TimerTickService.start(
+          timerCubit: context.read<TimerCubit>(),
+          settingsCubit: context.read<SettingsCubit>(),
+        );
         _initDesktop();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    TimerTickService.stop();
+    super.dispose();
   }
 
   Future<void> _initDesktop() async {
@@ -44,13 +55,11 @@ class _DesktopShellState extends State<DesktopShell> {
       return;
     }
 
-    // ignore: avoid_print
-    print('[DesktopShell] _initDesktop starting...');
+    developer.log('_initDesktop starting...', name: 'DesktopShell');
     // Create the menu bar status item before other desktop integrations so a
     // tray channel failure cannot be masked by unrelated setup work.
     await MacosMenuBarService.init(context);
-    // ignore: avoid_print
-    print('[DesktopShell] MacosMenuBarService.init completed');
+    developer.log('MacosMenuBarService.init completed', name: 'DesktopShell');
 
     await DesktopWindowService.init();
     FloatingOverlayController.initMainWindowHandler();
@@ -61,11 +70,6 @@ class _DesktopShellState extends State<DesktopShell> {
 
     final timerCubit = context.read<TimerCubit>();
     final settingsCubit = context.read<SettingsCubit>();
-
-    TimerTickService.start(
-      timerCubit: timerCubit,
-      settingsCubit: settingsCubit,
-    );
 
     await MacosMenuBarService.instance.updateFromState(
       timerState: timerCubit.state,

@@ -89,7 +89,8 @@ class NotionSyncService {
     }
   }
 
-  /// Moves a task from 'To Do' to 'In Progress' in Notion and updates local state if needed.
+  /// Moves a task from 'To Do' to 'In Progress' in Notion and updates local
+  /// state if needed.
   Future<NotionTask?> moveToInProgressIfNeeded(NotionTask? task) async {
     if (task == null || task.id.isEmpty) return task;
     final currentStatus = task.status.trim().toLowerCase();
