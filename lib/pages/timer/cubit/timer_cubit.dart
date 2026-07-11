@@ -25,11 +25,22 @@ class TimerCubit extends Cubit<TimerState> {
     if (state.lap == TimerLap.work &&
         state.duration.inMinutes >= 1 &&
         state.activeTask != null) {
-      NotionSyncService().syncSession(
-        task: state.activeTask,
-        duration: state.duration,
+      final taskToSync = state.activeTask!;
+      final durationToSync = state.duration;
+      NotionSyncService()
+          .syncSession(
+        task: taskToSync,
+        duration: durationToSync,
         endedAt: DateTime.now(),
-      );
+      )
+          .then((success) {
+        if (success && state.activeTask?.id == taskToSync.id) {
+          final updated = Prefs.activeTask;
+          if (updated != null) {
+            emit(state.copyWith(activeTask: () => updated));
+          }
+        }
+      });
     }
   }
 

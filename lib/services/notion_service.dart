@@ -11,7 +11,7 @@ class NotionService {
   static final NotionService _instance = NotionService._internal();
 
   final Dio _dio;
-  static const String timeLogsDbId = 'acd9cab4-5560-456c-b9b5-86d9a5b391c';
+  static const String timeLogsDbId = 'acd9cab4-5560-456c-b9b5-586d9a5b391c';
 
   String _getBaseUrl() {
     var proxy = Prefs.notionProxyUrl.trim();
