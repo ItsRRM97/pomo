@@ -1,6 +1,13 @@
 {
   "buildCommand": "chmod +x scripts/build-web.sh && ./scripts/build-web.sh",
   "outputDirectory": "deploy",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/focus",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/notion/:path*",
