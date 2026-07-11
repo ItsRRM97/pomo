@@ -73,6 +73,7 @@ flutter:
     - 'assets/images/pomo_logo.png'
     - 'assets/images/pomo_splash.png'
     - 'assets/images/pomo_splash_64.png'
+    - 'assets/images/notion_logo.svg'
     - 'fonts/MajorMonoDisplay-Regular.ttf'
     - 'fonts/RubikMonoOne-Regular.ttf'
     - 'fonts/LilitaOne-Regular.ttf'

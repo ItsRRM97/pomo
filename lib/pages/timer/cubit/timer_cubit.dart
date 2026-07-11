@@ -22,15 +22,15 @@ class TimerCubit extends Cubit<TimerState> {
         );
 
   void _syncActiveTaskIfEligible() {
+    final minutesToSync = state.duration.inMinutes - state.syncedMinutes;
     if (state.lap == TimerLap.work &&
-        state.duration.inMinutes >= 1 &&
+        minutesToSync >= 1 &&
         state.activeTask != null) {
       final taskToSync = state.activeTask!;
-      final durationToSync = state.duration;
       NotionSyncService()
           .syncSession(
         task: taskToSync,
-        duration: durationToSync,
+        duration: Duration(minutes: minutesToSync),
         endedAt: DateTime.now(),
       )
           .then((success) {
@@ -46,23 +46,22 @@ class TimerCubit extends Cubit<TimerState> {
 
   Future<bool> syncNow() async {
     if (state.activeTask == null) return false;
-    final minutes = state.duration.inMinutes;
-    if (minutes < 1) return false;
+    final minutesToSync = state.duration.inMinutes - state.syncedMinutes;
+    if (minutesToSync < 1) return false;
 
     final taskToSync = state.activeTask!;
     final success = await NotionSyncService().syncSession(
       task: taskToSync,
-      duration: state.duration,
+      duration: Duration(minutes: minutesToSync),
       endedAt: DateTime.now(),
     );
 
     if (success) {
-      final remainingDuration = state.duration - Duration(minutes: minutes);
-      Prefs.duration = remainingDuration;
+      final newSyncedMinutes = state.syncedMinutes + minutesToSync;
       final updatedTask = Prefs.activeTask;
       emit(
         state.copyWith(
-          duration: () => remainingDuration,
+          syncedMinutes: () => newSyncedMinutes,
           activeTask: () => updatedTask ?? taskToSync,
         ),
       );
@@ -107,6 +106,7 @@ class TimerCubit extends Cubit<TimerState> {
         state.copyWith(
           activeTask: () => task,
           duration: () => Duration.zero,
+          syncedMinutes: () => 0,
         ),
       );
     }
@@ -120,6 +120,7 @@ class TimerCubit extends Cubit<TimerState> {
       state.copyWith(
         activeTask: () => null,
         duration: () => Duration.zero,
+        syncedMinutes: () => 0,
       ),
     );
   }
@@ -137,6 +138,7 @@ class TimerCubit extends Cubit<TimerState> {
     emit(
       state.copyWith(
         duration: () => Duration.zero,
+        syncedMinutes: () => 0,
         lapNumber: () => nextLapNumber,
         lap: () => nextLap,
         status: !autoAdvance ? () => TimerStatus.stopped : null,

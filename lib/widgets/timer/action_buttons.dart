@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
@@ -174,14 +175,16 @@ class _ActionButtonsState extends State<ActionButtons>
                   style: IconButton.styleFrom(
                     backgroundColor:
                         Theme.of(context).colorScheme.tertiaryContainer,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
-                  tooltip: 'Sync time to Notion',
-                  onPressed: state.duration.inMinutes < 1
+                  tooltip:
+                      'Sync to Notion (${state.duration.inMinutes - state.syncedMinutes}m available)',
+                  onPressed: state.duration.inMinutes - state.syncedMinutes < 1
                       ? () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'At least 1 minute must elapse on the timer to sync to Notion.',
+                                'At least 1 unsynced minute must elapse to sync to Notion.',
                               ),
                               duration: Duration(seconds: 3),
                             ),
@@ -189,12 +192,15 @@ class _ActionButtonsState extends State<ActionButtons>
                         }
                       : () async {
                           final messenger = ScaffoldMessenger.of(context);
-                          final minutes = state.duration.inMinutes;
+                          final minutesToSync =
+                              state.duration.inMinutes - state.syncedMinutes;
                           final taskTitle = state.activeTask?.title ?? 'Task';
 
                           messenger.showSnackBar(
                             SnackBar(
-                              content: Text('Syncing ${minutes}m to Notion...'),
+                              content: Text(
+                                'Syncing ${minutesToSync}m to Notion...',
+                              ),
                               duration: const Duration(seconds: 1),
                             ),
                           );
@@ -206,7 +212,7 @@ class _ActionButtonsState extends State<ActionButtons>
                             messenger.showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Successfully synced ${minutes}m for "$taskTitle"!',
+                                  'Successfully synced ${minutesToSync}m for "$taskTitle"!',
                                 ),
                                 duration: const Duration(seconds: 3),
                               ),
@@ -222,7 +228,22 @@ class _ActionButtonsState extends State<ActionButtons>
                             );
                           }
                         },
-                  icon: const Icon(Icons.cloud_upload),
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.sync, size: 20),
+                      const SizedBox(width: 6),
+                      SvgPicture.asset(
+                        'assets/images/notion_logo.svg',
+                        width: 16,
+                        height: 16,
+                        colorFilter: ColorFilter.mode(
+                          Theme.of(context).colorScheme.onTertiaryContainer,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
