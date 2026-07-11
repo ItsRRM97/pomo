@@ -42,6 +42,14 @@ flutter:
   generate: true
 
   fonts:
+    - family: Roboto
+      fonts:
+        - asset: fonts/Roboto-Regular.ttf
+        - asset: fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: fonts/Roboto-Bold.ttf
+          weight: 700
+
     - family: Rubik Mono One
       fonts:
         - asset: fonts/RubikMonoOne-Regular.ttf
@@ -68,3 +76,6 @@ flutter:
     - 'fonts/MajorMonoDisplay-Regular.ttf'
     - 'fonts/RubikMonoOne-Regular.ttf'
     - 'fonts/LilitaOne-Regular.ttf'
+    - 'fonts/Roboto-Regular.ttf'
+    - 'fonts/Roboto-Medium.ttf'
+    - 'fonts/Roboto-Bold.ttf'

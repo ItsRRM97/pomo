@@ -18,6 +18,7 @@ class App extends StatelessWidget {
   }) {
     final base = ThemeData(
       useMaterial3: true,
+      fontFamily: 'Roboto',
       colorScheme: colorScheme,
     );
     final textTheme = base.textTheme.apply(
