@@ -177,7 +177,6 @@ class _ActionButtonsState extends State<ActionButtons>
                         Theme.of(context).colorScheme.tertiaryContainer,
                     foregroundColor:
                         Theme.of(context).colorScheme.onTertiaryContainer,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
                   tooltip:
                       'Sync to Notion (${state.duration.inMinutes - state.syncedMinutes}m available)',
@@ -230,26 +229,14 @@ class _ActionButtonsState extends State<ActionButtons>
                             );
                           }
                         },
-                  icon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.sync,
-                        size: 20,
-                        color:
-                            Theme.of(context).colorScheme.onTertiaryContainer,
-                      ),
-                      const SizedBox(width: 6),
-                      SvgPicture.asset(
-                        'assets/images/notion_logo.svg',
-                        width: 16,
-                        height: 16,
-                        colorFilter: ColorFilter.mode(
-                          Theme.of(context).colorScheme.onTertiaryContainer,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ],
+                  icon: SvgPicture.asset(
+                    'assets/images/notion_logo.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context).colorScheme.onTertiaryContainer,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ],
