@@ -59,20 +59,30 @@ rm -f "$DMG_PATH"
 
 echo "--> Generating Pomo.dmg in project folder..."
 if command -v create-dmg >/dev/null 2>&1; then
-  create-dmg \
-    --volname "Pomo" \
-    --window-pos 200 120 \
-    --window-size 600 400 \
-    --icon-size 100 \
-    --icon "Pomo.app" 175 190 \
-    --hide-extension "Pomo.app" \
-    --app-drop-link 425 190 \
-    "$DMG_PATH" \
-    "$APP_PATH" || {
-      echo "--> create-dmg UI styling skipped or errored; falling back to hdiutil..."
+  if create-dmg --help 2>&1 | grep -q -- "--no-code-sign"; then
+    echo "--> Detected sindresorhus/create-dmg (Node.js version)..."
+    create-dmg --overwrite --no-version-in-filename --no-code-sign "$APP_PATH" "$PROJECT_ROOT" || {
+      echo "--> Node create-dmg errored; falling back to hdiutil..."
       rm -f "$DMG_PATH"
       hdiutil create -volname "Pomo" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
     }
+  else
+    echo "--> Detected bash create-dmg..."
+    create-dmg \
+      --volname "Pomo" \
+      --window-pos 200 120 \
+      --window-size 600 400 \
+      --icon-size 100 \
+      --icon "Pomo.app" 175 190 \
+      --hide-extension "Pomo.app" \
+      --app-drop-link 425 190 \
+      "$DMG_PATH" \
+      "$APP_PATH" || {
+        echo "--> create-dmg UI styling skipped or errored; falling back to hdiutil..."
+        rm -f "$DMG_PATH"
+        hdiutil create -volname "Pomo" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+      }
+  fi
 else
   hdiutil create -volname "Pomo" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
 fi
