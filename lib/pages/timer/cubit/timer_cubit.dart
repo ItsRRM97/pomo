@@ -217,6 +217,8 @@ class TimerCubit extends Cubit<TimerState> {
     }
 
     final newDuration = state.duration + duration;
+    emit(state.copyWith(duration: () => newDuration));
+    Prefs.duration = newDuration;
 
     if (DurationHelper.isLapComplete(
           duration: newDuration,
@@ -237,10 +239,6 @@ class TimerCubit extends Cubit<TimerState> {
 
       return;
     }
-
-    emit(state.copyWith(duration: () => newDuration));
-
-    Prefs.duration = newDuration;
   }
 
   void toggle() {

@@ -88,5 +88,59 @@ void main() {
         ),
       ],
     );
+
+    blocTest<TimerCubit, TimerState>(
+      'tick emits full duration before lap transition when lap completes (autoAdvance false)',
+      build: () {
+        Prefs.duration = const Duration(minutes: 9, seconds: 59);
+        Prefs.timerStatus = TimerStatus.running;
+        return TimerCubit();
+      },
+      act: (cubit) => cubit.tick(
+        const SettingsState(workMinutes: 10),
+        const Duration(seconds: 1),
+      ),
+      expect: () => [
+        const TimerState(
+          status: TimerStatus.running,
+          duration: Duration(minutes: 10),
+        ),
+        const TimerState(
+          status: TimerStatus.stopped,
+          duration: Duration(minutes: 10),
+        ),
+        const TimerState(
+          status: TimerStatus.stopped,
+          duration: Duration.zero,
+          lap: TimerLap.shortBreak,
+          lapNumber: 1,
+        ),
+      ],
+    );
+
+    blocTest<TimerCubit, TimerState>(
+      'tick emits full duration before lap transition when lap completes (autoAdvance true)',
+      build: () {
+        Prefs.duration = const Duration(minutes: 9, seconds: 59);
+        Prefs.timerStatus = TimerStatus.running;
+        return TimerCubit();
+      },
+      act: (cubit) => cubit.tick(
+        const SettingsState(workMinutes: 10, autoAdvance: true),
+        const Duration(seconds: 1),
+      ),
+      expect: () => [
+        const TimerState(
+          status: TimerStatus.running,
+          duration: Duration(minutes: 10),
+        ),
+        const TimerState(
+          status: TimerStatus.running,
+          duration: Duration.zero,
+          lap: TimerLap.shortBreak,
+          lapNumber: 1,
+        ),
+      ],
+    );
   });
 }
