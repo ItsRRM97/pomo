@@ -234,7 +234,11 @@ class NotionService {
           'date': {'start': endedAt.toUtc().toIso8601String()}
         },
         'Source': {
-          'select': {'name': 'pomo'}
+          'rich_text': [
+            {
+              'text': {'content': 'pomo'}
+            }
+          ]
         },
         'External ID': {
           'rich_text': [

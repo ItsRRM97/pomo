@@ -167,6 +167,64 @@ class _ActionButtonsState extends State<ActionButtons>
                   );
                 },
               ),
+              if (state.activeTask != null) ...[
+                const SizedBox(width: 16),
+                IconButton.filledTonal(
+                  color: Theme.of(context).colorScheme.onTertiaryContainer,
+                  style: IconButton.styleFrom(
+                    backgroundColor:
+                        Theme.of(context).colorScheme.tertiaryContainer,
+                  ),
+                  tooltip: 'Sync time to Notion',
+                  onPressed: state.duration.inMinutes < 1
+                      ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'At least 1 minute must elapse on the timer to sync to Notion.',
+                              ),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final minutes = state.duration.inMinutes;
+                          final taskTitle = state.activeTask?.title ?? 'Task';
+
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Syncing ${minutes}m to Notion...'),
+                              duration: const Duration(seconds: 1),
+                            ),
+                          );
+
+                          final success =
+                              await context.read<TimerCubit>().syncNow();
+
+                          if (success) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Successfully synced ${minutes}m for "$taskTitle"!',
+                                ),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          } else {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Failed to sync to Notion. Check API key or connection.',
+                                ),
+                                duration: Duration(seconds: 4),
+                              ),
+                            );
+                          }
+                        },
+                  icon: const Icon(Icons.cloud_upload),
+                ),
+              ],
             ],
           );
         },

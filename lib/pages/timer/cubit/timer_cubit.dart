@@ -44,6 +44,32 @@ class TimerCubit extends Cubit<TimerState> {
     }
   }
 
+  Future<bool> syncNow() async {
+    if (state.activeTask == null) return false;
+    final minutes = state.duration.inMinutes;
+    if (minutes < 1) return false;
+
+    final taskToSync = state.activeTask!;
+    final success = await NotionSyncService().syncSession(
+      task: taskToSync,
+      duration: state.duration,
+      endedAt: DateTime.now(),
+    );
+
+    if (success) {
+      final remainingDuration = state.duration - Duration(minutes: minutes);
+      Prefs.duration = remainingDuration;
+      final updatedTask = Prefs.activeTask;
+      emit(
+        state.copyWith(
+          duration: () => remainingDuration,
+          activeTask: () => updatedTask ?? taskToSync,
+        ),
+      );
+    }
+    return success;
+  }
+
   void start() {
     emit(
       state.copyWith(
