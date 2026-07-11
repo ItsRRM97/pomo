@@ -22,6 +22,28 @@ class TimerCubit extends Cubit<TimerState> {
             activeLogPageId: Prefs.activeLogPageId,
           ),
         );
+  bool _isMovingToInProgress = false;
+
+  void _checkAndMoveActiveTaskToInProgress() {
+    final currentTask = state.activeTask;
+    if (currentTask != null &&
+        !_isMovingToInProgress &&
+        (currentTask.status.trim().toLowerCase() == 'to do' ||
+            currentTask.status.trim().toLowerCase() == 'todo' ||
+            currentTask.status.trim().toLowerCase() == 'to-do')) {
+      _isMovingToInProgress = true;
+      NotionSyncService().moveToInProgressIfNeeded(currentTask).then((updated) {
+        _isMovingToInProgress = false;
+        if (updated != null &&
+            state.activeTask?.id == updated.id &&
+            updated.status == 'In Progress') {
+          emit(state.copyWith(activeTask: () => updated));
+        }
+      }).catchError((_) {
+        _isMovingToInProgress = false;
+      });
+    }
+  }
 
   void _syncActiveTaskIfEligible() {
     final totalMinutes = state.duration.inMinutes;
@@ -90,6 +112,10 @@ class TimerCubit extends Cubit<TimerState> {
     );
 
     Prefs.timerStatus = TimerStatus.running;
+
+    if (state.lap == TimerLap.work && state.activeTask != null) {
+      _checkAndMoveActiveTaskToInProgress();
+    }
   }
 
   void stop() {
@@ -125,6 +151,9 @@ class TimerCubit extends Cubit<TimerState> {
           activeLogPageId: () => null,
         ),
       );
+      if (task != null && state.lap == TimerLap.work) {
+        _checkAndMoveActiveTaskToInProgress();
+      }
     }
   }
 
@@ -181,6 +210,10 @@ class TimerCubit extends Cubit<TimerState> {
   ]) {
     if (state.status != TimerStatus.running) {
       return;
+    }
+
+    if (state.lap == TimerLap.work && state.activeTask != null) {
+      _checkAndMoveActiveTaskToInProgress();
     }
 
     final newDuration = state.duration + duration;

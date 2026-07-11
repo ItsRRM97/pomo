@@ -72,5 +72,18 @@ void main() {
       );
       expect(result.success, isFalse);
     });
+
+    test(
+        'moveToInProgressIfNeeded returns unchanged task when already In Progress or Done',
+        () async {
+      const task = NotionTask(id: 't-1', title: 'Test', status: 'In Progress');
+      final res = await NotionSyncService().moveToInProgressIfNeeded(task);
+      expect(res, equals(task));
+    });
+
+    test('moveToInProgressIfNeeded returns null when task is null', () async {
+      final res = await NotionSyncService().moveToInProgressIfNeeded(null);
+      expect(res, isNull);
+    });
   });
 }

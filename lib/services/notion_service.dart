@@ -364,6 +364,39 @@ class NotionService {
     }
   }
 
+  /// Updates the status property of a task page in Notion.
+  Future<bool> updateTaskStatus({
+    required String taskId,
+    required String newStatus,
+  }) async {
+    final apiKey = Prefs.notionApiKey;
+    if (!kIsWeb && apiKey.isEmpty) return false;
+
+    final url = '${_getBaseUrl()}pages/$taskId';
+    final payload = {
+      'properties': {
+        'Done': {
+          'status': {
+            'name': newStatus,
+          },
+        },
+      },
+    };
+
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        url,
+        data: payload,
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+      Logger().i('Updated Task $taskId status to $newStatus');
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      Logger().e('Failed to update task status: ${e.message}', error: e);
+      return false;
+    }
+  }
+
   /// Tests connection using the provided [apiKey] by querying 1 task.
   Future<bool> testConnection(String apiKey) async {
     final dbId = Prefs.notionDatabaseId;

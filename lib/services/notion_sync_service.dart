@@ -52,6 +52,8 @@ class NotionSyncService {
     );
 
     try {
+      await moveToInProgressIfNeeded(task);
+
       final result = await NotionService().logSession(
         task: task,
         durationMinutes: minutes,
@@ -85,5 +87,50 @@ class NotionSyncService {
       );
       return (success: false, logPageId: null);
     }
+  }
+
+  /// Moves a task from 'To Do' to 'In Progress' in Notion and updates local state if needed.
+  Future<NotionTask?> moveToInProgressIfNeeded(NotionTask? task) async {
+    if (task == null || task.id.isEmpty) return task;
+    final currentStatus = task.status.trim().toLowerCase();
+    if (currentStatus != 'to do' &&
+        currentStatus != 'todo' &&
+        currentStatus != 'to-do') {
+      return task;
+    }
+
+    if (!Prefs.enableNotionSync && !kIsWeb && Prefs.notionApiKey.isEmpty) {
+      return task;
+    }
+
+    Logger().i(
+      'NotionSyncService: Moving task "${task.title}" (${task.id}) '
+      'from "${task.status}" to "In Progress"...',
+    );
+
+    try {
+      final success = await NotionService().updateTaskStatus(
+        taskId: task.id,
+        newStatus: 'In Progress',
+      );
+
+      if (success) {
+        final updatedTask = task.copyWith(status: () => 'In Progress');
+        final currentActive = Prefs.activeTask;
+        if (currentActive != null && currentActive.id == task.id) {
+          Prefs.activeTask =
+              currentActive.copyWith(status: () => 'In Progress');
+        }
+        return updatedTask;
+      }
+    } catch (e, st) {
+      Logger().w(
+        'NotionSyncService: Failed to move task to In Progress ($e)',
+        error: e,
+        stackTrace: st,
+      );
+    }
+
+    return task;
   }
 }
