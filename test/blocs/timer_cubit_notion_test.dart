@@ -31,17 +31,43 @@ void main() {
     );
 
     blocTest<TimerCubit, TimerState>(
-      'clearTask clears activeTask from state and Prefs',
+      'clearTask clears activeTask and session sync state from state and Prefs',
       build: () {
         Prefs.activeTask = testTask;
+        Prefs.syncedMinutes = 15;
+        Prefs.activeLogPageId = 'page-123';
         return TimerCubit();
       },
       act: (cubit) => cubit.clearTask(),
       expect: () => [
-        const TimerState(activeTask: null),
+        const TimerState(),
       ],
       verify: (_) {
         expect(Prefs.activeTask, isNull);
+        expect(Prefs.syncedMinutes, equals(0));
+        expect(Prefs.activeLogPageId, isNull);
+      },
+    );
+
+    blocTest<TimerCubit, TimerState>(
+      'selectTask resets session sync state when switching tasks',
+      build: () {
+        Prefs.activeTask = testTask;
+        Prefs.syncedMinutes = 10;
+        Prefs.activeLogPageId = 'page-abc';
+        return TimerCubit();
+      },
+      act: (cubit) => cubit.selectTask(
+        const NotionTask(id: 'task-102', title: 'New Task'),
+      ),
+      expect: () => [
+        const TimerState(
+          activeTask: NotionTask(id: 'task-102', title: 'New Task'),
+        ),
+      ],
+      verify: (_) {
+        expect(Prefs.syncedMinutes, equals(0));
+        expect(Prefs.activeLogPageId, isNull);
       },
     );
 
@@ -51,13 +77,12 @@ void main() {
         Prefs.activeTask = testTask;
         return TimerCubit();
       },
-      act: (cubit) {
-        cubit.start();
-        cubit.reset();
-      },
+      act: (cubit) => cubit
+        ..start()
+        ..reset(),
       expect: () => [
         const TimerState(status: TimerStatus.running, activeTask: testTask),
-        const TimerState(status: TimerStatus.stopped, activeTask: testTask),
+        const TimerState(activeTask: testTask),
       ],
     );
   });

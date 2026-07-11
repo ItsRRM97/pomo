@@ -75,27 +75,27 @@ void main() {
           'Name': {
             'title': [
               {
-                'text': {'content': 'Refactor Cubits'}
-              }
-            ]
+                'text': {'content': 'Refactor Cubits'},
+              },
+            ],
           },
           'Done': {
-            'status': {'name': 'To Do'}
+            'status': {'name': 'To Do'},
           },
           'Priority': {
-            'select': {'name': 'Critical'}
+            'select': {'name': 'Critical'},
           },
           'Due': {
-            'date': {'start': '2026-07-11'}
+            'date': {'start': '2026-07-11'},
           },
           'Project': {
             'relation': [
-              {'id': 'proj-id-999'}
-            ]
+              {'id': 'proj-id-999'},
+            ],
           },
           'Time (hours)': {'number': 1},
           'Time (minutes)': {'number': 15},
-        }
+        },
       };
 
       final parsed = NotionTask.fromNotionApi(payload);

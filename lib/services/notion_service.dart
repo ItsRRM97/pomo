@@ -192,75 +192,123 @@ class NotionService {
 
   /// Logs a completed or partial session to the PARA dashboard `Time Logs` DB
   /// and increments the task's `Time (hours)` and `Time (minutes)`.
-  Future<bool> logSession({
+  Future<({bool success, String? pageId})> logSession({
     required NotionTask task,
     required int durationMinutes,
     required DateTime endedAt,
     String? customExternalId,
+    String? existingLogPageId,
+    int? totalDurationMinutes,
   }) async {
     final apiKey = Prefs.notionApiKey;
     if (!kIsWeb && apiKey.isEmpty) {
       throw Exception('Notion API key not set.');
     }
 
-    final externalId =
-        customExternalId ?? 'sess_${task.id}_${endedAt.millisecondsSinceEpoch}';
+    final totalDuration = totalDurationMinutes ?? durationMinutes;
+    String? pageId = existingLogPageId;
 
-    // 1. Idempotency check
-    if (await checkIdempotency(externalId)) {
-      Logger().i('Session $externalId already logged to Notion. Skipping.');
-      return true;
+    if (pageId != null && pageId.isNotEmpty) {
+      try {
+        final patchUrl = '${_getBaseUrl()}pages/$pageId';
+        final updatePayload = {
+          'properties': {
+            'Name': {
+              'title': [
+                {
+                  'text': {'content': '${totalDuration}m - ${task.title}'},
+                },
+              ],
+            },
+            'Duration (min)': {'number': totalDuration},
+          },
+        };
+        await _dio.patch<Map<String, dynamic>>(
+          patchUrl,
+          data: updatePayload,
+          options: Options(headers: _getHeaders(apiKey)),
+        );
+        Logger().i(
+          'Successfully updated existing row $pageId in Time Logs to '
+          '${totalDuration}m',
+        );
+      } on DioException catch (e) {
+        Logger().w(
+          'Failed to update existing row $pageId (${e.message}). '
+          'Will create a new row.',
+        );
+        if (e.response?.statusCode == 404) {
+          pageId = null;
+        } else {
+          rethrow;
+        }
+      }
     }
 
-    // 2. Create Time Logs row
-    final timeLogsUrl = '${_getBaseUrl()}pages';
-    final logPayload = {
-      'parent': {'database_id': timeLogsDbId},
-      'properties': {
-        'Name': {
-          'title': [
-            {
-              'text': {'content': '${durationMinutes}m - ${task.title}'}
-            }
-          ]
-        },
-        'Task': {
-          'relation': [
-            {'id': task.id}
-          ]
-        },
-        'Duration (min)': {'number': durationMinutes},
-        'Logged At': {
-          'date': {'start': endedAt.toUtc().toIso8601String()}
-        },
-        'Source': {
-          'rich_text': [
-            {
-              'text': {'content': 'pomo'}
-            }
-          ]
-        },
-        'External ID': {
-          'rich_text': [
-            {
-              'text': {'content': externalId}
-            }
-          ]
-        },
-      },
-    };
+    if (pageId == null || pageId.isEmpty) {
+      final externalId = customExternalId ??
+          'sess_${task.id}_${endedAt.millisecondsSinceEpoch}';
 
-    try {
-      await _dio.post<Map<String, dynamic>>(
-        timeLogsUrl,
-        data: logPayload,
-        options: Options(headers: _getHeaders(apiKey)),
-      );
-      Logger().i('Successfully created row in Time Logs ($timeLogsDbId)');
-    } on DioException catch (e) {
-      Logger().e('Failed to create Time Logs row: ${e.message}', error: e);
-      throw Exception(
-          'Failed to create Notion Time Log: ${e.response?.data ?? e.message}');
+      // 1. Idempotency check
+      if (await checkIdempotency(externalId)) {
+        Logger().i('Session $externalId already logged to Notion. Skipping.');
+        return (success: true, pageId: null);
+      }
+
+      // 2. Create Time Logs row
+      final timeLogsUrl = '${_getBaseUrl()}pages';
+      final logPayload = {
+        'parent': {'database_id': timeLogsDbId},
+        'properties': {
+          'Name': {
+            'title': [
+              {
+                'text': {'content': '${totalDuration}m - ${task.title}'},
+              },
+            ],
+          },
+          'Task': {
+            'relation': [
+              {'id': task.id},
+            ],
+          },
+          'Duration (min)': {'number': totalDuration},
+          'Logged At': {
+            'date': {'start': endedAt.toUtc().toIso8601String()},
+          },
+          'Source': {
+            'rich_text': [
+              {
+                'text': {'content': 'pomo'},
+              },
+            ],
+          },
+          'External ID': {
+            'rich_text': [
+              {
+                'text': {'content': externalId},
+              },
+            ],
+          },
+        },
+      };
+
+      try {
+        final response = await _dio.post<Map<String, dynamic>>(
+          timeLogsUrl,
+          data: logPayload,
+          options: Options(headers: _getHeaders(apiKey)),
+        );
+        pageId = response.data?['id'] as String?;
+        Logger().i(
+          'Successfully created row $pageId in Time Logs ($timeLogsDbId)',
+        );
+      } on DioException catch (e) {
+        Logger().e('Failed to create Time Logs row: ${e.message}', error: e);
+        throw Exception(
+          'Failed to create Notion Time Log: ${e.response?.data ?? e.message}',
+        );
+      }
     }
 
     // 3. Fetch latest task page properties to avoid concurrent overwrites
@@ -304,12 +352,15 @@ class NotionService {
         options: Options(headers: _getHeaders(apiKey)),
       );
       Logger().i(
-          'Updated Task ${task.id} cumulative time: ${newTime.hours}h ${newTime.minutes}m');
-      return true;
+        'Updated Task ${task.id} cumulative time: '
+        '${newTime.hours}h ${newTime.minutes}m',
+      );
+      return (success: true, pageId: pageId);
     } on DioException catch (e) {
       Logger().e('Failed to update task time: ${e.message}', error: e);
       throw Exception(
-          'Failed to update task time: ${e.response?.data ?? e.message}');
+        'Failed to update task time: ${e.response?.data ?? e.message}',
+      );
     }
   }
 

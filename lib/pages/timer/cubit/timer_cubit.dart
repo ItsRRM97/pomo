@@ -18,23 +18,29 @@ class TimerCubit extends Cubit<TimerState> {
             lap: Prefs.timerLap,
             lapNumber: Prefs.lapNumber,
             activeTask: Prefs.activeTask,
+            syncedMinutes: Prefs.syncedMinutes,
+            activeLogPageId: Prefs.activeLogPageId,
           ),
         );
 
   void _syncActiveTaskIfEligible() {
-    final minutesToSync = state.duration.inMinutes - state.syncedMinutes;
+    final totalMinutes = state.duration.inMinutes;
+    final minutesToSync = totalMinutes - state.syncedMinutes;
     if (state.lap == TimerLap.work &&
         minutesToSync >= 1 &&
         state.activeTask != null) {
       final taskToSync = state.activeTask!;
+      final logPageId = state.activeLogPageId;
       NotionSyncService()
           .syncSession(
         task: taskToSync,
         duration: Duration(minutes: minutesToSync),
+        totalDuration: Duration(minutes: totalMinutes),
+        existingLogPageId: logPageId,
         endedAt: DateTime.now(),
       )
-          .then((success) {
-        if (success && state.activeTask?.id == taskToSync.id) {
+          .then((result) {
+        if (result.success && state.activeTask?.id == taskToSync.id) {
           final updated = Prefs.activeTask;
           if (updated != null) {
             emit(state.copyWith(activeTask: () => updated));
@@ -46,27 +52,34 @@ class TimerCubit extends Cubit<TimerState> {
 
   Future<bool> syncNow() async {
     if (state.activeTask == null) return false;
-    final minutesToSync = state.duration.inMinutes - state.syncedMinutes;
+    final totalMinutes = state.duration.inMinutes;
+    final minutesToSync = totalMinutes - state.syncedMinutes;
     if (minutesToSync < 1) return false;
 
     final taskToSync = state.activeTask!;
-    final success = await NotionSyncService().syncSession(
+    final result = await NotionSyncService().syncSession(
       task: taskToSync,
       duration: Duration(minutes: minutesToSync),
+      totalDuration: Duration(minutes: totalMinutes),
+      existingLogPageId: state.activeLogPageId,
       endedAt: DateTime.now(),
     );
 
-    if (success) {
+    if (result.success) {
       final newSyncedMinutes = state.syncedMinutes + minutesToSync;
       final updatedTask = Prefs.activeTask;
+      final newPageId = result.logPageId ?? state.activeLogPageId;
+      Prefs.syncedMinutes = newSyncedMinutes;
+      Prefs.activeLogPageId = newPageId;
       emit(
         state.copyWith(
           syncedMinutes: () => newSyncedMinutes,
           activeTask: () => updatedTask ?? taskToSync,
+          activeLogPageId: () => newPageId,
         ),
       );
     }
-    return success;
+    return result.success;
   }
 
   void start() {
@@ -101,12 +114,15 @@ class TimerCubit extends Cubit<TimerState> {
     if (state.activeTask?.id != task?.id) {
       _syncActiveTaskIfEligible();
       Prefs.duration = Duration.zero;
+      Prefs.syncedMinutes = 0;
+      Prefs.activeLogPageId = null;
       Prefs.activeTask = task;
       emit(
         state.copyWith(
           activeTask: () => task,
           duration: () => Duration.zero,
           syncedMinutes: () => 0,
+          activeLogPageId: () => null,
         ),
       );
     }
@@ -115,12 +131,15 @@ class TimerCubit extends Cubit<TimerState> {
   void clearTask() {
     _syncActiveTaskIfEligible();
     Prefs.duration = Duration.zero;
+    Prefs.syncedMinutes = 0;
+    Prefs.activeLogPageId = null;
     Prefs.activeTask = null;
     emit(
       state.copyWith(
         activeTask: () => null,
         duration: () => Duration.zero,
         syncedMinutes: () => 0,
+        activeLogPageId: () => null,
       ),
     );
   }
@@ -139,6 +158,7 @@ class TimerCubit extends Cubit<TimerState> {
       state.copyWith(
         duration: () => Duration.zero,
         syncedMinutes: () => 0,
+        activeLogPageId: () => null,
         lapNumber: () => nextLapNumber,
         lap: () => nextLap,
         status: !autoAdvance ? () => TimerStatus.stopped : null,
@@ -147,6 +167,8 @@ class TimerCubit extends Cubit<TimerState> {
 
     Prefs.timerLap = nextLap;
     Prefs.duration = Duration.zero;
+    Prefs.syncedMinutes = 0;
+    Prefs.activeLogPageId = null;
     Prefs.lapNumber = nextLapNumber;
     Prefs.timerStatus = !autoAdvance ? TimerStatus.stopped : state.status;
   }

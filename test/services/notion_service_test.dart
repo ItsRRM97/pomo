@@ -48,7 +48,7 @@ void main() {
         task: null,
         duration: const Duration(minutes: 25),
       );
-      expect(result, isFalse);
+      expect(result.success, isFalse);
     });
 
     test('skips sync when enableNotionSync is false', () async {
@@ -59,7 +59,7 @@ void main() {
         task: const NotionTask(id: 'task-1', title: 'Test'),
         duration: const Duration(minutes: 25),
       );
-      expect(result, isFalse);
+      expect(result.success, isFalse);
     });
 
     test('skips sync when duration is less than 1 minute', () async {
@@ -70,7 +70,7 @@ void main() {
         task: const NotionTask(id: 'task-1', title: 'Test'),
         duration: const Duration(seconds: 45),
       );
-      expect(result, isFalse);
+      expect(result.success, isFalse);
     });
   });
 }

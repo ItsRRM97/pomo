@@ -11,8 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Compile-time constant injected via --dart-define=NOTION_TOKEN=<value>.
 // Falls back to empty string when not provided (e.g. production web builds
 // where the server-side Vercel env var is used instead).
-const String _kNotionTokenEnv =
-    String.fromEnvironment('NOTION_TOKEN', defaultValue: '');
+const String _kNotionTokenEnv = String.fromEnvironment('NOTION_TOKEN');
 
 enum TimerFont {
   mono,
@@ -142,6 +141,8 @@ class Prefs {
   static const String _notionProxyUrlVarName = 'pomo_notion_proxy_url';
   static const String _notionDatabaseIdVarName = 'pomo_notion_database_id';
   static const String _activeTaskJsonVarName = 'pomo_active_task_json';
+  static const String _syncedMinutesVarName = 'pomo_synced_minutes';
+  static const String _activeLogPageIdVarName = 'pomo_active_log_page_id';
 
   //* Getters
 
@@ -149,7 +150,8 @@ class Prefs {
     final stored =
         Prefs().sharedPreferences.getString(_notionApiKeyVarName) ?? '';
     if (stored.isNotEmpty) return stored;
-    // Do not auto-seed during flutter test runs so unit tests can test missing API key.
+    // Do not auto-seed during flutter test runs so unit tests can test missing
+    // API key.
     if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
       return '';
     }
@@ -412,6 +414,14 @@ class Prefs {
         'topRight';
   }
 
+  static int get syncedMinutes {
+    return Prefs().sharedPreferences.getInt(_syncedMinutesVarName) ?? 0;
+  }
+
+  static String? get activeLogPageId {
+    return Prefs().sharedPreferences.getString(_activeLogPageIdVarName);
+  }
+
   //* Setters
 
   static set themeMode(ThemeMode value) {
@@ -599,10 +609,24 @@ class Prefs {
     }
   }
 
+  static set syncedMinutes(int value) {
+    Prefs().sharedPreferences.setInt(_syncedMinutesVarName, value);
+  }
+
+  static set activeLogPageId(String? value) {
+    if (value == null || value.isEmpty) {
+      Prefs().sharedPreferences.remove(_activeLogPageIdVarName);
+    } else {
+      Prefs().sharedPreferences.setString(_activeLogPageIdVarName, value);
+    }
+  }
+
   static void resetTimer() {
     Prefs().sharedPreferences.remove(_timerStatusVarName);
     Prefs().sharedPreferences.remove(_durationVarName);
     Prefs().sharedPreferences.remove(_lapNumberVarName);
     Prefs().sharedPreferences.remove(_timerLapVarName);
+    Prefs().sharedPreferences.remove(_syncedMinutesVarName);
+    Prefs().sharedPreferences.remove(_activeLogPageIdVarName);
   }
 }

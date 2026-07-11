@@ -19,6 +19,7 @@ class TimerState extends Equatable {
     this.lapNumber = 0,
     this.lap = TimerLap.work,
     this.activeTask,
+    this.activeLogPageId,
   });
 
   final TimerStatus status;
@@ -27,6 +28,7 @@ class TimerState extends Equatable {
   final int lapNumber;
   final TimerLap lap;
   final NotionTask? activeTask;
+  final String? activeLogPageId;
 
   TimerState copyWith({
     TimerStatus Function()? status,
@@ -35,6 +37,7 @@ class TimerState extends Equatable {
     int Function()? lapNumber,
     TimerLap Function()? lap,
     NotionTask? Function()? activeTask,
+    String? Function()? activeLogPageId,
   }) {
     return TimerState(
       status: status != null ? status() : this.status,
@@ -44,6 +47,8 @@ class TimerState extends Equatable {
       lapNumber: lapNumber != null ? lapNumber() : this.lapNumber,
       lap: lap != null ? lap() : this.lap,
       activeTask: activeTask != null ? activeTask() : this.activeTask,
+      activeLogPageId:
+          activeLogPageId != null ? activeLogPageId() : this.activeLogPageId,
     );
   }
 
@@ -55,5 +60,6 @@ class TimerState extends Equatable {
         lapNumber,
         lap,
         activeTask,
+        activeLogPageId,
       ];
 }

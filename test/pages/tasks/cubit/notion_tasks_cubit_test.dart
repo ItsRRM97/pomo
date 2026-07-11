@@ -19,8 +19,9 @@ void main() {
     );
 
     setUp(() async {
-      SharedPreferences.setMockInitialValues(
-          {'pomo_notion_api_key': 'secret_123'});
+      SharedPreferences.setMockInitialValues({
+        'pomo_notion_api_key': 'secret_123',
+      });
       await Prefs().init();
       Prefs.notionApiKey = 'secret_123';
       mockNotionService = MockNotionService();

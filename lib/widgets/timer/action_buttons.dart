@@ -178,14 +178,15 @@ class _ActionButtonsState extends State<ActionButtons>
                     foregroundColor:
                         Theme.of(context).colorScheme.onTertiaryContainer,
                   ),
-                  tooltip:
-                      'Sync to Notion (${state.duration.inMinutes - state.syncedMinutes}m available)',
+                  tooltip: 'Sync to Notion '
+                      '(${state.duration.inMinutes - state.syncedMinutes}m available)',
                   onPressed: state.duration.inMinutes - state.syncedMinutes < 1
                       ? () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'At least 1 unsynced minute must elapse to sync to Notion.',
+                                'At least 1 unsynced minute must elapse '
+                                'to sync to Notion.',
                               ),
                               duration: Duration(seconds: 3),
                             ),
@@ -213,7 +214,8 @@ class _ActionButtonsState extends State<ActionButtons>
                             messenger.showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Successfully synced ${minutesToSync}m for "$taskTitle"!',
+                                  'Successfully synced ${minutesToSync}m '
+                                  'for "$taskTitle"!',
                                 ),
                                 duration: const Duration(seconds: 3),
                               ),
@@ -222,9 +224,9 @@ class _ActionButtonsState extends State<ActionButtons>
                             messenger.showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'Failed to sync to Notion. Check API key or connection.',
+                                  'Failed to sync to Notion. Check API key '
+                                  'or connection.',
                                 ),
-                                duration: Duration(seconds: 4),
                               ),
                             );
                           }

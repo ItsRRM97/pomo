@@ -11,48 +11,56 @@ class NotionSyncService {
 
   static final NotionSyncService _instance = NotionSyncService._internal();
 
-  /// Synchronizes a completed or partial focus session to Notion if sync is enabled
-  /// and the duration is at least 1 minute.
-  Future<bool> syncSession({
+  /// Synchronizes a completed or partial focus session to Notion if sync is
+  /// enabled and the duration is at least 1 minute.
+  Future<({bool success, String? logPageId})> syncSession({
     required NotionTask? task,
     required Duration duration,
+    Duration? totalDuration,
+    String? existingLogPageId,
     DateTime? endedAt,
   }) async {
     if (task == null || task.id.isEmpty) {
       Logger().d('NotionSyncService: No active NotionTask assigned.');
-      return false;
+      return (success: false, logPageId: null);
     }
 
     if (!Prefs.enableNotionSync) {
       Logger().d('NotionSyncService: Notion sync disabled in Settings.');
-      return false;
+      return (success: false, logPageId: null);
     }
 
     final apiKey = Prefs.notionApiKey;
     if (!kIsWeb && apiKey.isEmpty) {
       Logger().w('NotionSyncService: Notion API Key is empty.');
-      return false;
+      return (success: false, logPageId: null);
     }
 
     final minutes = duration.inMinutes;
     if (minutes < 1) {
       Logger().i(
-          'NotionSyncService: Session duration ($minutes m) under 1 minute threshold. Not syncing.');
-      return false;
+        'NotionSyncService: Session duration ($minutes m) under threshold.',
+      );
+      return (success: false, logPageId: null);
     }
 
+    final totalMinutes = (totalDuration ?? duration).inMinutes;
     final timestamp = endedAt ?? DateTime.now();
     Logger().i(
-        'NotionSyncService: Syncing ${minutes}m session on "${task.title}" to Notion...');
+      'NotionSyncService: Syncing ${minutes}m increment '
+      '(${totalMinutes}m total) on "${task.title}" to Notion...',
+    );
 
     try {
-      final success = await NotionService().logSession(
+      final result = await NotionService().logSession(
         task: task,
         durationMinutes: minutes,
+        totalDurationMinutes: totalMinutes,
         endedAt: timestamp,
+        existingLogPageId: existingLogPageId,
       );
 
-      if (success) {
+      if (result.success) {
         // Update active task local state if it's the currently selected task
         final currentActive = Prefs.activeTask;
         if (currentActive != null && currentActive.id == task.id) {
@@ -68,11 +76,14 @@ class NotionSyncService {
         }
       }
 
-      return success;
+      return (success: result.success, logPageId: result.pageId);
     } catch (e, st) {
-      Logger()
-          .e('NotionSyncService: Sync failed ($e)', error: e, stackTrace: st);
-      return false;
+      Logger().e(
+        'NotionSyncService: Sync failed ($e)',
+        error: e,
+        stackTrace: st,
+      );
+      return (success: false, logPageId: null);
     }
   }
 }
