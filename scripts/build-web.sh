@@ -55,16 +55,10 @@ fi
 flutter pub get
 flutter gen-l10n
 
-# Inject FOCUS_ACCESS_TOKEN at compile time for new browser sessions.
-# The Vercel proxy maps that shared token to process.env.NOTION_TOKEN, so the
-# real Notion secret never needs to ship in the Flutter web bundle.
-# Fall back to NOTION_TOKEN dart-define only when no access token is configured.
+# Do not bake secrets into the Flutter web bundle.
+# Browser sessions prompt for FOCUS_ACCESS_TOKEN; the Vercel proxy validates it
+# against process.env.FOCUS_ACCESS_TOKEN and swaps in NOTION_TOKEN server-side.
 DART_DEFINE_FLAGS=()
-if [ -n "${FOCUS_ACCESS_TOKEN:-}" ]; then
-  DART_DEFINE_FLAGS+=(--dart-define="FOCUS_ACCESS_TOKEN=${FOCUS_ACCESS_TOKEN}")
-elif [ -n "${NOTION_TOKEN:-}" ]; then
-  DART_DEFINE_FLAGS+=(--dart-define="NOTION_TOKEN=${NOTION_TOKEN}")
-fi
 
 flutter build web \
   --release \

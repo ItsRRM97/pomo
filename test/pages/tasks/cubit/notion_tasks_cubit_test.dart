@@ -42,7 +42,7 @@ void main() {
       expect: () => [
         const NotionTasksState(
           status: NotionTasksStatus.failure,
-          errorMessage: 'Please configure your Notion API token in Settings.',
+          errorMessage: 'Please enter the focus access code to browse tasks.',
         ),
       ],
     );

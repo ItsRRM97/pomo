@@ -534,13 +534,13 @@ abstract class S {
   /// No description provided for @notionApiKey.
   ///
   /// In en, this message translates to:
-  /// **'Notion API Token'**
+  /// **'Access code / Notion token'**
   String get notionApiKey;
 
   /// No description provided for @notionApiKeyHint.
   ///
   /// In en, this message translates to:
-  /// **'secret_...'**
+  /// **'rawshn-is-cool or secret_...'**
   String get notionApiKeyHint;
 
   /// No description provided for @notionProxyUrl.

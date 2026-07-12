@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -81,8 +80,8 @@ class NotionService {
     bool dueThisWeek = false,
   }) async {
     final apiKey = Prefs.notionApiKey;
-    if (!kIsWeb && apiKey.isEmpty) {
-      throw Exception('Notion API key not configured in Settings.');
+    if (apiKey.isEmpty) {
+      throw Exception('Focus access code not configured.');
     }
 
     final dbId = Prefs.notionDatabaseId;
@@ -167,7 +166,7 @@ class NotionService {
   /// Checks if a session with [externalId] is already logged in `Time Logs`.
   Future<bool> checkIdempotency(String externalId) async {
     final apiKey = Prefs.notionApiKey;
-    if (!kIsWeb && apiKey.isEmpty) return false;
+    if (apiKey.isEmpty) return false;
 
     final url = '${_getBaseUrl()}databases/$timeLogsDbId/query';
     final payload = {
@@ -205,8 +204,8 @@ class NotionService {
     int? totalDurationMinutes,
   }) async {
     final apiKey = Prefs.notionApiKey;
-    if (!kIsWeb && apiKey.isEmpty) {
-      throw Exception('Notion API key not set.');
+    if (apiKey.isEmpty) {
+      throw Exception('Focus access code not set.');
     }
 
     final totalDuration = totalDurationMinutes ?? durationMinutes;
@@ -374,7 +373,7 @@ class NotionService {
     required String newStatus,
   }) async {
     final apiKey = Prefs.notionApiKey;
-    if (!kIsWeb && apiKey.isEmpty) return false;
+    if (apiKey.isEmpty) return false;
 
     final url = '${_getBaseUrl()}pages/$taskId';
     final payload = {

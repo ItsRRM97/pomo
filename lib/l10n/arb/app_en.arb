@@ -150,7 +150,7 @@
     "notionIntegration": "Notion Integration",
     "enableNotionSync": "Enable Notion Sync",
     "enableNotionSyncDescription": "Sync completed Pomodoro sessions and partial time logs back to your PARA Dashboard Notion database",
-    "notionApiKey": "Notion API Token",
+    "notionApiKey": "Access code / Notion token",
     "notionApiKeyHint": "rawshn-is-cool or secret_...",
     "notionProxyUrl": "Notion Proxy URL (Optional)",
     "notionProxyUrlHint": "e.g. /api/notion/ or proxy server",

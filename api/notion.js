@@ -24,10 +24,11 @@ export default async function handler(req, res) {
 
     let upstreamToken = '';
     if (!bearer) {
-      // Web clients with no local key rely on the server secret.
-      upstreamToken = notionToken;
+      return res.status(401).json({
+        error: 'Access code required. Enter the focus access code to continue.',
+      });
     } else if (accessToken && bearer === accessToken) {
-      // Shared focus-page access token for new browser sessions.
+      // Shared focus-page access token for browser sessions.
       upstreamToken = notionToken;
     } else if (bearer.startsWith('secret_') || bearer.startsWith('ntn_')) {
       // Allow a real Notion integration token from Settings.

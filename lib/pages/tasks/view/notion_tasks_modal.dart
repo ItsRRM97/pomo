@@ -3,12 +3,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/pages/tasks/cubit/notion_tasks_cubit.dart';
+import 'package:pomo/pages/tasks/view/access_code_dialog.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
+import 'package:pomo/singletons/prefs.dart';
 
 class NotionTasksModal extends StatelessWidget {
   const NotionTasksModal({super.key});
 
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context) async {
+    if (Prefs.notionApiKey.isEmpty) {
+      final unlocked = await AccessCodeDialog.show(context);
+      if (!unlocked || !context.mounted) return;
+    }
+
     return showDialog<void>(
       context: context,
       builder: (context) => BlocProvider<NotionTasksCubit>(

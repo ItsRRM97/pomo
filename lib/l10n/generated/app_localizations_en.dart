@@ -247,7 +247,7 @@ class SEn extends S {
       'Sync completed Pomodoro sessions and partial time logs back to your PARA Dashboard Notion database';
 
   @override
-  String get notionApiKey => 'Notion API Token';
+  String get notionApiKey => 'Access code / Notion token';
 
   @override
   String get notionApiKeyHint => 'rawshn-is-cool or secret_...';

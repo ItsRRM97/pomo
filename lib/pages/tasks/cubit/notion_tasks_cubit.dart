@@ -1,7 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/services/notion_service.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -16,12 +15,12 @@ class NotionTasksCubit extends Cubit<NotionTasksState> {
   final NotionService _notionService;
 
   Future<void> fetchTasks() async {
-    if (!kIsWeb && Prefs.notionApiKey.isEmpty) {
+    if (Prefs.notionApiKey.isEmpty) {
       emit(
         state.copyWith(
           status: () => NotionTasksStatus.failure,
           errorMessage: () =>
-              'Please configure your Notion API token in Settings.',
+              'Please enter the focus access code to browse tasks.',
         ),
       );
       return;
