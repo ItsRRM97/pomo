@@ -55,11 +55,14 @@ fi
 flutter pub get
 flutter gen-l10n
 
-# Inject NOTION_TOKEN at compile time if the env var is set.
-# On Vercel the server-side proxy uses process.env.NOTION_TOKEN directly,
-# so the dart-define is only needed for local dev / macOS / Android builds.
+# Inject FOCUS_ACCESS_TOKEN at compile time for new browser sessions.
+# The Vercel proxy maps that shared token to process.env.NOTION_TOKEN, so the
+# real Notion secret never needs to ship in the Flutter web bundle.
+# Fall back to NOTION_TOKEN dart-define only when no access token is configured.
 DART_DEFINE_FLAGS=()
-if [ -n "${NOTION_TOKEN:-}" ]; then
+if [ -n "${FOCUS_ACCESS_TOKEN:-}" ]; then
+  DART_DEFINE_FLAGS+=(--dart-define="FOCUS_ACCESS_TOKEN=${FOCUS_ACCESS_TOKEN}")
+elif [ -n "${NOTION_TOKEN:-}" ]; then
   DART_DEFINE_FLAGS+=(--dart-define="NOTION_TOKEN=${NOTION_TOKEN}")
 fi
 

@@ -8,9 +8,14 @@ import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Compile-time constant injected via --dart-define=NOTION_TOKEN=<value>.
-// Falls back to empty string when not provided (e.g. production web builds
-// where the server-side Vercel env var is used instead).
+// Shared focus-page access token for new browser sessions.
+// Injected via --dart-define=FOCUS_ACCESS_TOKEN=<value>. The Vercel proxy
+// swaps this for the real NOTION_TOKEN server-side.
+const String _kFocusAccessTokenEnv =
+    String.fromEnvironment('FOCUS_ACCESS_TOKEN');
+
+// Legacy compile-time Notion integration token.
+// Prefer FOCUS_ACCESS_TOKEN for web builds so the real secret stays server-side.
 const String _kNotionTokenEnv = String.fromEnvironment('NOTION_TOKEN');
 
 enum TimerFont {
@@ -155,7 +160,15 @@ class Prefs {
     if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
       return '';
     }
-    // Auto-seed from compile-time dart-define on first run.
+    // Prefer the shared focus access token for new web sessions.
+    if (_kFocusAccessTokenEnv.isNotEmpty) {
+      Prefs().sharedPreferences.setString(
+            _notionApiKeyVarName,
+            _kFocusAccessTokenEnv,
+          );
+      return _kFocusAccessTokenEnv;
+    }
+    // Auto-seed from compile-time Notion token (desktop / legacy web builds).
     if (_kNotionTokenEnv.isNotEmpty) {
       Prefs().sharedPreferences.setString(
             _notionApiKeyVarName,
@@ -165,7 +178,9 @@ class Prefs {
     }
     // Auto-seed from system environment variables on desktop / command-line.
     if (!kIsWeb) {
-      final envToken = Platform.environment['NOTION_TOKEN'] ?? '';
+      final envToken = Platform.environment['FOCUS_ACCESS_TOKEN'] ??
+          Platform.environment['NOTION_TOKEN'] ??
+          '';
       if (envToken.isNotEmpty) {
         Prefs().sharedPreferences.setString(
               _notionApiKeyVarName,
