@@ -540,7 +540,7 @@ abstract class S {
   /// No description provided for @notionApiKeyHint.
   ///
   /// In en, this message translates to:
-  /// **'rawshn-is-cool or secret_...'**
+  /// **'access code or secret_...'**
   String get notionApiKeyHint;
 
   /// No description provided for @notionProxyUrl.

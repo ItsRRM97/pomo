@@ -250,7 +250,7 @@ class SEn extends S {
   String get notionApiKey => 'Access code / Notion token';
 
   @override
-  String get notionApiKeyHint => 'rawshn-is-cool or secret_...';
+  String get notionApiKeyHint => 'access code or secret_...';
 
   @override
   String get notionProxyUrl => 'Notion Proxy URL (Optional)';
