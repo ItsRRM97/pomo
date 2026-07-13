@@ -219,18 +219,36 @@
         return permission === 'granted';
       },
 
+      _sendViaServiceWorker: function(title, body) {
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(function(reg) {
+            reg.showNotification(title, {
+              body: body,
+              icon: '/focus/icons/Icon-192.png',
+              badge: '/focus/icons/Icon-192.png',
+              tag: 'focus-timer',
+              renotify: true
+            });
+          }).catch(function(e) {
+            console.warn('SW notification failed:', e);
+          });
+        }
+      },
+
       showNotification: function(title, body) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        try {
-          new Notification(title, { body: body, icon: 'favicon.png' });
-        } catch (e) {
-          console.warn("Failed to show local notification, trying service worker:", e);
-          if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-            navigator.serviceWorker.ready.then(reg => {
-              reg.showNotification(title, { body: body, icon: 'favicon.png' });
-            });
-          }
+        // Chrome on macOS/mobile silently drops new Notification() when the
+        // page is not focused. Always use the service worker path instead.
+        this._sendViaServiceWorker(title, body);
+      },
+
+      // Call from the browser console to fire a test notification immediately.
+      testNotification: function() {
+        if (Notification.permission !== 'granted') {
+          console.warn('Notification permission not granted. Call pwaManager.requestNotificationPermission() first.');
+          return;
         }
+        this._sendViaServiceWorker('Focus - Test Notification', 'Notifications are working!');
       },
 
       isDocumentPipSupported: function() {

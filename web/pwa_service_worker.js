@@ -85,3 +85,17 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes('/focus') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow('/focus/');
+    })
+  );
+});
