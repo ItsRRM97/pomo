@@ -632,6 +632,48 @@ abstract class S {
   /// In en, this message translates to:
   /// **'Quiet hours end'**
   String get quietHoursEnd;
+
+  /// No description provided for @logPastTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Log past time'**
+  String get logPastTime;
+
+  /// No description provided for @logPastTimeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log Missed Time'**
+  String get logPastTimeTitle;
+
+  /// No description provided for @hoursLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hours'**
+  String get hoursLabel;
+
+  /// No description provided for @minutesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get minutesLabel;
+
+  /// No description provided for @quickAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick Add:'**
+  String get quickAdd;
+
+  /// No description provided for @dateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get dateLabel;
+
+  /// No description provided for @timeLoggedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully logged {duration} to {task}'**
+  String timeLoggedSuccess(String duration, String task);
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

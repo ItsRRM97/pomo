@@ -166,5 +166,22 @@
     "enableTimeTracker": "Enable Time Tracker",
     "enableTimeTrackerDescription": "Automatically track elapsed time and send webhooks or Notion logs",
     "quietHoursStart": "Quiet hours start",
-    "quietHoursEnd": "Quiet hours end"
+    "quietHoursEnd": "Quiet hours end",
+    "logPastTime": "Log past time",
+    "logPastTimeTitle": "Log Missed Time",
+    "hoursLabel": "Hours",
+    "minutesLabel": "Minutes",
+    "quickAdd": "Quick Add:",
+    "dateLabel": "Date",
+    "timeLoggedSuccess": "Successfully logged {duration} to {task}",
+    "@timeLoggedSuccess": {
+        "placeholders": {
+            "duration": {
+                "type": "String"
+            },
+            "task": {
+                "type": "String"
+            }
+        }
+    }
 }

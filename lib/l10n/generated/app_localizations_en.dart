@@ -298,4 +298,27 @@ class SEn extends S {
 
   @override
   String get quietHoursEnd => 'Quiet hours end';
+
+  @override
+  String get logPastTime => 'Log past time';
+
+  @override
+  String get logPastTimeTitle => 'Log Missed Time';
+
+  @override
+  String get hoursLabel => 'Hours';
+
+  @override
+  String get minutesLabel => 'Minutes';
+
+  @override
+  String get quickAdd => 'Quick Add:';
+
+  @override
+  String get dateLabel => 'Date';
+
+  @override
+  String timeLoggedSuccess(String duration, String task) {
+    return 'Successfully logged $duration to $task';
+  }
 }

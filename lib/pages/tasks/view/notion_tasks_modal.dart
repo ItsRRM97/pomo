@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/pages/tasks/cubit/notion_tasks_cubit.dart';
 import 'package:pomo/pages/tasks/view/access_code_dialog.dart';
+import 'package:pomo/pages/tasks/view/manual_log_dialog.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -238,6 +240,7 @@ class _TaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
     final activeTask = context.select((TimerCubit c) => c.state.activeTask);
     final isSelected = activeTask?.id == task.id;
@@ -330,6 +333,19 @@ class _TaskTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (Prefs.enableTimeTracker) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: l10n.logPastTime,
+                  icon: const Icon(Icons.more_time),
+                  onPressed: () async {
+                    final logged = await ManualLogDialog.show(context, task);
+                    if ((logged ?? false) && context.mounted) {
+                      unawaited(context.read<NotionTasksCubit>().fetchTasks());
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),
