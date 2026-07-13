@@ -29,6 +29,9 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   TrackerTag? _selectedTag;
   final TextEditingController _notesController = TextEditingController();
 
+  late int _startHour;
+  late int _endHour;
+
   List<NotionTask> _projects = [];
   NotionTask? _selectedProject;
   bool _isLoadingProjects = true;
@@ -37,6 +40,8 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   @override
   void initState() {
     super.initState();
+    _startHour = widget.hour;
+    _endHour = (widget.hour + 1).clamp(1, 24);
     _tags = Prefs.trackerTags;
     if (widget.existingLog != null) {
       final existingId = widget.existingLog!.tagId;
@@ -49,6 +54,37 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       _selectedTag = _tags.first;
     }
     _fetchProjects();
+  }
+
+  Future<void> _deleteTag(TrackerTag tag) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Tag?'),
+        content: Text(
+          'Are you sure you want to remove "${tag.icon} ${tag.name}" from your tags list?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && mounted) {
+      await Prefs.deleteTrackerTag(tag.id);
+      setState(() {
+        _tags = Prefs.trackerTags;
+        if (_selectedTag?.id == tag.id) {
+          _selectedTag = _tags.isNotEmpty ? _tags.first : null;
+        }
+      });
+    }
   }
 
   Future<void> _fetchProjects() async {
@@ -135,7 +171,6 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     final m = widget.selectedDate.month.toString().padLeft(2, '0');
     final d = widget.selectedDate.day.toString().padLeft(2, '0');
     final dateStr = '$y-$m-$d';
-    final logId = widget.existingLog?.id ?? 'hlog_${dateStr}_${widget.hour}';
 
     final tag = _selectedTag ??
         const TrackerTag(
@@ -147,18 +182,20 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
 
     var notionPageId = widget.existingLog?.notionPageId;
 
-    // Optional background Notion sync if a project or task is selected
+    final hoursCount = (_endHour - _startHour).clamp(1, 24);
+
     if (_selectedProject != null) {
       try {
         final result = await NotionService().logSession(
           task: _selectedProject!,
-          durationMinutes: 60,
-          totalDurationMinutes: 60,
+          durationMinutes: hoursCount * 60,
+          totalDurationMinutes: hoursCount * 60,
           endedAt: DateTime(
             widget.selectedDate.year,
             widget.selectedDate.month,
             widget.selectedDate.day,
-            widget.hour,
+            _endHour == 24 ? 23 : _endHour,
+            _endHour == 24 ? 59 : 0,
           ),
           existingLogPageId: notionPageId,
         );
@@ -170,26 +207,36 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       }
     }
 
-    final newLog = HourlyLog(
-      id: logId,
-      dateStr: dateStr,
-      hour: widget.hour,
-      tagId: tag.id,
-      tagName: tag.name,
-      tagIcon: tag.icon,
-      tagColorHex: tag.colorHex,
-      projectId: _selectedProject?.id,
-      projectTitle: _selectedProject?.title,
-      notes: _notesController.text.trim(),
-      notionPageId: notionPageId,
-      loggedAt: DateTime.now(),
-    );
+    HourlyLog? firstOrExisting;
+    for (var h = _startHour; h < _endHour; h++) {
+      final logId = (h == widget.hour && widget.existingLog != null)
+          ? widget.existingLog!.id
+          : 'hlog_${dateStr}_$h';
 
-    await Prefs.saveHourlyLog(newLog);
+      final newLog = HourlyLog(
+        id: logId,
+        dateStr: dateStr,
+        hour: h,
+        tagId: tag.id,
+        tagName: tag.name,
+        tagIcon: tag.icon,
+        tagColorHex: tag.colorHex,
+        projectId: _selectedProject?.id,
+        projectTitle: _selectedProject?.title,
+        notes: _notesController.text.trim(),
+        notionPageId: notionPageId,
+        loggedAt: DateTime.now(),
+      );
+
+      await Prefs.saveHourlyLog(newLog);
+      if (h == _startHour) {
+        firstOrExisting = newLog;
+      }
+    }
 
     if (!mounted) return;
     setState(() => _isSaving = false);
-    Navigator.of(context).pop(newLog);
+    Navigator.of(context).pop(firstOrExisting);
   }
 
   @override
@@ -202,6 +249,9 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final rangeText =
+        '${_startHour.toString().padLeft(2, '0')}:00 - ${_endHour.toString().padLeft(2, '0')}:00';
+
     return AlertDialog(
       title: Row(
         children: [
@@ -209,7 +259,9 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Log Hour: ${_formatHourWindow(widget.hour)}',
+              (_endHour - _startHour) > 1
+                  ? 'Log Time Range ($rangeText)'
+                  : 'Log Hour: ${_formatHourWindow(_startHour)}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
@@ -220,6 +272,111 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.date_range,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Time Range (Bulk Logging)',
+                        style: theme.textTheme.labelLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _startHour,
+                          decoration: const InputDecoration(
+                            labelText: 'Start Hour',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
+                          items: List.generate(24, (i) => i).map((h) {
+                            return DropdownMenuItem(
+                              value: h,
+                              child: Text('${h.toString().padLeft(2, '0')}:00'),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _startHour = val;
+                                if (_endHour <= _startHour) {
+                                  _endHour = (_startHour + 1).clamp(1, 24);
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('to'),
+                      ),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _endHour,
+                          decoration: const InputDecoration(
+                            labelText: 'End Hour',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
+                          items: List.generate(24, (i) => i + 1).map((h) {
+                            return DropdownMenuItem(
+                              value: h,
+                              child: Text('${h.toString().padLeft(2, '0')}:00'),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _endHour = val;
+                                if (_startHour >= _endHour) {
+                                  _startHour = (_endHour - 1).clamp(0, 23);
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Logging ${_endHour - _startHour} hour block${(_endHour - _startHour) > 1 ? 's' : ''} ($rangeText)',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -245,45 +402,73 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
               children: _tags.map((tag) {
                 final isSelected = _selectedTag?.id == tag.id;
                 final badgeColor = _parseHexColor(tag.colorHex);
-                return InkWell(
-                  onTap: () => setState(() => _selectedTag = tag),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? badgeColor.withValues(alpha: 0.2)
-                          : theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(20),
-                      border: isSelected
-                          ? Border.all(color: badgeColor, width: 2)
-                          : Border.all(
-                              color: theme.colorScheme.outlineVariant,
-                            ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(tag.icon, style: const TextStyle(fontSize: 16)),
-                        const SizedBox(width: 6),
-                        Text(
-                          tag.name,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isSelected
-                                ? badgeColor
-                                : theme.colorScheme.onSurface,
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? badgeColor.withValues(alpha: 0.2)
+                        : theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(20),
+                    border: isSelected
+                        ? Border.all(color: badgeColor, width: 2)
+                        : Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () => setState(() => _selectedTag = tag),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                tag.icon,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                tag.name,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? badgeColor
+                                      : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      InkWell(
+                        onTap: () => _deleteTag(tag),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            right: 8,
+                            top: 6,
+                            bottom: 6,
+                          ),
+                          child: Icon(
+                            Icons.close,
+                            size: 14,
+                            color: isSelected
+                                ? badgeColor
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }).toList(),
@@ -361,7 +546,13 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                   ),
                 )
               : const Icon(Icons.check, size: 18),
-          label: Text(_isSaving ? 'Saving...' : 'Save 1h Block'),
+          label: Text(
+            _isSaving
+                ? 'Saving...'
+                : (_endHour - _startHour) > 1
+                    ? 'Save ${_endHour - _startHour}h Range'
+                    : 'Save 1h Block',
+          ),
         ),
       ],
     );

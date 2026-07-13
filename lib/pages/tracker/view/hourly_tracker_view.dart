@@ -337,10 +337,14 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
         // Date Picker Bar for 24-Hour Grid
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.view_timeline_outlined, size: 20),
                   const SizedBox(width: 8),
@@ -351,32 +355,47 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                   ),
                 ],
               ),
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 4,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left, size: 20),
-                    onPressed: () => setState(
-                      () => _selectedDate =
-                          _selectedDate.subtract(const Duration(days: 1)),
+                  TextButton.icon(
+                    onPressed: () => _openLogDialog(0, null),
+                    icon: const Icon(Icons.date_range, size: 16),
+                    label: const Text('Bulk Log Range'),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
-                    tooltip: 'Previous Day',
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    onPressed: _pickDate,
-                    tooltip: 'Pick Date',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right, size: 20),
-                    onPressed: _selectedDate.day == DateTime.now().day &&
-                            _selectedDate.month == DateTime.now().month &&
-                            _selectedDate.year == DateTime.now().year
-                        ? null
-                        : () => setState(
-                              () => _selectedDate =
-                                  _selectedDate.add(const Duration(days: 1)),
-                            ),
-                    tooltip: 'Next Day',
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, size: 20),
+                        onPressed: () => setState(
+                          () => _selectedDate =
+                              _selectedDate.subtract(const Duration(days: 1)),
+                        ),
+                        tooltip: 'Previous Day',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.calendar_today, size: 18),
+                        onPressed: _pickDate,
+                        tooltip: 'Pick Date',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, size: 20),
+                        onPressed: _selectedDate.day == DateTime.now().day &&
+                                _selectedDate.month == DateTime.now().month &&
+                                _selectedDate.year == DateTime.now().year
+                            ? null
+                            : () => setState(
+                                  () => _selectedDate = _selectedDate
+                                      .add(const Duration(days: 1)),
+                                ),
+                        tooltip: 'Next Day',
+                      ),
+                    ],
                   ),
                 ],
               ),

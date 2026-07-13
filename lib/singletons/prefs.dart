@@ -690,6 +690,12 @@ class Prefs {
     trackerTags = current;
   }
 
+  static Future<void> deleteTrackerTag(String tagId) async {
+    final current = List<TrackerTag>.from(trackerTags);
+    current.removeWhere((e) => e.id == tagId);
+    trackerTags = current;
+  }
+
   static List<HourlyLog> get hourlyLogs {
     final rawList =
         Prefs().sharedPreferences.getStringList(_hourlyLogsVarName) ?? [];

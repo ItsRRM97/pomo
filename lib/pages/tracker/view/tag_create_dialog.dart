@@ -12,41 +12,52 @@ class TagCreateDialog extends StatefulWidget {
 
 class _TagCreateDialogState extends State<TagCreateDialog> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _customIconController = TextEditingController();
   String _selectedIcon = '💼';
   String _selectedColorHex = '#4285F4';
 
   final List<String> _emojiOptions = [
-    '💻',
-    '📞',
-    '🧠',
-    '📚',
-    '🏋️',
-    '📝',
-    '😴',
-    '💼',
-    '🎨',
-    '🛒',
-    '🍳',
-    '🚶',
-    '✈️',
-    '🎮',
-    '✍️',
-    '📈',
-    '🧹',
-    '🧘',
+    // Work & Focus
+    '💻', '📞', '🧠', '📚', '💼', '📝', '✍️', '📈', '📊', '🧑‍💻', '🎯', '🗂️',
+    '📅', '💡', '🔍', '📋',
+    // Health, Sleep & Fitness
+    '😴', '🛌', '🏋️', '🧘', '🏃', '🚶', '🚴', '🏊', '⚽', '🎾', '🩺', '💊',
+    '🥗', '🥦', '🧘‍♂️', '💪',
+    // Home, Daily & Errands
+    '🧹', '🍳', '🛒', '📦', '🧺', '🪴', '🔧', '🔨', '🏠', '🛁', '🚗', '🚇',
+    '✈️', '🛎️', '💡', '💵',
+    // Food & Drink
+    '☕', '🫖', '🍽️', '🍔', '🍕', '🍱', '🥪', '🍰', '🍎', '🍓', '🥑', '🍷',
+    '🍺', '🥤', '🍜', '☕',
+    // Creative & Leisure
+    '🎨', '🎮', '🎧', '🎸', '🎹', '🎬', '📺', '📷', '🎲', '🧩', '🎤', '🎪',
+    '📖', '🧶', '🪴', '🏝️',
+    // Status & Symbols
+    '⭐', '🔥', '⚡', '🌟', '⚠️', '✅', '🚀', '🔮', '🎉', '🏆', '💎', '⌛', '⏰',
+    '📌', '🛠️', '🧭',
   ];
 
   final List<String> _colorOptions = [
-    '#4285F4', // Blue
-    '#34A853', // Green
-    '#FBBC05', // Yellow
-    '#EA4335', // Red
-    '#AB47BC', // Purple
-    '#00ACC1', // Cyan
-    '#FF7043', // Deep Orange
-    '#8D6E63', // Brown
-    '#78909C', // Blue Grey
-    '#E91E63', // Pink
+    '#4285F4',
+    '#34A853',
+    '#FBBC05',
+    '#EA4335',
+    '#AB47BC',
+    '#00ACC1',
+    '#FF7043',
+    '#8D6E63',
+    '#78909C',
+    '#E91E63',
+    '#5C6BC0',
+    '#26A69A',
+    '#D4E157',
+    '#FFA726',
+    '#EC407A',
+    '#7E57C2',
+    '#29B6F6',
+    '#66BB6A',
+    '#FFEE58',
+    '#FF5722',
   ];
 
   Color _parseHexColor(String hex) {
@@ -67,12 +78,16 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
       return;
     }
 
+    final iconToUse = _customIconController.text.trim().isNotEmpty
+        ? _customIconController.text.trim().characters.first
+        : _selectedIcon;
+
     final cleanName = name.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '_');
     final id = 'tag_custom_${DateTime.now().millisecondsSinceEpoch}_$cleanName';
     final newTag = TrackerTag(
       id: id,
       name: name,
-      icon: _selectedIcon,
+      icon: iconToUse,
       colorHex: _selectedColorHex,
     );
 
@@ -84,6 +99,7 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _customIconController.dispose();
     super.dispose();
   }
 
@@ -113,36 +129,65 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
               style: theme.textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _emojiOptions.map((emoji) {
-                final isSelected = _selectedIcon == emoji;
-                return InkWell(
-                  onTap: () => setState(() => _selectedIcon = emoji),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? theme.colorScheme.primaryContainer
-                          : theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.4),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 180),
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(8),
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _emojiOptions.map((emoji) {
+                    final isSelected = _selectedIcon == emoji &&
+                        _customIconController.text.isEmpty;
+                    return InkWell(
+                      onTap: () => setState(() {
+                        _selectedIcon = emoji;
+                        _customIconController.clear();
+                      }),
                       borderRadius: BorderRadius.circular(8),
-                      border: isSelected
-                          ? Border.all(
-                              color: theme.colorScheme.primary,
-                              width: 2,
-                            )
-                          : null,
-                    ),
-                    child: Text(
-                      emoji,
-                      style: const TextStyle(fontSize: 22),
-                    ),
-                  ),
-                );
-              }).toList(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? theme.colorScheme.primaryContainer
+                              : theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(8),
+                          border: isSelected
+                              ? Border.all(
+                                  color: theme.colorScheme.primary,
+                                  width: 2,
+                                )
+                              : null,
+                        ),
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _customIconController,
+              decoration: const InputDecoration(
+                labelText: 'Or enter a custom emoji',
+                hintText: 'Type or paste any single emoji (e.g. 🛸, 🤿, 🧪)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              onChanged: (val) {
+                if (val.isNotEmpty) {
+                  setState(() {});
+                }
+              },
             ),
             const SizedBox(height: 16),
             Text(
