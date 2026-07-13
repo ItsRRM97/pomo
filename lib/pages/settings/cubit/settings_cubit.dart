@@ -45,6 +45,9 @@ class SettingsCubit extends Cubit<SettingsState> {
         notionApiKey: Prefs.notionApiKey,
         enableNotionSync: Prefs.enableNotionSync,
         notionProxyUrl: Prefs.notionProxyUrl,
+        enableTimeTracker: Prefs.enableTimeTracker,
+        quietHoursStart: Prefs.quietHoursStart,
+        quietHoursEnd: Prefs.quietHoursEnd,
       ),
     );
   }
@@ -222,5 +225,21 @@ class SettingsCubit extends Cubit<SettingsState> {
   void setNotionProxyUrl(String value) {
     Prefs.notionProxyUrl = value;
     emit(state.copyWith(notionProxyUrl: () => value));
+  }
+
+  // ignore: avoid_positional_boolean_parameters
+  void setEnableTimeTracker(bool value) {
+    Prefs.enableTimeTracker = value;
+    emit(state.copyWith(enableTimeTracker: () => value));
+  }
+
+  void setQuietHoursStart(String value) {
+    Prefs.quietHoursStart = value;
+    emit(state.copyWith(quietHoursStart: () => value));
+  }
+
+  void setQuietHoursEnd(String value) {
+    Prefs.quietHoursEnd = value;
+    emit(state.copyWith(quietHoursEnd: () => value));
   }
 }

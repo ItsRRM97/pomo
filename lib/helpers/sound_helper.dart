@@ -99,4 +99,38 @@ class SoundHelper {
     await player.stop();
     await player.play(resolveSource(storedValue));
   }
+
+  static bool isQuietHours({
+    required String start,
+    required String end,
+    DateTime? now,
+  }) {
+    final startParts = start.split(':');
+    final endParts = end.split(':');
+    if (startParts.length != 2 || endParts.length != 2) return false;
+
+    final startHour = int.tryParse(startParts[0]);
+    final startMinute = int.tryParse(startParts[1]);
+    final endHour = int.tryParse(endParts[0]);
+    final endMinute = int.tryParse(endParts[1]);
+    if (startHour == null ||
+        startMinute == null ||
+        endHour == null ||
+        endMinute == null) {
+      return false;
+    }
+
+    final startMin = startHour * 60 + startMinute;
+    final endMin = endHour * 60 + endMinute;
+    if (startMin == endMin) return false;
+
+    final currentTime = now ?? DateTime.now();
+    final currentMin = currentTime.hour * 60 + currentTime.minute;
+
+    if (startMin < endMin) {
+      return currentMin >= startMin && currentMin < endMin;
+    } else {
+      return currentMin >= startMin || currentMin < endMin;
+    }
+  }
 }

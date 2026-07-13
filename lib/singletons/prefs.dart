@@ -142,6 +142,10 @@ class Prefs {
   static const String _activeTaskJsonVarName = 'pomo_active_task_json';
   static const String _syncedMinutesVarName = 'pomo_synced_minutes';
   static const String _activeLogPageIdVarName = 'pomo_active_log_page_id';
+  static const String _pendingTimeLogsVarName = 'pomo_pending_time_logs';
+  static const String _enableTimeTrackerVarName = 'pomo_enable_time_tracker';
+  static const String _quietHoursStartVarName = 'pomo_quiet_hours_start';
+  static const String _quietHoursEndVarName = 'pomo_quiet_hours_end';
 
   //* Getters
 
@@ -187,6 +191,20 @@ class Prefs {
 
   static String get notionProxyUrl {
     return Prefs().sharedPreferences.getString(_notionProxyUrlVarName) ?? '';
+  }
+
+  static bool get enableTimeTracker {
+    return Prefs().sharedPreferences.getBool(_enableTimeTrackerVarName) ?? true;
+  }
+
+  static String get quietHoursStart {
+    return Prefs().sharedPreferences.getString(_quietHoursStartVarName) ??
+        '23:00';
+  }
+
+  static String get quietHoursEnd {
+    return Prefs().sharedPreferences.getString(_quietHoursEndVarName) ??
+        '07:00';
   }
 
   static String get notionDatabaseId {
@@ -421,6 +439,11 @@ class Prefs {
     return Prefs().sharedPreferences.getString(_activeLogPageIdVarName);
   }
 
+  static List<String> get pendingTimeLogs {
+    return Prefs().sharedPreferences.getStringList(_pendingTimeLogsVarName) ??
+        <String>[];
+  }
+
   //* Setters
 
   static set themeMode(ThemeMode value) {
@@ -588,6 +611,18 @@ class Prefs {
     Prefs().sharedPreferences.setBool(_enableNotionSyncVarName, value);
   }
 
+  static set enableTimeTracker(bool value) {
+    Prefs().sharedPreferences.setBool(_enableTimeTrackerVarName, value);
+  }
+
+  static set quietHoursStart(String value) {
+    Prefs().sharedPreferences.setString(_quietHoursStartVarName, value);
+  }
+
+  static set quietHoursEnd(String value) {
+    Prefs().sharedPreferences.setString(_quietHoursEndVarName, value);
+  }
+
   static set notionProxyUrl(String value) {
     Prefs().sharedPreferences.setString(_notionProxyUrlVarName, value);
   }
@@ -618,6 +653,10 @@ class Prefs {
     } else {
       Prefs().sharedPreferences.setString(_activeLogPageIdVarName, value);
     }
+  }
+
+  static set pendingTimeLogs(List<String> value) {
+    Prefs().sharedPreferences.setStringList(_pendingTimeLogsVarName, value);
   }
 
   static void resetTimer() {

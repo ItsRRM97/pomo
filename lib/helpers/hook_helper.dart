@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:logger/web.dart';
+import 'package:pomo/singletons/prefs.dart';
 
 enum TriggerMethod {
   get,
@@ -14,6 +15,9 @@ mixin HookHelper {
     TriggerMethod? method = TriggerMethod.post,
     dynamic data,
   }) async {
+    if (!Prefs.enableTimeTracker) {
+      return;
+    }
     if (urls == null || urls.isEmpty) {
       return;
     }

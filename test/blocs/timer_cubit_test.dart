@@ -14,6 +14,14 @@ void main() {
       await Prefs().init();
     });
 
+    tearDown(() {
+      Prefs.enableTimeTracker = false;
+      Prefs.enableNotionSync = false;
+      Prefs.notionApiKey = '';
+      Prefs.notionProxyUrl = '';
+      Prefs.pendingTimeLogs = [];
+    });
+
     test('initial state has stopped status, zero duration, and work lap', () {
       final cubit = TimerCubit();
       expect(cubit.state, const TimerState());
@@ -137,6 +145,48 @@ void main() {
           lapNumber: 1,
         ),
       ],
+    );
+
+    test('checkAndPlaySound respects enableSound and quiet hours', () {
+      final cubit = TimerCubit();
+      const disabledSound = SettingsState(enableSound: false);
+      expect(
+        cubit.checkAndPlaySound(settingsState: disabledSound),
+        isFalse,
+      );
+
+      const quietState = SettingsState(
+        quietHoursStart: '22:00',
+        quietHoursEnd: '06:00',
+      );
+      final nightTime = DateTime(2026, 7, 13, 23, 30);
+      expect(
+        cubit.checkAndPlaySound(
+          settingsState: quietState,
+          now: nightTime,
+        ),
+        isFalse,
+      );
+
+      final dayTime = DateTime(2026, 7, 13, 14);
+      expect(
+        cubit.checkAndPlaySound(
+          settingsState: quietState,
+          now: dayTime,
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'syncNow returns false without calling Notion when '
+      'enableTimeTracker is false',
+      () async {
+        final cubit = TimerCubit();
+        Prefs.enableTimeTracker = false;
+        final result = await cubit.syncNow();
+        expect(result, isFalse);
+      },
     );
   });
 }

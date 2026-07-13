@@ -37,6 +37,9 @@ class SettingsState extends Equatable {
     this.notionApiKey = '',
     this.enableNotionSync = false,
     this.notionProxyUrl = '',
+    this.enableTimeTracker = true,
+    this.quietHoursStart = '23:00',
+    this.quietHoursEnd = '07:00',
   });
 
   final ThemeMode themeMode;
@@ -49,6 +52,10 @@ class SettingsState extends Equatable {
 
   final String notionApiKey;
   final String notionProxyUrl;
+
+  final bool enableTimeTracker;
+  final String quietHoursStart;
+  final String quietHoursEnd;
 
   final int workMinutes;
   final int shortBreakMinutes;
@@ -122,6 +129,9 @@ class SettingsState extends Equatable {
     String Function()? notionApiKey,
     bool Function()? enableNotionSync,
     String Function()? notionProxyUrl,
+    bool Function()? enableTimeTracker,
+    String Function()? quietHoursStart,
+    String Function()? quietHoursEnd,
   }) {
     return SettingsState(
       themeMode: themeMode != null ? themeMode() : this.themeMode,
@@ -197,6 +207,13 @@ class SettingsState extends Equatable {
           enableNotionSync != null ? enableNotionSync() : this.enableNotionSync,
       notionProxyUrl:
           notionProxyUrl != null ? notionProxyUrl() : this.notionProxyUrl,
+      enableTimeTracker: enableTimeTracker != null
+          ? enableTimeTracker()
+          : this.enableTimeTracker,
+      quietHoursStart:
+          quietHoursStart != null ? quietHoursStart() : this.quietHoursStart,
+      quietHoursEnd:
+          quietHoursEnd != null ? quietHoursEnd() : this.quietHoursEnd,
     );
   }
 
@@ -237,6 +254,9 @@ class SettingsState extends Equatable {
         notionApiKey,
         enableNotionSync,
         notionProxyUrl,
+        enableTimeTracker,
+        quietHoursStart,
+        quietHoursEnd,
       ];
 }
 

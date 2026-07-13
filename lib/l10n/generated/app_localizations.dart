@@ -602,6 +602,36 @@ abstract class S {
   /// In en, this message translates to:
   /// **'Please configure your Notion API Token in Settings.'**
   String get notionNotConfigured;
+
+  /// No description provided for @timeTrackerAndAutomation.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Tracker & Automation'**
+  String get timeTrackerAndAutomation;
+
+  /// No description provided for @enableTimeTracker.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Time Tracker'**
+  String get enableTimeTracker;
+
+  /// No description provided for @enableTimeTrackerDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically track elapsed time and send webhooks or Notion logs'**
+  String get enableTimeTrackerDescription;
+
+  /// No description provided for @quietHoursStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet hours start'**
+  String get quietHoursStart;
+
+  /// No description provided for @quietHoursEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet hours end'**
+  String get quietHoursEnd;
 }
 
 class _SDelegate extends LocalizationsDelegate<S> {

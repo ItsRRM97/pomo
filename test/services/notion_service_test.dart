@@ -40,6 +40,14 @@ void main() {
       await Prefs().init();
     });
 
+    tearDown(() {
+      Prefs.enableNotionSync = false;
+      Prefs.notionApiKey = '';
+      Prefs.notionProxyUrl = '';
+      Prefs.pendingTimeLogs = [];
+      NotionService.clearTaskFetchCache();
+    });
+
     test('skips sync when task is null', () async {
       Prefs.enableNotionSync = true;
       Prefs.notionApiKey = 'secret_token';
@@ -87,6 +95,54 @@ void main() {
     test('moveToInProgressIfNeeded returns null when task is null', () async {
       final res = await NotionSyncService().moveToInProgressIfNeeded(null);
       expect(res, isNull);
+    });
+
+    test('flushPendingLogs returns 0 when enableNotionSync is false', () async {
+      Prefs.enableNotionSync = false;
+      Prefs.pendingTimeLogs = ['{"taskId":"1","durationMinutes":25}'];
+      final flushed = await NotionSyncService().flushPendingLogs();
+      expect(flushed, equals(0));
+    });
+
+    test('flushPendingLogs returns 0 when queue is empty', () async {
+      Prefs.enableNotionSync = true;
+      Prefs.notionApiKey = 'secret_token';
+      Prefs.pendingTimeLogs = [];
+      final flushed = await NotionSyncService().flushPendingLogs();
+      expect(flushed, equals(0));
+    });
+
+    test('syncSession queues to Prefs.pendingTimeLogs on network/API failure',
+        () async {
+      Prefs.enableNotionSync = true;
+      Prefs.notionApiKey = 'secret_token';
+      Prefs.notionProxyUrl = 'http://invalid.domain.test:12345/api/notion/';
+      Prefs.pendingTimeLogs = [];
+
+      final result = await NotionSyncService().syncSession(
+        task: const NotionTask(
+          id: 'task-fail-1',
+          title: 'Network Fail Task',
+          status: 'In Progress',
+        ),
+        duration: const Duration(minutes: 25),
+      );
+
+      expect(result.success, isFalse);
+      expect(Prefs.pendingTimeLogs, isNotEmpty);
+      expect(Prefs.pendingTimeLogs.first, contains('task-fail-1'));
+    });
+  });
+
+  group('NotionService cache guard and idempotency checks', () {
+    test('checkIdempotency returns null when apiKey is empty', () async {
+      Prefs.notionApiKey = '';
+      final res = await NotionService().checkIdempotency('ext-123');
+      expect(res, isNull);
+    });
+
+    test('clearTaskFetchCache resets cache without throwing', () {
+      expect(NotionService.clearTaskFetchCache, returnsNormally);
     });
   });
 }

@@ -161,5 +161,10 @@
     "dueThisWeek": "Due This Week",
     "searchTasks": "Search Tasks...",
     "noTasksFound": "No tasks found.",
-    "notionNotConfigured": "Please configure your Notion API Token in Settings."
+    "notionNotConfigured": "Please configure your Notion API Token in Settings.",
+    "timeTrackerAndAutomation": "Time Tracker & Automation",
+    "enableTimeTracker": "Enable Time Tracker",
+    "enableTimeTrackerDescription": "Automatically track elapsed time and send webhooks or Notion logs",
+    "quietHoursStart": "Quiet hours start",
+    "quietHoursEnd": "Quiet hours end"
 }

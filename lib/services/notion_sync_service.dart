@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:pomo/models/notion_task.dart';
@@ -76,6 +77,9 @@ class NotionSyncService {
             timeMinutes: () => newMath.minutes,
           );
         }
+        if (Prefs.pendingTimeLogs.isNotEmpty) {
+          unawaited(flushPendingLogs());
+        }
       }
 
       return (success: result.success, logPageId: result.pageId);
@@ -85,8 +89,114 @@ class NotionSyncService {
         error: e,
         stackTrace: st,
       );
+      _enqueuePendingLog(
+        task: task,
+        durationMinutes: minutes,
+        totalDurationMinutes: totalMinutes,
+        endedAt: timestamp,
+        existingLogPageId: existingLogPageId,
+      );
       return (success: false, logPageId: null);
     }
+  }
+
+  void _enqueuePendingLog({
+    required NotionTask task,
+    required int durationMinutes,
+    required int totalDurationMinutes,
+    required DateTime endedAt,
+    String? existingLogPageId,
+  }) {
+    try {
+      final payload = jsonEncode({
+        'taskId': task.id,
+        'taskTitle': task.title,
+        'durationMinutes': durationMinutes,
+        'totalDurationMinutes': totalDurationMinutes,
+        'endedAt': endedAt.toUtc().toIso8601String(),
+        'existingLogPageId': existingLogPageId,
+      });
+      final queue = List<String>.from(Prefs.pendingTimeLogs)..add(payload);
+      Prefs.pendingTimeLogs = queue;
+      Logger().i(
+        'NotionSyncService: Enqueued pending time log offline '
+        '(${queue.length} items).',
+      );
+    } catch (e) {
+      Logger().e('NotionSyncService: Failed to enqueue pending time log: $e');
+    }
+  }
+
+  /// Attempts to retry logging all offline pending time logs stored in
+  /// [Prefs.pendingTimeLogs].
+  Future<int> flushPendingLogs() async {
+    if (!Prefs.enableNotionSync || Prefs.notionApiKey.isEmpty) {
+      return 0;
+    }
+
+    final queue = List<String>.from(Prefs.pendingTimeLogs);
+    if (queue.isEmpty) return 0;
+
+    Logger()
+        .i('NotionSyncService: Flushing ${queue.length} pending time logs...');
+    final remainingQueue = <String>[];
+    var flushedCount = 0;
+
+    for (final item in queue) {
+      try {
+        final data = jsonDecode(item) as Map<String, dynamic>;
+        final taskId = data['taskId'] as String? ?? '';
+        final taskTitle = data['taskTitle'] as String? ?? '';
+        final durationMin = data['durationMinutes'] as int? ?? 0;
+        final totalMin = data['totalDurationMinutes'] as int? ?? durationMin;
+        final endedAtStr = data['endedAt'] as String?;
+        final existingPageId = data['existingLogPageId'] as String?;
+
+        if (taskId.isEmpty || durationMin < 1) continue;
+
+        final endedAt = endedAtStr != null
+            ? DateTime.tryParse(endedAtStr) ?? DateTime.now()
+            : DateTime.now();
+
+        final task = NotionTask(id: taskId, title: taskTitle);
+
+        final result = await NotionService().logSession(
+          task: task,
+          durationMinutes: durationMin,
+          totalDurationMinutes: totalMin,
+          endedAt: endedAt,
+          existingLogPageId: existingPageId,
+        );
+
+        if (result.success) {
+          flushedCount++;
+          final currentActive = Prefs.activeTask;
+          if (currentActive != null && currentActive.id == task.id) {
+            final newMath = NotionService.addDuration(
+              currentHours: currentActive.timeHours,
+              currentMinutes: currentActive.timeMinutes,
+              addMin: durationMin,
+            );
+            Prefs.activeTask = currentActive.copyWith(
+              timeHours: () => newMath.hours,
+              timeMinutes: () => newMath.minutes,
+            );
+          }
+        } else {
+          remainingQueue.add(item);
+        }
+      } catch (e) {
+        Logger().w('NotionSyncService: Failed to flush pending item ($e)');
+        remainingQueue.add(item);
+      }
+    }
+
+    Prefs.pendingTimeLogs = remainingQueue;
+    Logger().i(
+      'NotionSyncService: Flushed $flushedCount pending logs '
+      '(${remainingQueue.length} remaining).',
+    );
+    return flushedCount;
   }
 
   /// Moves a task from 'To Do' to 'In Progress' in Notion and updates local

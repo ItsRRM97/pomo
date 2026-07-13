@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/lap_helper.dart';
+import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/services/notion_sync_service.dart';
@@ -46,6 +47,7 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void _syncActiveTaskIfEligible() {
+    if (!Prefs.enableTimeTracker) return;
     final totalMinutes = state.duration.inMinutes;
     final minutesToSync = totalMinutes - state.syncedMinutes;
     if (state.lap == TimerLap.work &&
@@ -73,6 +75,7 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   Future<bool> syncNow() async {
+    if (!Prefs.enableTimeTracker) return false;
     if (state.activeTask == null) return false;
     final totalMinutes = state.duration.inMinutes;
     final minutesToSync = totalMinutes - state.syncedMinutes;
@@ -241,5 +244,20 @@ class TimerCubit extends Cubit<TimerState> {
     } else {
       start();
     }
+  }
+
+  bool checkAndPlaySound({
+    required SettingsState settingsState,
+    DateTime? now,
+  }) {
+    if (!settingsState.enableSound) return false;
+    if (SoundHelper.isQuietHours(
+      start: settingsState.quietHoursStart,
+      end: settingsState.quietHoursEnd,
+      now: now,
+    )) {
+      return false;
+    }
+    return true;
   }
 }

@@ -57,5 +57,52 @@ void main() {
         expect(Prefs.workMinutes, 30);
       },
     );
+
+    blocTest<SettingsCubit, SettingsState>(
+      'setEnableTimeTracker updates state and persists to Prefs',
+      build: () {
+        final cubit = SettingsCubit()..loadSettings();
+        return cubit;
+      },
+      act: (cubit) => cubit.setEnableTimeTracker(false),
+      expect: () => [
+        isA<SettingsState>().having(
+          (s) => s.enableTimeTracker,
+          'enableTimeTracker',
+          false,
+        ),
+      ],
+      verify: (cubit) {
+        expect(Prefs.enableTimeTracker, isFalse);
+      },
+    );
+
+    blocTest<SettingsCubit, SettingsState>(
+      'setQuietHoursStart and setQuietHoursEnd update state and '
+      'persist to Prefs',
+      build: () {
+        final cubit = SettingsCubit()..loadSettings();
+        return cubit;
+      },
+      act: (cubit) => cubit
+        ..setQuietHoursStart('22:00')
+        ..setQuietHoursEnd('06:00'),
+      expect: () => [
+        isA<SettingsState>().having(
+          (s) => s.quietHoursStart,
+          'quietHoursStart',
+          '22:00',
+        ),
+        isA<SettingsState>().having(
+          (s) => s.quietHoursEnd,
+          'quietHoursEnd',
+          '06:00',
+        ),
+      ],
+      verify: (cubit) {
+        expect(Prefs.quietHoursStart, '22:00');
+        expect(Prefs.quietHoursEnd, '06:00');
+      },
+    );
   });
 }

@@ -41,6 +41,13 @@ class TimerPage extends StatelessWidget {
       return;
     }
 
+    if (SoundHelper.isQuietHours(
+      start: settingsState.quietHoursStart,
+      end: settingsState.quietHoursEnd,
+    )) {
+      return;
+    }
+
     if ([
           NotificationType.workEnd,
           NotificationType.shortBreakEnd,

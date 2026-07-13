@@ -12,6 +12,15 @@ class NotionService {
   final Dio _dio;
   static const String timeLogsDbId = 'acd9cab4-5560-456c-b9b5-586d9a5b391c';
 
+  static DateTime? _lastTaskFetchTime;
+  static String? _lastFetchedTaskId;
+
+  /// Clears the TTL cache for task property fetches (useful for testing).
+  static void clearTaskFetchCache() {
+    _lastTaskFetchTime = null;
+    _lastFetchedTaskId = null;
+  }
+
   String _getBaseUrl() {
     var proxy = Prefs.notionProxyUrl.trim();
     // Auto-migrate any stored proxy pointing to the unaliased vercel domain
@@ -164,9 +173,10 @@ class NotionService {
   }
 
   /// Checks if a session with [externalId] is already logged in `Time Logs`.
-  Future<bool> checkIdempotency(String externalId) async {
+  /// Returns the existing row's page ID if found, or null otherwise.
+  Future<String?> checkIdempotency(String externalId) async {
     final apiKey = Prefs.notionApiKey;
-    if (apiKey.isEmpty) return false;
+    if (apiKey.isEmpty) return null;
 
     final url = '${_getBaseUrl()}databases/$timeLogsDbId/query';
     final payload = {
@@ -186,10 +196,13 @@ class NotionService {
         options: Options(headers: _getHeaders(apiKey)),
       );
       final results = response.data?['results'] as List? ?? [];
-      return results.isNotEmpty;
+      if (results.isNotEmpty && results.first is Map) {
+        return (results.first as Map<String, dynamic>)['id'] as String?;
+      }
+      return null;
     } catch (e) {
       Logger().w('Idempotency check failed: $e');
-      return false;
+      return null;
     }
   }
 
@@ -253,64 +266,69 @@ class NotionService {
           'sess_${task.id}_${endedAt.millisecondsSinceEpoch}';
 
       // 1. Idempotency check
-      if (await checkIdempotency(externalId)) {
-        Logger().i('Session $externalId already logged to Notion. Skipping.');
-        return (success: true, pageId: null);
-      }
-
-      // 2. Create Time Logs row
-      final timeLogsUrl = '${_getBaseUrl()}pages';
-      final logPayload = {
-        'parent': {'database_id': timeLogsDbId},
-        'properties': {
-          'Name': {
-            'title': [
-              {
-                'text': {'content': '${totalDuration}m - ${task.title}'},
-              },
-            ],
-          },
-          'Task': {
-            'relation': [
-              {'id': task.id},
-            ],
-          },
-          'Duration (min)': {'number': totalDuration},
-          'Logged At': {
-            'date': {'start': endedAt.toUtc().toIso8601String()},
-          },
-          'Source': {
-            'rich_text': [
-              {
-                'text': {'content': 'pomo'},
-              },
-            ],
-          },
-          'External ID': {
-            'rich_text': [
-              {
-                'text': {'content': externalId},
-              },
-            ],
-          },
-        },
-      };
-
-      try {
-        final response = await _dio.post<Map<String, dynamic>>(
-          timeLogsUrl,
-          data: logPayload,
-          options: Options(headers: _getHeaders(apiKey)),
-        );
-        pageId = response.data?['id'] as String?;
+      final existingPageId = await checkIdempotency(externalId);
+      if (existingPageId != null && existingPageId.isNotEmpty) {
         Logger().i(
-          'Successfully created row $pageId in Time Logs ($timeLogsDbId)',
+          'Session $externalId already logged ($existingPageId). '
+          'Proceeding to update task cumulative time.',
         );
-      } on DioException catch (e) {
-        Logger().e('Failed to create Time Logs row: ${e.message}', error: e);
-        throw Exception(
-          'Failed to create Notion Time Log: ${e.response?.data ?? e.message}',
-        );
+        pageId = existingPageId;
+      } else {
+        // 2. Create Time Logs row
+        final timeLogsUrl = '${_getBaseUrl()}pages';
+        final logPayload = {
+          'parent': {'database_id': timeLogsDbId},
+          'properties': {
+            'Name': {
+              'title': [
+                {
+                  'text': {'content': '${totalDuration}m - ${task.title}'},
+                },
+              ],
+            },
+            'Task': {
+              'relation': [
+                {'id': task.id},
+              ],
+            },
+            'Duration (min)': {'number': totalDuration},
+            'Logged At': {
+              'date': {'start': endedAt.toUtc().toIso8601String()},
+            },
+            'Source': {
+              'rich_text': [
+                {
+                  'text': {'content': 'pomo'},
+                },
+              ],
+            },
+            'External ID': {
+              'rich_text': [
+                {
+                  'text': {'content': externalId},
+                },
+              ],
+            },
+          },
+        };
+
+        try {
+          final response = await _dio.post<Map<String, dynamic>>(
+            timeLogsUrl,
+            data: logPayload,
+            options: Options(headers: _getHeaders(apiKey)),
+          );
+          pageId = response.data?['id'] as String?;
+          Logger().i(
+            'Successfully created row $pageId in Time Logs ($timeLogsDbId)',
+          );
+        } on DioException catch (e) {
+          Logger().e('Failed to create Time Logs row: ${e.message}', error: e);
+          throw Exception(
+            'Failed to create Notion Time Log: '
+            '${e.response?.data ?? e.message}',
+          );
+        }
       }
     }
 
@@ -318,19 +336,33 @@ class NotionService {
     var currentHours = task.timeHours;
     var currentMinutes = task.timeMinutes;
 
-    try {
-      final taskGetUrl = '${_getBaseUrl()}pages/${task.id}';
-      final taskGetResponse = await _dio.get<Map<String, dynamic>>(
-        taskGetUrl,
-        options: Options(headers: _getHeaders(apiKey)),
-      );
-      if (taskGetResponse.data != null) {
-        final latestTask = NotionTask.fromNotionApi(taskGetResponse.data!);
-        currentHours = latestTask.timeHours;
-        currentMinutes = latestTask.timeMinutes;
+    final now = DateTime.now();
+    final isCacheValid = _lastFetchedTaskId == task.id &&
+        _lastTaskFetchTime != null &&
+        now.difference(_lastTaskFetchTime!).inMinutes < 5 &&
+        (task.timeHours != 0 || task.timeMinutes != 0);
+
+    if (!isCacheValid) {
+      try {
+        final taskGetUrl = '${_getBaseUrl()}pages/${task.id}';
+        final taskGetResponse = await _dio.get<Map<String, dynamic>>(
+          taskGetUrl,
+          options: Options(headers: _getHeaders(apiKey)),
+        );
+        if (taskGetResponse.data != null) {
+          final latestTask = NotionTask.fromNotionApi(taskGetResponse.data!);
+          currentHours = latestTask.timeHours;
+          currentMinutes = latestTask.timeMinutes;
+          _lastFetchedTaskId = task.id;
+          _lastTaskFetchTime = now;
+        }
+      } catch (e) {
+        Logger().w('Failed to fetch latest task properties, using local: $e');
       }
-    } catch (e) {
-      Logger().w('Failed to fetch latest task properties, using local: $e');
+    } else {
+      Logger().i(
+        'Skipping GET task ${task.id} (within 5-minute TTL cache guard).',
+      );
     }
 
     // 4. Calculate normalized time increment and issue PATCH request
@@ -354,6 +386,8 @@ class NotionService {
         data: patchPayload,
         options: Options(headers: _getHeaders(apiKey)),
       );
+      _lastFetchedTaskId = task.id;
+      _lastTaskFetchTime = DateTime.now();
       Logger().i(
         'Updated Task ${task.id} cumulative time: '
         '${newTime.hours}h ${newTime.minutes}m',

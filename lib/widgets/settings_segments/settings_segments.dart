@@ -10,6 +10,8 @@ export 'overlay_corner_dropdown.dart';
 export 'short_break_duration_slider.dart';
 export 'show_floating_timer_toggle.dart';
 export 'theme_dropdown.dart';
+export 'time_tracker_expansion.dart';
+export 'time_tracker_toggle.dart';
 export 'timer_font_dropdown.dart';
 export 'webhooks_expansion.dart';
 export 'webhooks_toggle.dart';

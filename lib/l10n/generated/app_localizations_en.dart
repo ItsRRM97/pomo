@@ -282,4 +282,20 @@ class SEn extends S {
   @override
   String get notionNotConfigured =>
       'Please configure your Notion API Token in Settings.';
+
+  @override
+  String get timeTrackerAndAutomation => 'Time Tracker & Automation';
+
+  @override
+  String get enableTimeTracker => 'Enable Time Tracker';
+
+  @override
+  String get enableTimeTrackerDescription =>
+      'Automatically track elapsed time and send webhooks or Notion logs';
+
+  @override
+  String get quietHoursStart => 'Quiet hours start';
+
+  @override
+  String get quietHoursEnd => 'Quiet hours end';
 }
