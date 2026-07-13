@@ -4,7 +4,9 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
+import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -146,6 +148,8 @@ class Prefs {
   static const String _enableTimeTrackerVarName = 'pomo_enable_time_tracker';
   static const String _quietHoursStartVarName = 'pomo_quiet_hours_start';
   static const String _quietHoursEndVarName = 'pomo_quiet_hours_end';
+  static const String _trackerTagsVarName = 'pomo_tracker_tags';
+  static const String _hourlyLogsVarName = 'pomo_hourly_logs';
 
   //* Getters
 
@@ -657,6 +661,57 @@ class Prefs {
 
   static set pendingTimeLogs(List<String> value) {
     Prefs().sharedPreferences.setStringList(_pendingTimeLogsVarName, value);
+  }
+
+  static List<TrackerTag> get trackerTags {
+    final rawList =
+        Prefs().sharedPreferences.getStringList(_trackerTagsVarName);
+    if (rawList == null || rawList.isEmpty) {
+      return TrackerTag.defaults;
+    }
+    return rawList
+        .map((e) => TrackerTag.fromJson(jsonDecode(e) as Map<String, dynamic>))
+        .toList();
+  }
+
+  static set trackerTags(List<TrackerTag> value) {
+    final encoded = value.map((e) => jsonEncode(e.toJson())).toList();
+    Prefs().sharedPreferences.setStringList(_trackerTagsVarName, encoded);
+  }
+
+  static Future<void> saveTrackerTag(TrackerTag tag) async {
+    final current = List<TrackerTag>.from(trackerTags);
+    final idx = current.indexWhere((e) => e.id == tag.id);
+    if (idx != -1) {
+      current[idx] = tag;
+    } else {
+      current.add(tag);
+    }
+    trackerTags = current;
+  }
+
+  static List<HourlyLog> get hourlyLogs {
+    final rawList =
+        Prefs().sharedPreferences.getStringList(_hourlyLogsVarName) ?? [];
+    return rawList
+        .map((e) => HourlyLog.fromJson(jsonDecode(e) as Map<String, dynamic>))
+        .toList();
+  }
+
+  static set hourlyLogs(List<HourlyLog> value) {
+    final encoded = value.map((e) => jsonEncode(e.toJson())).toList();
+    Prefs().sharedPreferences.setStringList(_hourlyLogsVarName, encoded);
+  }
+
+  static Future<void> saveHourlyLog(HourlyLog log) async {
+    final current = List<HourlyLog>.from(hourlyLogs);
+    final idx = current.indexWhere((e) => e.id == log.id);
+    if (idx != -1) {
+      current[idx] = log;
+    } else {
+      current.add(log);
+    }
+    hourlyLogs = current;
   }
 
   static void resetTimer() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pomo/desktop/desktop_shell_stub.dart'
     if (dart.library.io) 'package:pomo/desktop/desktop_shell.dart';
+import 'package:pomo/app/view/home_shell.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/about/view/about_page.dart';
 import 'package:pomo/pages/deniz/deniz.dart';
@@ -88,7 +89,9 @@ class App extends StatelessWidget {
               localizationsDelegates: S.localizationsDelegates,
               supportedLocales: S.supportedLocales,
               routes: {
-                '/': (context) => const TimerPage(),
+                '/': (context) => const HomeShell(),
+                '/focus': (context) => const HomeShell(),
+                '/tracker': (context) => const HomeShell(initialIndex: 1),
                 '/settings': (context) => const SettingsPage(),
                 '/about': (context) => const AboutPage(),
                 '/deniz': (context) => const DenizPage(),

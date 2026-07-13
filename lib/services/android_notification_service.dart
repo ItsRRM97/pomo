@@ -100,4 +100,19 @@ class AndroidNotificationService {
       // Ignore channel exceptions
     }
   }
+
+  Future<void> showHourlyReminderNotification(int hour) async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      final start = hour.toString().padLeft(2, '0');
+      final end = ((hour + 1) % 24).toString().padLeft(2, '0');
+      await _channel.invokeMethod<bool>('startForeground', {
+        'title': 'Time Tracker: Check-in Required',
+        'text': 'Log what you did between $start:00 and $end:00.',
+        'isRunning': false,
+      });
+    } catch (e) {
+      // Ignore channel exceptions
+    }
+  }
 }

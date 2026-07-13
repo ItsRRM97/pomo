@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pomo/helpers/hook_helper.dart';
 import 'package:pomo/singletons/prefs.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -36,6 +37,7 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Prefs().init();
+  HookHelper.startHourlyTrackerLoop();
 
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     await windowManager.ensureInitialized();
