@@ -217,115 +217,119 @@ class TimerPage extends StatelessWidget {
             // WORK START
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
-                  previous.lap != current.lap &&
-                  current.lap == TimerLap.work &&
-                  settingsState.enableWebHooks,
+                  previous.lap != current.lap && current.lap == TimerLap.work,
               listener: (context, state) {
-                Logger().i('Work start web hook');
+                Logger().i('Work start');
                 _notify(
                   NotificationType.workStart,
                   settingsState,
                   state.status,
                 );
-                HookHelper.postWebHook(
-                  settingsState.workStartWebHook,
-                  data: _getRGBData(context),
-                );
+                if (settingsState.enableWebHooks) {
+                  HookHelper.postWebHook(
+                    settingsState.workStartWebHook,
+                    data: _getRGBData(context),
+                  );
+                }
               },
             ),
             // WORK END
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
-                  previous.lap != current.lap &&
-                  previous.lap == TimerLap.work &&
-                  settingsState.enableWebHooks,
+                  previous.lap != current.lap && previous.lap == TimerLap.work,
               listener: (context, state) {
-                Logger().i('Work end web hook');
+                Logger().i('Work end');
                 _notify(
                   NotificationType.workEnd,
                   settingsState,
                   state.status,
                 );
-                HookHelper.postWebHook(
-                  settingsState.workEndWebHook,
-                  data: _getRGBData(context),
-                );
+                if (settingsState.enableWebHooks) {
+                  HookHelper.postWebHook(
+                    settingsState.workEndWebHook,
+                    data: _getRGBData(context),
+                  );
+                }
               },
             ),
             // SHORT BREAK START
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  current.lap == TimerLap.shortBreak &&
-                  settingsState.enableWebHooks,
+                  current.lap == TimerLap.shortBreak,
               listener: (context, state) {
-                Logger().i('Short break start web hook');
+                Logger().i('Short break start');
                 _notify(
                   NotificationType.shortBreakStart,
                   settingsState,
                   state.status,
                 );
-                HookHelper.postWebHook(
-                  settingsState.shortBreakStartWebHook,
-                  data: _getRGBData(context),
-                );
+                if (settingsState.enableWebHooks) {
+                  HookHelper.postWebHook(
+                    settingsState.shortBreakStartWebHook,
+                    data: _getRGBData(context),
+                  );
+                }
               },
             ),
             // SHORT BREAK END
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  previous.lap == TimerLap.shortBreak &&
-                  settingsState.enableWebHooks,
+                  previous.lap == TimerLap.shortBreak,
               listener: (context, state) {
-                Logger().i('Short break end web hook');
+                Logger().i('Short break end');
                 _notify(
                   NotificationType.shortBreakEnd,
                   settingsState,
                   state.status,
                 );
-                HookHelper.postWebHook(
-                  settingsState.shortBreakEndWebHook,
-                  data: _getRGBData(context),
-                );
+                if (settingsState.enableWebHooks) {
+                  HookHelper.postWebHook(
+                    settingsState.shortBreakEndWebHook,
+                    data: _getRGBData(context),
+                  );
+                }
               },
             ),
             // LONG BREAK START
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  current.lap == TimerLap.longBreak &&
-                  settingsState.enableWebHooks,
+                  current.lap == TimerLap.longBreak,
               listener: (context, state) {
-                Logger().i('Long break start web hook');
+                Logger().i('Long break start');
                 _notify(
                   NotificationType.longBreakStart,
                   settingsState,
                   state.status,
                 );
-                HookHelper.postWebHook(
-                  settingsState.longBreakStartWebHook,
-                  data: _getRGBData(context),
-                );
+                if (settingsState.enableWebHooks) {
+                  HookHelper.postWebHook(
+                    settingsState.longBreakStartWebHook,
+                    data: _getRGBData(context),
+                  );
+                }
               },
             ),
             // LONG BREAK END
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  previous.lap == TimerLap.longBreak &&
-                  settingsState.enableWebHooks,
+                  previous.lap == TimerLap.longBreak,
               listener: (context, state) {
-                Logger().i('Long break end web hook');
+                Logger().i('Long break end');
                 _notify(
                   NotificationType.longBreakEnd,
                   settingsState,
                   state.status,
                 );
-                HookHelper.postWebHook(
-                  settingsState.longBreakEndWebHook,
-                  data: _getRGBData(context),
-                );
+                if (settingsState.enableWebHooks) {
+                  HookHelper.postWebHook(
+                    settingsState.longBreakEndWebHook,
+                    data: _getRGBData(context),
+                  );
+                }
               },
             ),
             BlocListener<TimerCubit, TimerState>(

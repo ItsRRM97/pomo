@@ -2,6 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:pomo/services/web_pwa_service.dart';
 
 class WebPwaServiceStub implements WebPwaService {
+  factory WebPwaServiceStub() => _instance;
+  WebPwaServiceStub._internal();
+  static final WebPwaServiceStub _instance = WebPwaServiceStub._internal();
+
   @override
   bool get isPipActive => false;
 

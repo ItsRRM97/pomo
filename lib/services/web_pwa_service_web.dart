@@ -39,6 +39,10 @@ extension PwaManagerExtension on PwaManager {
 external set jsOnPipClosedExternally(JSFunction? val);
 
 class WebPwaServiceWeb implements WebPwaService {
+  factory WebPwaServiceWeb() => _instance;
+  WebPwaServiceWeb._internal();
+  static final WebPwaServiceWeb _instance = WebPwaServiceWeb._internal();
+
   bool _isPipActive = false;
 
   @override
