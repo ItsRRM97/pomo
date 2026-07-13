@@ -2,8 +2,8 @@
 
 (function () {
   var STORAGE_KEY = 'focus-pwa-install-dismissed';
-  var SESSION_KEY = 'focus-pwa-install-shown';
   var deferredPrompt = null;
+  var promptVisible = false;
 
   function isStandalone() {
     return (
@@ -27,18 +27,12 @@
     return isIOS() || isAndroid();
   }
 
-  function shouldShow() {
-    if (isStandalone()) {
-      return false;
-    }
-    if (localStorage.getItem(STORAGE_KEY) === 'true') {
-      return false;
-    }
-    return true;
+  function isDismissed() {
+    return localStorage.getItem(STORAGE_KEY) === 'true';
   }
 
-  function markShown() {
-    sessionStorage.setItem(SESSION_KEY, 'true');
+  function shouldShow() {
+    return !isStandalone() && !isDismissed();
   }
 
   function dismissForever() {
@@ -51,6 +45,7 @@
     if (node) {
       node.remove();
     }
+    promptVisible = false;
   }
 
   function createPrompt(options) {
@@ -58,34 +53,38 @@
       return;
     }
 
-    // If a prompt is already showing, remove it so we can upgrade it (e.g. manual -> native prompt)
+    // Remove any existing prompt so we can replace it (e.g. upgrade manual -> native)
     removePrompt();
-    markShown();
+    promptVisible = true;
 
     var overlay = document.createElement('div');
     overlay.id = 'focus-pwa-install';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-label', 'Install Focus app');
+
+    var stepsHtml = '';
+    if (options.steps && options.steps.length) {
+      stepsHtml = '<ol class="focus-pwa-steps">' +
+        options.steps.map(function (s) { return '<li>' + s + '</li>'; }).join('') +
+        '</ol>';
+    }
+
+    var primaryHtml = '';
+    if (options.primaryLabel) {
+      primaryHtml =
+        '<button type="button" class="focus-pwa-btn focus-pwa-btn-primary" id="focus-pwa-install-primary">' +
+        options.primaryLabel +
+        '</button>';
+    }
+
     overlay.innerHTML =
       '<div class="focus-pwa-card">' +
-      '<div class="focus-pwa-icon" aria-hidden="true">⏱</div>' +
+      '<div class="focus-pwa-icon" aria-hidden="true">&#x23F1;</div>' +
       '<h2 class="focus-pwa-title">' + options.title + '</h2>' +
       '<p class="focus-pwa-body">' + options.body + '</p>' +
-      (options.steps
-        ? '<ol class="focus-pwa-steps">' +
-          options.steps
-            .map(function (step) {
-              return '<li>' + step + '</li>';
-            })
-            .join('') +
-          '</ol>'
-        : '') +
+      stepsHtml +
       '<div class="focus-pwa-actions">' +
-      (options.primaryLabel
-        ? '<button type="button" class="focus-pwa-btn focus-pwa-btn-primary" id="focus-pwa-install-primary">' +
-          options.primaryLabel +
-          '</button>'
-        : '') +
+      primaryHtml +
       '<button type="button" class="focus-pwa-btn focus-pwa-btn-secondary" id="focus-pwa-install-later">Not now</button>' +
       '<button type="button" class="focus-pwa-btn focus-pwa-btn-ghost" id="focus-pwa-install-never">Don\'t show again</button>' +
       '</div>' +
@@ -98,9 +97,7 @@
     var primary = document.getElementById('focus-pwa-install-primary');
 
     if (later) {
-      later.addEventListener('click', function () {
-        removePrompt();
-      });
+      later.addEventListener('click', removePrompt);
     }
     if (never) {
       never.addEventListener('click', dismissForever);
@@ -110,20 +107,17 @@
     }
   }
 
-  function showAndroidPrompt() {
+  function showNativePrompt() {
     createPrompt({
       title: 'Install Focus',
-      body: 'Add Focus to your home screen for a full-screen timer experience.',
+      body: 'Install Focus for quick access and a distraction-free timer experience.',
       primaryLabel: 'Install',
       onPrimary: function () {
-        if (!deferredPrompt) {
-          return;
-        }
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.finally(function () {
-          deferredPrompt = null;
-          removePrompt();
-        });
+        if (!deferredPrompt) { return; }
+        var p = deferredPrompt;
+        deferredPrompt = null;
+        p.prompt();
+        p.userChoice.finally(removePrompt);
       },
     });
   }
@@ -131,11 +125,11 @@
   function showIOSPrompt() {
     createPrompt({
       title: 'Install Focus',
-      body: 'Add Focus to your home screen for quick access and a full-screen timer.',
+      body: 'Add Focus to your Home Screen for quick access and a full-screen timer.',
       steps: [
-        'Tap the Share button in Safari',
-        'Scroll down and tap Add to Home Screen',
-        'Tap Add in the top right',
+        'Tap the <strong>Share</strong> button in Safari',
+        'Tap <strong>Add to Home Screen</strong>',
+        'Tap <strong>Add</strong> in the top right',
       ],
     });
   }
@@ -143,48 +137,31 @@
   function showAndroidManualPrompt() {
     createPrompt({
       title: 'Install Focus',
-      body: 'Add Focus to your home screen from your browser menu for the best experience.',
+      body: 'Install Focus from your browser menu for the best experience.',
       steps: [
-        'Open the browser menu',
-        'Tap Install app or Add to Home screen',
+        'Open the <strong>browser menu</strong> (&vellip;)',
+        'Tap <strong>Add to Home screen</strong> or <strong>Install app</strong>',
         'Confirm to install',
       ],
     });
   }
 
-  function maybeShowPrompt(forceNative) {
-    if (!shouldShow() || !isMobileBrowser()) {
-      return;
-    }
-
-    // If we have the native install prompt from Chrome/Edge
-    if (deferredPrompt) {
-      showAndroidPrompt();
-      return;
-    }
-
-    // If it's iOS, show manual instructions
-    if (isIOS() && !sessionStorage.getItem(SESSION_KEY)) {
-      showIOSPrompt();
-      return;
-    }
-
-    // If it's Android but beforeinstallprompt hasn't fired yet, only show manual instructions
-    // if forceNative is not true and session prompt wasn't shown yet
-    if (isAndroid() && !forceNative && !sessionStorage.getItem(SESSION_KEY)) {
-      showAndroidManualPrompt();
-    }
-  }
-
+  // Fired by Chrome / Edge before the native install prompt is shown.
+  // We capture the event and show our own UI with a working Install button.
   window.addEventListener('beforeinstallprompt', function (event) {
     event.preventDefault();
     deferredPrompt = event;
-    if (document.readyState === 'loading') {
-      window.addEventListener('DOMContentLoaded', function () {
-        window.setTimeout(function () { maybeShowPrompt(true); }, 1000);
-      }, { once: true });
+
+    if (!shouldShow()) { return; }
+
+    // If we already showed a manual fallback, replace it immediately with
+    // the native-capable version (this handles late-firing events on Android).
+    if (promptVisible || document.readyState !== 'loading') {
+      window.setTimeout(showNativePrompt, 200);
     } else {
-      window.setTimeout(function () { maybeShowPrompt(true); }, 500);
+      window.addEventListener('DOMContentLoaded', function () {
+        window.setTimeout(showNativePrompt, 800);
+      }, { once: true });
     }
   });
 
@@ -193,15 +170,25 @@
     dismissForever();
   });
 
+  // Fallback: show prompt after page load if beforeinstallprompt hasn't fired.
+  // iOS never fires beforeinstallprompt; Android/Edge may fire late or not at all.
   window.addEventListener('load', function () {
-    if (!isMobileBrowser()) {
-      return;
-    }
-    // Give Chrome/Edge 3.5 seconds to fire beforeinstallprompt before falling back to manual prompt on Android
+    if (!shouldShow() || !isMobileBrowser()) { return; }
+
+    // Wait 4 s for Chrome/Edge to fire beforeinstallprompt first.
+    // If it fires, showNativePrompt() will already have been called above.
     window.setTimeout(function () {
-      if (!deferredPrompt) {
-        maybeShowPrompt(false);
+      if (deferredPrompt) {
+        // Native prompt available but no UI shown yet -- show it now.
+        if (!promptVisible) { showNativePrompt(); }
+        return;
       }
-    }, 3500);
+      // No native prompt: show platform-appropriate manual instructions.
+      if (isIOS()) {
+        showIOSPrompt();
+      } else if (isAndroid()) {
+        showAndroidManualPrompt();
+      }
+    }, 4000);
   });
 })();
