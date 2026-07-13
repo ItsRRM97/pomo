@@ -69,10 +69,15 @@ class WebPwaServiceWeb implements WebPwaService {
   void showNotification(String title, String body) {
     try {
       final manager = pwaManager;
-      if (manager != null) {
-        (manager as PwaManager).showNotification(title.toJS, body.toJS);
+      if (manager == null) {
+        _jsConsoleLog('[Focus] showNotification: pwaManager is null'.toJS);
+        return;
       }
-    } catch (_) {}
+      _jsConsoleLog('[Focus] showNotification: calling JS -> $title'.toJS);
+      (manager as PwaManager).showNotification(title.toJS, body.toJS);
+    } catch (e) {
+      _jsConsoleLog('[Focus] showNotification error: $e'.toJS);
+    }
   }
 
   @override
@@ -145,5 +150,8 @@ class WebPwaServiceWeb implements WebPwaService {
     } catch (_) {}
   }
 }
+
+@JS('console.log')
+external void _jsConsoleLog(JSAny? msg);
 
 WebPwaService getWebPwaService() => WebPwaServiceWeb();
