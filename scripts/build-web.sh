@@ -60,6 +60,7 @@ flutter gen-l10n
 # against process.env.FOCUS_ACCESS_TOKEN and swaps in NOTION_TOKEN server-side.
 DART_DEFINE_FLAGS=()
 
+set +u
 flutter build web \
   --release \
   --no-web-resources-cdn \
@@ -67,6 +68,7 @@ flutter build web \
   --base-href=/focus/ \
   --target lib/main_production.dart \
   "${DART_DEFINE_FLAGS[@]}"
+set -u
 
 rm -rf deploy
 mkdir -p deploy/focus
