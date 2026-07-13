@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dio/dio.dart';
 import 'package:logger/web.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/services/android_notification_service.dart';
+import 'package:pomo/services/web_pwa_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 enum TriggerMethod {
@@ -113,6 +115,20 @@ mixin HookHelper {
             .showHourlyReminderNotification(now.hour);
       } catch (e) {
         Logger().w('HookHelper android notification failed: $e');
+      }
+
+      // 3. Show browser notification on Web PWA
+      if (kIsWeb) {
+        try {
+          final start = now.hour.toString().padLeft(2, '0');
+          final end = ((now.hour + 1) % 24).toString().padLeft(2, '0');
+          WebPwaService().showNotification(
+            'Time Tracker: Check-in Required',
+            'Log what you did between $start:00 and $end:00.',
+          );
+        } catch (e) {
+          Logger().w('HookHelper web notification failed: $e');
+        }
       }
     }
   }

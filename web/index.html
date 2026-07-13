@@ -209,8 +209,171 @@
 
   <script src="pwa_install_prompt.js"></script>
   <script>
+    window.pwaManager = {
+      pipWindow: null,
+      onPipClosedExternally: null,
+
+      requestNotificationPermission: async function() {
+        if (!('Notification' in window)) return false;
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      },
+
+      showNotification: function(title, body) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        try {
+          new Notification(title, { body: body, icon: 'favicon.png' });
+        } catch (e) {
+          console.warn("Failed to show local notification, trying service worker:", e);
+          if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+            navigator.serviceWorker.ready.then(reg => {
+              reg.showNotification(title, { body: body, icon: 'favicon.png' });
+            });
+          }
+        }
+      },
+
+      isDocumentPipSupported: function() {
+        return 'documentPictureInPicture' in window;
+      },
+
+      openDocumentPip: async function(initialTime, isRunning, onPauseToggle, onSkip) {
+        if (!this.isDocumentPipSupported()) return false;
+        try {
+          this.pipWindow = await window.documentPictureInPicture.requestWindow({
+            width: 260,
+            height: 120
+          });
+          const pipDoc = this.pipWindow.document;
+
+          // Inject basic CSS styling
+          const style = pipDoc.createElement('style');
+          style.textContent = `
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: #201a1b;
+              color: #f5f0f1;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              overflow: hidden;
+              box-sizing: border-box;
+            }
+            .timer-text {
+              font-size: 36px;
+              font-weight: bold;
+              margin-bottom: 12px;
+              font-variant-numeric: tabular-nums;
+              letter-spacing: -0.5px;
+            }
+            .controls {
+              display: flex;
+              gap: 12px;
+            }
+            .btn {
+              background-color: rgba(255, 255, 255, 0.12);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 999px;
+              color: #f5f0f1;
+              cursor: pointer;
+              font-size: 13px;
+              font-weight: 600;
+              padding: 6px 14px;
+              transition: all 0.2s ease;
+            }
+            .btn:hover {
+              background-color: rgba(255, 255, 255, 0.2);
+            }
+            .btn-primary {
+              background-color: #e57373;
+              color: #201a1b;
+              border: none;
+            }
+            .btn-primary:hover {
+              background-color: #ef9a9a;
+            }
+          `;
+          pipDoc.head.appendChild(style);
+
+          const container = pipDoc.createElement('div');
+          container.style.display = 'flex';
+          container.style.flexDirection = 'column';
+          container.style.alignItems = 'center';
+
+          const timerSpan = pipDoc.createElement('span');
+          timerSpan.className = 'timer-text';
+          timerSpan.id = 'pip-timer';
+          timerSpan.textContent = initialTime;
+          container.appendChild(timerSpan);
+
+          const controlsDiv = pipDoc.createElement('div');
+          controlsDiv.className = 'controls';
+
+          const toggleBtn = pipDoc.createElement('button');
+          toggleBtn.className = 'btn ' + (isRunning ? 'btn-secondary' : 'btn-primary');
+          toggleBtn.id = 'pip-toggle';
+          toggleBtn.textContent = isRunning ? 'Pause' : 'Start';
+          toggleBtn.addEventListener('click', () => {
+            if (onPauseToggle) onPauseToggle();
+          });
+          controlsDiv.appendChild(toggleBtn);
+
+          const skipBtn = pipDoc.createElement('button');
+          skipBtn.className = 'btn btn-secondary';
+          skipBtn.id = 'pip-skip';
+          skipBtn.textContent = 'Skip';
+          skipBtn.addEventListener('click', () => {
+            if (onSkip) onSkip();
+          });
+          controlsDiv.appendChild(skipBtn);
+
+          container.appendChild(controlsDiv);
+          pipDoc.body.appendChild(container);
+
+          // Handle close event
+          this.pipWindow.addEventListener('pagehide', () => {
+            this.pipWindow = null;
+            if (this.onPipClosedExternally) {
+              this.onPipClosedExternally();
+            }
+          });
+
+          return true;
+        } catch (e) {
+          console.error("Failed to open Document PiP window:", e);
+          return false;
+        }
+      },
+
+      updatePip: function(timeStr, isRunning) {
+        if (!this.pipWindow) return;
+        const pipDoc = this.pipWindow.document;
+        const timerSpan = pipDoc.getElementById('pip-timer');
+        if (timerSpan) {
+          timerSpan.textContent = timeStr;
+        }
+        const toggleBtn = pipDoc.getElementById('pip-toggle');
+        if (toggleBtn) {
+          toggleBtn.textContent = isRunning ? 'Pause' : 'Start';
+          toggleBtn.className = 'btn ' + (isRunning ? 'btn-secondary' : 'btn-primary');
+        }
+      },
+
+      closePip: function() {
+        if (this.pipWindow) {
+          this.pipWindow.close();
+          this.pipWindow = null;
+        }
+      }
+    };
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
+        // Clean up legacy flutter service worker if present
         navigator.serviceWorker.getRegistrations().then(function (registrations) {
           registrations.forEach(function (registration) {
             if (registration.active &&
@@ -219,6 +382,16 @@
             }
           });
         });
+
+        // Trigger page reload when service worker changes to active
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+
         navigator.serviceWorker.register('pwa_service_worker.js');
       });
     }

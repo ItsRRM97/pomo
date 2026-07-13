@@ -16,6 +16,8 @@ import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/services/android_notification_service.dart';
 import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:pomo/services/web_pwa_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 enum NotificationType {
@@ -38,6 +40,39 @@ class TimerPage extends StatelessWidget {
     SettingsState settingsState,
     TimerStatus status,
   ) async {
+    if (kIsWeb) {
+      String title = '';
+      String body = '';
+      switch (type) {
+        case NotificationType.workStart:
+          title = 'Work Session Started';
+          body = 'Time to focus!';
+        case NotificationType.workEnd:
+          title = 'Work Session Finished';
+          body = 'Take a break!';
+        case NotificationType.shortBreakStart:
+          title = 'Short Break Started';
+          body = 'Rest and recharge!';
+        case NotificationType.shortBreakEnd:
+          title = 'Short Break Finished';
+          body = 'Back to work!';
+        case NotificationType.longBreakStart:
+          title = 'Long Break Started';
+          body = 'Relax for a bit!';
+        case NotificationType.longBreakEnd:
+          title = 'Long Break Finished';
+          body = 'Back to work!';
+        case NotificationType.nextLap:
+          title = 'Next Lap';
+          body = 'Moving to next lap.';
+        default:
+          break;
+      }
+      if (title.isNotEmpty) {
+        WebPwaService().showNotification(title, body);
+      }
+    }
+
     if (!settingsState.enableSound) {
       return;
     }
@@ -371,6 +406,18 @@ class TimerPage extends StatelessWidget {
             ),
             BlocListener<TimerCubit, TimerState>(
               listener: (context, state) {
+                if (kIsWeb && WebPwaService().isPipActive) {
+                  final durationStr = DurationHelper.negativeFormat(
+                    duration: state.duration,
+                    lap: state.lap,
+                    settingsState: settingsState,
+                  );
+                  WebPwaService().updatePip(
+                    durationStr,
+                    state.status == TimerStatus.running,
+                  );
+                }
+
                 AndroidNotificationService().updateTimerState(
                   timerState: state,
                   settingsState: settingsState,
@@ -406,11 +453,18 @@ class _TimerViewState extends State<TimerView> {
     super.initState();
     _focusNode = FocusNode();
     AndroidNotificationService().init(context.read<TimerCubit>());
+    if (kIsWeb) {
+      WebPwaService().init();
+      WebPwaService().requestNotificationPermission();
+    }
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
+    if (kIsWeb) {
+      WebPwaService().closePip();
+    }
     super.dispose();
   }
 
@@ -461,6 +515,35 @@ class _TimerViewState extends State<TimerView> {
           },
         ),
         actions: [
+          if (kIsWeb && WebPwaService().isDocumentPipSupported()) ...[
+            IconButton(
+              tooltip: 'Picture in Picture',
+              icon: const Icon(Icons.picture_in_picture_alt),
+              onPressed: () {
+                final cubit = context.read<TimerCubit>();
+                final settingsState = context.read<SettingsCubit>().state;
+                final durationStr = DurationHelper.negativeFormat(
+                  duration: cubit.state.duration,
+                  lap: cubit.state.lap,
+                  settingsState: settingsState,
+                );
+                WebPwaService().openPip(
+                  initialTime: durationStr,
+                  isRunning: cubit.state.status == TimerStatus.running,
+                  onPauseToggle: () {
+                    cubit.toggle();
+                  },
+                  onSkip: () {
+                    cubit.lap(
+                      autoAdvance: cubit.state.status == TimerStatus.running,
+                      settingsState: settingsState,
+                    );
+                  },
+                );
+              },
+            ),
+            const SizedBox(width: 16),
+          ],
           IconButton(
             tooltip: l10n.sourceCode,
             icon: const Icon(Icons.code),
