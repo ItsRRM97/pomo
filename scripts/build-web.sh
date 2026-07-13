@@ -68,15 +68,21 @@ flutter build web \
   --target lib/main_production.dart \
   "${DART_DEFINE_FLAGS[@]}"
 
-rm -rf deploy/focus
+rm -rf deploy
 mkdir -p deploy/focus
 cp -R build/web/. deploy/focus/
+cp -R build/web/. deploy/
+
+# Root path copy (base href "/")
+sed -i.bak 's|<base href="/focus/">|<base href="/">|g' deploy/index.html && rm -f deploy/index.html.bak
 
 # Flutter 3.44+ ships a stub flutter_service_worker.js that unregisters itself and
 # reloads the page. Load the app directly via flutter_bootstrap instead.
 perl -i -0pe 's/_flutter\.loader\.load\(\{\s*serviceWorkerSettings:\s*\{[^}]+\}\s*\}\);/_flutter.loader.load();/s' deploy/focus/flutter_bootstrap.js
+perl -i -0pe 's/_flutter\.loader\.load\(\{\s*serviceWorkerSettings:\s*\{[^}]+\}\s*\}\);/_flutter.loader.load();/s' deploy/flutter_bootstrap.js
 
 VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)"
 sed "s/focus-pwa-v1/focus-pwa-${VERSION}/" web/pwa_service_worker.js > deploy/focus/pwa_service_worker.js
+sed "s/focus-pwa-v1/focus-pwa-${VERSION}/" web/pwa_service_worker.js > deploy/pwa_service_worker.js
 
-echo "Web build ready at deploy/focus"
+echo "Web build ready at deploy/ and deploy/focus/"

@@ -14,7 +14,6 @@ import 'package:pomo/pages/tasks/view/manual_log_dialog.dart';
 import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/services/android_notification_service.dart';
-import 'package:pomo/singletons/prefs.dart';
 import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -597,25 +596,31 @@ class _ActiveTaskPill extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (activeTask != null) ...[
-                  if (Prefs.enableTimeTracker) ...[
-                    const SizedBox(width: 8),
-                    Tooltip(
-                      message: l10n.logPastTime,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => ManualLogDialog.show(context, activeTask),
-                        child: Padding(
-                          padding: const EdgeInsets.all(2),
-                          child: Icon(
-                            Icons.more_time,
-                            size: 16,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: l10n.logPastTime,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      if (activeTask != null) {
+                        ManualLogDialog.show(context, activeTask);
+                      } else {
+                        NotionTasksModal.show(context);
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.more_time,
+                        size: 16,
+                        color: activeTask != null
+                            ? theme.colorScheme.onPrimaryContainer
+                            : theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  ],
+                  ),
+                ),
+                if (activeTask != null) ...[
                   const SizedBox(width: 8),
                   InkWell(
                     borderRadius: BorderRadius.circular(12),

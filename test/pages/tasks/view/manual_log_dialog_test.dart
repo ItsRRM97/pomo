@@ -6,7 +6,7 @@ import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/pages/tasks/view/manual_log_dialog.dart';
 
 void main() {
-  final testTask = NotionTask(
+  const testTask = NotionTask(
     id: 'test-id',
     title: 'Focus on Pomo App',
     status: 'In Progress',

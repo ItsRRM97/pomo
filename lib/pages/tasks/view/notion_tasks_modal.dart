@@ -333,19 +333,17 @@ class _TaskTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (Prefs.enableTimeTracker) ...[
-                const SizedBox(width: 4),
-                IconButton(
-                  tooltip: l10n.logPastTime,
-                  icon: const Icon(Icons.more_time),
-                  onPressed: () async {
-                    final logged = await ManualLogDialog.show(context, task);
-                    if ((logged ?? false) && context.mounted) {
-                      unawaited(context.read<NotionTasksCubit>().fetchTasks());
-                    }
-                  },
-                ),
-              ],
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: l10n.logPastTime,
+                icon: const Icon(Icons.more_time),
+                onPressed: () async {
+                  final logged = await ManualLogDialog.show(context, task);
+                  if ((logged ?? false) && context.mounted) {
+                    unawaited(context.read<NotionTasksCubit>().fetchTasks());
+                  }
+                },
+              ),
             ],
           ),
         ),
