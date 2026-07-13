@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
-import 'web_pwa_service.dart';
+import 'package:pomo/services/web_pwa_service.dart';
 
 @JS('window.pwaManager')
 external JSObject? get pwaManager;
@@ -112,15 +112,14 @@ class WebPwaServiceWeb implements WebPwaService {
           )
           .toDart;
 
-      _isPipActive = result.toDart;
-      return _isPipActive;
+      return _isPipActive = result.toDart;
     } catch (_) {
       return false;
     }
   }
 
   @override
-  void updatePip(String timeStr, bool isRunning) {
+  void updatePip(String timeStr, {required bool isRunning}) {
     if (!_isPipActive) return;
     try {
       final manager = pwaManager;

@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'web_pwa_service.dart';
+import 'package:pomo/services/web_pwa_service.dart';
 
 class WebPwaServiceStub implements WebPwaService {
   @override
@@ -27,7 +27,7 @@ class WebPwaServiceStub implements WebPwaService {
       false;
 
   @override
-  void updatePip(String timeStr, bool isRunning) {}
+  void updatePip(String timeStr, {required bool isRunning}) {}
 
   @override
   void closePip() {}

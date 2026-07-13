@@ -10,7 +10,7 @@ class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
   Future<void> _launchUrl() async {
-    final uri = Uri.parse('https://github.com/recoskyler');
+    final uri = Uri.parse('https://github.com/rawshn');
 
     if (!await launchUrl(uri)) {
       Logger().e('Failed to launch GitHub link');
@@ -82,7 +82,7 @@ class AboutPage extends StatelessWidget {
                     children: [
                       TextSpan(text: l10n.madeBy1),
                       TextSpan(
-                        text: 'recoskyler',
+                        text: 'Rawshn',
                         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.error,

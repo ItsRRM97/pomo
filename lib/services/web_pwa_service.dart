@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'web_pwa_service_stub.dart'
-    if (dart.library.js_interop) 'web_pwa_service_web.dart';
+import 'package:pomo/services/web_pwa_service_stub.dart'
+    if (dart.library.js_interop) 'package:pomo/services/web_pwa_service_web.dart';
 
 abstract class WebPwaService {
   factory WebPwaService() => getWebPwaService();
@@ -16,6 +16,6 @@ abstract class WebPwaService {
     required VoidCallback onPauseToggle,
     required VoidCallback onSkip,
   });
-  void updatePip(String timeStr, bool isRunning);
+  void updatePip(String timeStr, {required bool isRunning});
   void closePip();
 }

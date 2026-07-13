@@ -18,7 +18,6 @@ import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pomo/services/web_pwa_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 enum NotificationType {
   workStart,
@@ -414,7 +413,7 @@ class TimerPage extends StatelessWidget {
                   );
                   WebPwaService().updatePip(
                     durationStr,
-                    state.status == TimerStatus.running,
+                    isRunning: state.status == TimerStatus.running,
                   );
                 }
 
@@ -466,14 +465,6 @@ class _TimerViewState extends State<TimerView> {
       WebPwaService().closePip();
     }
     super.dispose();
-  }
-
-  Future<void> _launchUrl() async {
-    final uri = Uri.parse('https://github.com/recoskyler/pomo');
-
-    if (!await launchUrl(uri)) {
-      Logger().e('Failed to launch GitHub link');
-    }
   }
 
   String _getEmoji(TimerLap lap) {
@@ -544,12 +535,6 @@ class _TimerViewState extends State<TimerView> {
             ),
             const SizedBox(width: 16),
           ],
-          IconButton(
-            tooltip: l10n.sourceCode,
-            icon: const Icon(Icons.code),
-            onPressed: _launchUrl,
-          ),
-          const SizedBox(width: 16),
           IconButton(
             tooltip: l10n.settings,
             icon: const Icon(Icons.settings),
