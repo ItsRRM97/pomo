@@ -71,13 +71,60 @@ class NotionTask extends Equatable {
       }
     }
 
-    // Project relation
+    // Project relation & inline title extraction (from rollups/formulas/rich_text)
     String? projectId;
     final projProp = props['Project'] as Map<String, dynamic>?;
     if (projProp != null && projProp['relation'] is List) {
       final relList = projProp['relation'] as List;
       if (relList.isNotEmpty && relList.first is Map) {
         projectId = (relList.first as Map)['id'] as String?;
+      }
+    }
+
+    String? projectTitle;
+    for (final entry in props.entries) {
+      final key = entry.key.toLowerCase();
+      if ((key.contains('project') ||
+              key.contains('parent') ||
+              key.contains('rollup')) &&
+          key != 'project') {
+        final prop = entry.value;
+        if (prop is! Map) continue;
+        final type = prop['type'] as String?;
+        if (type == 'rollup' && prop['rollup'] is Map) {
+          final array = (prop['rollup'] as Map)['array'] as List?;
+          if (array != null && array.isNotEmpty && array.first is Map) {
+            final first = array.first as Map;
+            if (first['type'] == 'title' &&
+                first['title'] is List &&
+                (first['title'] as List).isNotEmpty) {
+              final item = (first['title'] as List).first as Map?;
+              projectTitle = item?['plain_text'] as String? ??
+                  (item?['text'] as Map?)?['content'] as String?;
+            } else if (first['type'] == 'rich_text' &&
+                first['rich_text'] is List &&
+                (first['rich_text'] as List).isNotEmpty) {
+              final item = (first['rich_text'] as List).first as Map?;
+              projectTitle = item?['plain_text'] as String? ??
+                  (item?['text'] as Map?)?['content'] as String?;
+            }
+          }
+        } else if (type == 'formula' && prop['formula'] is Map) {
+          if ((prop['formula'] as Map)['type'] == 'string') {
+            projectTitle = (prop['formula'] as Map)['string'] as String?;
+          }
+        } else if (type == 'rich_text' &&
+            prop['rich_text'] is List &&
+            (prop['rich_text'] as List).isNotEmpty) {
+          final item = (prop['rich_text'] as List).first as Map?;
+          projectTitle = item?['plain_text'] as String? ??
+              (item?['text'] as Map?)?['content'] as String?;
+        }
+      }
+      if (projectTitle != null &&
+          projectTitle.isNotEmpty &&
+          !projectTitle.startsWith('Project ')) {
+        break;
       }
     }
 
@@ -101,6 +148,7 @@ class NotionTask extends Equatable {
       priority: priority,
       due: due,
       projectId: projectId,
+      projectTitle: projectTitle,
       timeHours: timeHours,
       timeMinutes: timeMinutes,
     );

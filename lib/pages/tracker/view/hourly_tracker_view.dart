@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/pages/tracker/view/hourly_log_dialog.dart';
+import 'package:pomo/services/notion_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 /// Main 24-Hour Timeline Grid and Multi-timeframe Analytics Dashboard.
@@ -26,6 +27,18 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
   void _loadLogs() {
     setState(() {
       _allLogs = Prefs.hourlyLogs;
+    });
+    NotionService().resolveLogTitles(Prefs.hourlyLogs).then((updated) {
+      if (mounted &&
+          updated.any(
+            (l) =>
+                l.projectTitle != null &&
+                !l.projectTitle!.startsWith('Project '),
+          )) {
+        setState(() {
+          _allLogs = Prefs.hourlyLogs;
+        });
+      }
     });
   }
 
@@ -511,8 +524,19 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                       color: badgeColor,
                                     ),
                                   ),
-                                  if (log.projectTitle != null &&
-                                      log.projectTitle!.isNotEmpty) ...[
+                                  if (() {
+                                    final dt = (log.projectId != null &&
+                                            log.projectId!.isNotEmpty &&
+                                            (log.projectTitle == null ||
+                                                log.projectTitle!
+                                                    .startsWith('Project ')))
+                                        ? (NotionService().getCachedPageTitle(
+                                              log.projectId!,
+                                            ) ??
+                                            log.projectTitle)
+                                        : log.projectTitle;
+                                    return dt != null && dt.isNotEmpty;
+                                  }()) ...[
                                     const SizedBox(width: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
@@ -525,7 +549,19 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
-                                        log.projectTitle!,
+                                        (log.projectId != null &&
+                                                log.projectId!.isNotEmpty &&
+                                                (log.projectTitle == null ||
+                                                    log.projectTitle!
+                                                        .startsWith(
+                                                      'Project ',
+                                                    )))
+                                            ? (NotionService()
+                                                    .getCachedPageTitle(
+                                                  log.projectId!,
+                                                ) ??
+                                                log.projectTitle!)
+                                            : log.projectTitle!,
                                         style: TextStyle(
                                           fontSize: 10,
                                           color: theme

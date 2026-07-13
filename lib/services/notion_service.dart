@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
+import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -14,11 +15,20 @@ class NotionService {
 
   static DateTime? _lastTaskFetchTime;
   static String? _lastFetchedTaskId;
+  static final Map<String, String> _pageTitleCache = {};
+
+  /// Returns the cached project or page title for [pageId], if available.
+  String? getCachedPageTitle(String pageId) => _pageTitleCache[pageId];
+
+  /// Manually stores a project or page title in the cache.
+  void cachePageTitle(String pageId, String title) =>
+      _pageTitleCache[pageId] = title;
 
   /// Clears the TTL cache for task property fetches (useful for testing).
   static void clearTaskFetchCache() {
     _lastTaskFetchTime = null;
     _lastFetchedTaskId = null;
+    _pageTitleCache.clear();
   }
 
   String _getBaseUrl() {
@@ -162,14 +172,150 @@ class NotionService {
       );
 
       final results = response.data?['results'] as List? ?? [];
-      return results
+      final parsed = results
           .whereType<Map<String, dynamic>>()
           .map(NotionTask.fromNotionApi)
           .toList();
+      return resolveProjectTitles(parsed);
     } on DioException catch (e) {
       Logger().e('Notion queryTasks error: ${e.message}', error: e);
       rethrow;
     }
+  }
+
+  /// Resolves Project titles for a list of [NotionTask]s by fetching the title
+  /// of any related `projectId` page from the Notion API if not already known.
+  Future<List<NotionTask>> resolveProjectTitles(List<NotionTask> tasks) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty) return tasks;
+
+    final missingIds = <String>{};
+    for (final t in tasks) {
+      if (t.projectId != null &&
+          t.projectId!.isNotEmpty &&
+          (t.projectTitle == null ||
+              (t.projectTitle?.startsWith('Project ') ?? false))) {
+        if (!_pageTitleCache.containsKey(t.projectId)) {
+          missingIds.add(t.projectId!);
+        }
+      }
+    }
+
+    if (missingIds.isNotEmpty) {
+      await Future.wait(
+        missingIds.map((id) async {
+          try {
+            await resolvePageTitle(id);
+          } catch (e) {
+            Logger().w('Failed to resolve project title for $id: $e');
+          }
+        }),
+      );
+    }
+
+    return tasks.map((t) {
+      if (t.projectId != null &&
+          t.projectId!.isNotEmpty &&
+          (t.projectTitle == null ||
+              (t.projectTitle?.startsWith('Project ') ?? false))) {
+        final cachedTitle = _pageTitleCache[t.projectId];
+        if (cachedTitle != null && cachedTitle.isNotEmpty) {
+          return t.copyWith(projectTitle: () => cachedTitle);
+        }
+      }
+      return t;
+    }).toList();
+  }
+
+  /// Fetches and caches the page title for [pageId] from the Notion API.
+  Future<String?> resolvePageTitle(String pageId) async {
+    if (_pageTitleCache.containsKey(pageId)) {
+      return _pageTitleCache[pageId];
+    }
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty) return null;
+
+    try {
+      final url = '${_getBaseUrl()}pages/$pageId';
+      final response = await _dio.get<Map<String, dynamic>>(
+        url,
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+      final page = response.data;
+      if (page != null) {
+        final props = page['properties'] as Map<String, dynamic>? ?? {};
+        for (final prop in props.values) {
+          if (prop is Map<String, dynamic> && prop['type'] == 'title') {
+            final titleList = prop['title'] as List? ?? [];
+            if (titleList.isNotEmpty && titleList.first is Map) {
+              final textMap = (titleList.first as Map)['text'] as Map?;
+              final titleStr = textMap?['content'] as String? ??
+                  (titleList.first as Map)['plain_text'] as String?;
+              if (titleStr != null &&
+                  titleStr.isNotEmpty &&
+                  titleStr != 'Untitled') {
+                _pageTitleCache[pageId] = titleStr;
+                return titleStr;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      Logger().w('NotionService.resolvePageTitle error: $e');
+    }
+    return null;
+  }
+
+  /// Resolves project titles for [HourlyLog]s by looking up
+  /// the title of any `projectId` from the Notion API.
+  Future<List<HourlyLog>> resolveLogTitles(List<HourlyLog> logs) async {
+    final missingIds = <String>{};
+    for (final log in logs) {
+      if (log.projectId != null &&
+          log.projectId!.isNotEmpty &&
+          (log.projectTitle == null ||
+              (log.projectTitle?.startsWith('Project ') ?? false))) {
+        if (!_pageTitleCache.containsKey(log.projectId)) {
+          missingIds.add(log.projectId!);
+        }
+      }
+    }
+
+    if (missingIds.isNotEmpty) {
+      await Future.wait(
+        missingIds.map((id) async {
+          try {
+            await resolvePageTitle(id);
+          } catch (e) {
+            Logger().w('Failed to resolve project title for log $id: $e');
+          }
+        }),
+      );
+    }
+
+    var anyChanged = false;
+    final updated = logs.map((log) {
+      if (log.projectId != null &&
+          log.projectId!.isNotEmpty &&
+          (log.projectTitle == null ||
+              (log.projectTitle?.startsWith('Project ') ?? false))) {
+        final cachedTitle = _pageTitleCache[log.projectId];
+        if (cachedTitle != null && cachedTitle.isNotEmpty) {
+          anyChanged = true;
+          return log.copyWith(projectTitle: cachedTitle);
+        }
+      }
+      return log;
+    }).toList();
+
+    if (anyChanged) {
+      for (final log in updated) {
+        await Prefs.saveHourlyLog(log);
+      }
+    }
+
+    return updated;
   }
 
   /// Checks if a session with [externalId] is already logged in `Time Logs`.

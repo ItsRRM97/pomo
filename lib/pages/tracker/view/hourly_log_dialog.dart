@@ -58,13 +58,17 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       final uniqueProjects = <String, NotionTask>{};
       for (final t in tasks) {
         if (t.projectId != null && t.projectId!.isNotEmpty) {
-          uniqueProjects[t.projectId!] = NotionTask(
+          final titleStr = (t.projectTitle != null &&
+                  t.projectTitle!.isNotEmpty &&
+                  !t.projectTitle!.startsWith('Project '))
+              ? t.projectTitle!
+              : 'Project ${t.projectId}';
+          uniqueProjects['proj_${t.projectId!}'] = NotionTask(
             id: t.projectId!,
-            title: t.projectTitle ?? 'Project ${t.projectId}',
+            title: titleStr,
           );
-        } else {
-          uniqueProjects[t.id] = t;
         }
+        uniqueProjects[t.id] = t;
       }
       if (mounted) {
         setState(() {

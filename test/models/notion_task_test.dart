@@ -108,5 +108,44 @@ void main() {
       expect(parsed.timeHours, equals(1));
       expect(parsed.timeMinutes, equals(15));
     });
+
+    test('fromNotionApi extracts projectTitle from rollup/formula', () {
+      final payload = {
+        'id': 'notion-id-789',
+        'properties': {
+          'Name': {
+            'title': [
+              {
+                'text': {'content': 'Refactor Cubits'},
+              },
+            ],
+          },
+          'Project': {
+            'relation': [
+              {'id': 'proj-id-999'},
+            ],
+          },
+          'Project Title': {
+            'type': 'rollup',
+            'rollup': {
+              'array': [
+                {
+                  'type': 'title',
+                  'title': [
+                    {
+                      'text': {'content': 'PARA Dashboard App'},
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      };
+
+      final parsed = NotionTask.fromNotionApi(payload);
+      expect(parsed.projectId, equals('proj-id-999'));
+      expect(parsed.projectTitle, equals('PARA Dashboard App'));
+    });
   });
 }
