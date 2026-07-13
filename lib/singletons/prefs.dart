@@ -720,6 +720,17 @@ class Prefs {
     hourlyLogs = current;
   }
 
+  static Future<void> replaceHourlyLogsForHour(
+    String dateStr,
+    int hour,
+    List<HourlyLog> newLogs,
+  ) async {
+    final current = List<HourlyLog>.from(hourlyLogs)
+      ..removeWhere((e) => e.dateStr == dateStr && e.hour == hour)
+      ..addAll(newLogs);
+    hourlyLogs = current;
+  }
+
   static void resetTimer() {
     Prefs().sharedPreferences.remove(_timerStatusVarName);
     Prefs().sharedPreferences.remove(_durationVarName);

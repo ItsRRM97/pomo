@@ -183,6 +183,58 @@ class NotionService {
     }
   }
 
+  /// Queries Notion for PARA Projects, Areas, and Resources while skipping
+  /// archived (`Archive == true` or `Status == Done`) items and tasks.
+  Future<List<NotionTask>> queryProjectsAndAreas(
+      {String? searchKeyword}) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty) {
+      return [];
+    }
+
+    const projectsDbId = '1d33dffe-a139-8160-b230-f2cdb7317b26';
+    const areasDbId = '1d33dffe-a139-8152-9ed2-f3eddc9bd5f8';
+
+    final results = <NotionTask>[];
+
+    Future<void> fetchFromDb(String dbId) async {
+      try {
+        final url = '${_getBaseUrl()}databases/$dbId/query';
+        final payload = <String, dynamic>{
+          'page_size': 100,
+        };
+        final response = await _dio.post<Map<String, dynamic>>(
+          url,
+          data: payload,
+          options: Options(headers: _getHeaders(apiKey)),
+        );
+        final rawList = response.data?['results'] as List? ?? [];
+        for (final item in rawList.whereType<Map<String, dynamic>>()) {
+          final parsed = NotionTask.fromNotionApi(item);
+          if (!parsed.isArchived) {
+            if (searchKeyword == null ||
+                searchKeyword.trim().isEmpty ||
+                parsed.title
+                    .toLowerCase()
+                    .contains(searchKeyword.trim().toLowerCase())) {
+              results.add(parsed);
+            }
+          }
+        }
+      } catch (e) {
+        Logger().w('Notion queryProjectsAndAreas ($dbId) warning: $e');
+      }
+    }
+
+    await Future.wait([
+      fetchFromDb(projectsDbId),
+      fetchFromDb(areasDbId),
+    ]);
+
+    results.sort((a, b) => a.title.compareTo(b.title));
+    return results;
+  }
+
   /// Resolves Project titles for a list of [NotionTask]s by fetching the title
   /// of any related `projectId` page from the Notion API if not already known.
   Future<List<NotionTask>> resolveProjectTitles(List<NotionTask> tasks) async {

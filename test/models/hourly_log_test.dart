@@ -67,6 +67,27 @@ void main() {
       expect(fromJsonLog.projectTitle, equals(log.projectTitle));
       expect(fromJsonLog.notes, equals(log.notes));
       expect(fromJsonLog.notionPageId, equals(log.notionPageId));
+      expect(fromJsonLog.durationMinutes, equals(60));
+    });
+
+    test('supports custom durationMinutes and copyWith', () {
+      final now = DateTime.utc(2026, 7, 13, 14);
+      final log = HourlyLog(
+        id: 'hlog_2',
+        dateStr: '2026-07-13',
+        hour: 15,
+        tagId: 'tag_meeting',
+        tagName: 'Meeting',
+        tagIcon: '📞',
+        tagColorHex: '#FF5722',
+        durationMinutes: 30,
+        loggedAt: now,
+      );
+
+      expect(log.durationMinutes, equals(30));
+      final copied = log.copyWith(durationMinutes: 20);
+      expect(copied.durationMinutes, equals(20));
+      expect(HourlyLog.fromJson(log.toJson()).durationMinutes, equals(30));
     });
   });
 }

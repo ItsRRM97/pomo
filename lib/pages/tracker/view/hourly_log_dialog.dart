@@ -13,12 +13,14 @@ class HourlyLogDialog extends StatefulWidget {
     required this.selectedDate,
     required this.hour,
     this.existingLog,
+    this.existingLogsForHour,
     super.key,
   });
 
   final DateTime selectedDate;
   final int hour;
   final HourlyLog? existingLog;
+  final List<HourlyLog>? existingLogsForHour;
 
   @override
   State<HourlyLogDialog> createState() => _HourlyLogDialogState();
@@ -26,7 +28,7 @@ class HourlyLogDialog extends StatefulWidget {
 
 class _HourlyLogDialogState extends State<HourlyLogDialog> {
   late List<TrackerTag> _tags;
-  TrackerTag? _selectedTag;
+  final List<TrackerTag> _selectedTags = [];
   final TextEditingController _notesController = TextEditingController();
 
   late int _startHour;
@@ -43,17 +45,41 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     _startHour = widget.hour;
     _endHour = (widget.hour + 1).clamp(1, 24);
     _tags = Prefs.trackerTags;
-    if (widget.existingLog != null) {
+
+    if (widget.existingLogsForHour != null &&
+        widget.existingLogsForHour!.isNotEmpty) {
+      for (final l in widget.existingLogsForHour!) {
+        final tag = _tags.cast<TrackerTag?>().firstWhere(
+              (t) => t?.id == l.tagId,
+              orElse: () => null,
+            );
+        if (tag != null && !_selectedTags.any((t) => t.id == tag.id)) {
+          _selectedTags.add(tag);
+        }
+      }
+      _notesController.text = widget.existingLogsForHour!.first.notes;
+    } else if (widget.existingLog != null) {
       final existingId = widget.existingLog!.tagId;
-      _selectedTag = _tags.cast<TrackerTag?>().firstWhere(
+      final tag = _tags.cast<TrackerTag?>().firstWhere(
             (t) => t?.id == existingId,
-            orElse: () => _tags.isNotEmpty ? _tags.first : null,
+            orElse: () => null,
           );
+      if (tag != null) _selectedTags.add(tag);
       _notesController.text = widget.existingLog!.notes;
     } else if (_tags.isNotEmpty) {
-      _selectedTag = _tags.first;
+      _selectedTags.add(_tags.first);
     }
     _fetchProjects();
+  }
+
+  void _toggleTag(TrackerTag tag) {
+    setState(() {
+      if (_selectedTags.any((t) => t.id == tag.id)) {
+        _selectedTags.removeWhere((t) => t.id == tag.id);
+      } else {
+        _selectedTags.add(tag);
+      }
+    });
   }
 
   Future<void> _deleteTag(TrackerTag tag) async {
@@ -80,39 +106,27 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       await Prefs.deleteTrackerTag(tag.id);
       setState(() {
         _tags = Prefs.trackerTags;
-        if (_selectedTag?.id == tag.id) {
-          _selectedTag = _tags.isNotEmpty ? _tags.first : null;
-        }
+        _selectedTags.removeWhere((t) => t.id == tag.id);
       });
     }
   }
 
   Future<void> _fetchProjects() async {
     try {
-      final tasks = await NotionService().queryTasks();
-      // Group unique project IDs or high-level tasks acting as projects
-      final uniqueProjects = <String, NotionTask>{};
-      for (final t in tasks) {
-        if (t.projectId != null && t.projectId!.isNotEmpty) {
-          final titleStr = (t.projectTitle != null &&
-                  t.projectTitle!.isNotEmpty &&
-                  !t.projectTitle!.startsWith('Project '))
-              ? t.projectTitle!
-              : 'Project ${t.projectId}';
-          uniqueProjects['proj_${t.projectId!}'] = NotionTask(
-            id: t.projectId!,
-            title: titleStr,
-          );
-        }
-        uniqueProjects[t.id] = t;
-      }
+      final items = await NotionService().queryProjectsAndAreas();
       if (mounted) {
         setState(() {
-          _projects = uniqueProjects.values.toList()
-            ..sort((a, b) => a.title.compareTo(b.title));
+          _projects = items;
           if (widget.existingLog?.projectId != null) {
             _selectedProject = _projects.cast<NotionTask?>().firstWhere(
                   (p) => p?.id == widget.existingLog!.projectId,
+                  orElse: () => null,
+                );
+          } else if (widget.existingLogsForHour != null &&
+              widget.existingLogsForHour!.isNotEmpty &&
+              widget.existingLogsForHour!.first.projectId != null) {
+            _selectedProject = _projects.cast<NotionTask?>().firstWhere(
+                  (p) => p?.id == widget.existingLogsForHour!.first.projectId,
                   orElse: () => null,
                 );
           }
@@ -120,10 +134,29 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
         });
       }
     } catch (e) {
-      Logger().w('HourlyLogDialog: Failed to load projects ($e)');
+      Logger().w('HourlyLogDialog: Failed to load PARA projects/areas ($e)');
       if (mounted) {
         setState(() => _isLoadingProjects = false);
       }
+    }
+  }
+
+  Future<void> _showProjectPicker() async {
+    final selected = await showDialog<NotionTask?>(
+      context: context,
+      builder: (ctx) => _ProjectPickerDialog(
+        projects: _projects,
+        currentSelected: _selectedProject,
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() {
+        if (selected.id == '__clear__') {
+          _selectedProject = null;
+        } else {
+          _selectedProject = selected;
+        }
+      });
     }
   }
 
@@ -135,7 +168,9 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     if (created != null && mounted) {
       setState(() {
         _tags = Prefs.trackerTags;
-        _selectedTag = created;
+        if (!_selectedTags.any((t) => t.id == created.id)) {
+          _selectedTags.add(created);
+        }
       });
     }
   }
@@ -156,10 +191,10 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   }
 
   Future<void> _saveLog() async {
-    if (_selectedTag == null && _notesController.text.trim().isEmpty) {
+    if (_selectedTags.isEmpty && _notesController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a tag or enter activity notes.'),
+          content: Text('Please select at least one tag or enter notes.'),
         ),
       );
       return;
@@ -172,16 +207,18 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     final d = widget.selectedDate.day.toString().padLeft(2, '0');
     final dateStr = '$y-$m-$d';
 
-    final tag = _selectedTag ??
-        const TrackerTag(
-          id: 'tag_custom_note',
-          name: 'Custom Note',
-          icon: '✍️',
-          colorHex: '#78909C',
-        );
+    final tagsToSave = _selectedTags.isNotEmpty
+        ? _selectedTags
+        : [
+            const TrackerTag(
+              id: 'tag_custom_note',
+              name: 'Custom Note',
+              icon: '✍️',
+              colorHex: '#78909C',
+            ),
+          ];
 
     var notionPageId = widget.existingLog?.notionPageId;
-
     final hoursCount = (_endHour - _startHour).clamp(1, 24);
 
     if (_selectedProject != null) {
@@ -207,30 +244,43 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       }
     }
 
+    final k = tagsToSave.length;
+    final baseMins = 60 ~/ k;
+    final firstMins = 60 - (baseMins * (k - 1));
+
     HourlyLog? firstOrExisting;
     for (var h = _startHour; h < _endHour; h++) {
-      final logId = (h == widget.hour && widget.existingLog != null)
-          ? widget.existingLog!.id
-          : 'hlog_${dateStr}_$h';
+      final newLogsForHour = <HourlyLog>[];
+      for (var i = 0; i < k; i++) {
+        final tag = tagsToSave[i];
+        final mins = (i == 0) ? firstMins : baseMins;
+        final logId = (k == 1 && h == widget.hour && widget.existingLog != null)
+            ? widget.existingLog!.id
+            : (k == 1)
+                ? 'hlog_${dateStr}_$h'
+                : 'hlog_${dateStr}_${h}_${tag.id}';
 
-      final newLog = HourlyLog(
-        id: logId,
-        dateStr: dateStr,
-        hour: h,
-        tagId: tag.id,
-        tagName: tag.name,
-        tagIcon: tag.icon,
-        tagColorHex: tag.colorHex,
-        projectId: _selectedProject?.id,
-        projectTitle: _selectedProject?.title,
-        notes: _notesController.text.trim(),
-        notionPageId: notionPageId,
-        loggedAt: DateTime.now(),
-      );
+        final newLog = HourlyLog(
+          id: logId,
+          dateStr: dateStr,
+          hour: h,
+          tagId: tag.id,
+          tagName: tag.name,
+          tagIcon: tag.icon,
+          tagColorHex: tag.colorHex,
+          projectId: _selectedProject?.id,
+          projectTitle: _selectedProject?.title,
+          notes: _notesController.text.trim(),
+          notionPageId: notionPageId,
+          durationMinutes: mins,
+          loggedAt: DateTime.now(),
+        );
+        newLogsForHour.add(newLog);
+      }
 
-      await Prefs.saveHourlyLog(newLog);
+      await Prefs.replaceHourlyLogsForHour(dateStr, h, newLogsForHour);
       if (h == _startHour) {
-        firstOrExisting = newLog;
+        firstOrExisting = newLogsForHour.first;
       }
     }
 
@@ -381,7 +431,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Select Activity Tag',
+                  'Select Activity Tags (Multi-Select Enabled)',
                   style: theme.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
@@ -400,7 +450,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
               spacing: 8,
               runSpacing: 8,
               children: _tags.map((tag) {
-                final isSelected = _selectedTag?.id == tag.id;
+                final isSelected = _selectedTags.any((t) => t.id == tag.id);
                 final badgeColor = _parseHexColor(tag.colorHex);
                 return Container(
                   decoration: BoxDecoration(
@@ -419,7 +469,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       InkWell(
-                        onTap: () => setState(() => _selectedTag = tag),
+                        onTap: () => _toggleTag(tag),
                         borderRadius: BorderRadius.circular(20),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
@@ -473,9 +523,45 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                 );
               }).toList(),
             ),
+            if (_selectedTags.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color:
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.pie_chart_outline,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _selectedTags.length == 1
+                            ? 'Allocating 60 mins/hr to ${_selectedTags.first.icon} ${_selectedTags.first.name}'
+                            : 'Divided equally: ${60 ~/ _selectedTags.length} mins/hr each across ${_selectedTags.length} tags (${_selectedTags.map((t) => t.icon).join(' ')})',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 18),
             Text(
-              'PARA Project (Optional)',
+              'PARA Project / Area / Resource (Searchable)',
               style: theme.textTheme.titleSmall
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
@@ -483,32 +569,83 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
             if (_isLoadingProjects)
               const LinearProgressIndicator()
             else
-              DropdownButtonFormField<NotionTask>(
-                initialValue: _selectedProject,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Select a project from PARA Dashboard',
-                  contentPadding: EdgeInsets.symmetric(
+              InkWell(
+                onTap: _showProjectPicker,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 10,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: theme.colorScheme.outline),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.folder_outlined,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _selectedProject == null
+                            ? Text(
+                                'Select a project, area, or resource...',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              )
+                            : Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _selectedProject!.priority ==
+                                              'Area'
+                                          ? Colors.orange.withValues(alpha: 0.2)
+                                          : _selectedProject!.priority ==
+                                                  'Resource'
+                                              ? Colors.purple
+                                                  .withValues(alpha: 0.2)
+                                              : Colors.blue
+                                                  .withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      _selectedProject!.priority == 'Area'
+                                          ? '🏔️ Area'
+                                          : _selectedProject!.priority ==
+                                                  'Resource'
+                                              ? '🟣 Resource'
+                                              : '📽️ Project',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedProject!.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
                   ),
                 ),
-                items: [
-                  const DropdownMenuItem<NotionTask>(
-                    child: Text('No Project Attached'),
-                  ),
-                  ..._projects.map((proj) {
-                    return DropdownMenuItem<NotionTask>(
-                      value: proj,
-                      child: Text(
-                        proj.title,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }),
-                ],
-                onChanged: (val) => setState(() => _selectedProject = val),
               ),
             const SizedBox(height: 18),
             Text(
@@ -555,6 +692,208 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProjectPickerDialog extends StatefulWidget {
+  const _ProjectPickerDialog({
+    required this.projects,
+    required this.currentSelected,
+  });
+
+  final List<NotionTask> projects;
+  final NotionTask? currentSelected;
+
+  @override
+  State<_ProjectPickerDialog> createState() => _ProjectPickerDialogState();
+}
+
+class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
+  String _search = '';
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final filtered = widget.projects.where((p) {
+      if (_search.trim().isEmpty) return true;
+      final q = _search.trim().toLowerCase();
+      return p.title.toLowerCase().contains(q) ||
+          p.priority.toLowerCase().contains(q) ||
+          p.status.toLowerCase().contains(q);
+    }).toList();
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.folder_special, size: 22),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Select Project / Area / Resource')),
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Search projects, areas & resources...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _search.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _controller.clear();
+                          setState(() => _search = '');
+                        },
+                      )
+                    : null,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              onChanged: (val) => setState(() => _search = val),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => Navigator.of(context).pop(
+                const NotionTask(id: '__clear__', title: 'None'),
+              ),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color:
+                      theme.colorScheme.errorContainer.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.colorScheme.error.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.clear, color: theme.colorScheme.error, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Clear Attachment / None',
+                      style: TextStyle(
+                        color: theme.colorScheme.error,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 350),
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No projects or areas match "$_search"',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (ctx, i) {
+                        final item = filtered[i];
+                        final isSelected =
+                            widget.currentSelected?.id == item.id;
+
+                        String badgeText;
+                        Color badgeBg;
+                        if (item.priority == 'Area') {
+                          badgeText = '🏔️ Area';
+                          badgeBg = Colors.orange.withValues(alpha: 0.2);
+                        } else if (item.priority == 'Resource') {
+                          badgeText = '🟣 Resource';
+                          badgeBg = Colors.purple.withValues(alpha: 0.2);
+                        } else {
+                          badgeText = '📽️ Project';
+                          badgeBg = Colors.blue.withValues(alpha: 0.2);
+                        }
+
+                        return ListTile(
+                          onTap: () => Navigator.of(context).pop(item),
+                          selected: isSelected,
+                          leading: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              badgeText,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            item.title,
+                            style: TextStyle(
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          subtitle: item.status.isNotEmpty &&
+                                  item.status != 'Active' &&
+                                  item.status != 'To Do'
+                              ? Text(
+                                  item.status,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                )
+                              : null,
+                          trailing: isSelected
+                              ? Icon(
+                                  Icons.check_circle,
+                                  color: theme.colorScheme.primary,
+                                )
+                              : null,
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

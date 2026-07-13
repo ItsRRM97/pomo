@@ -130,31 +130,32 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final targetDateStr = _formatDateStr(_selectedDate);
-    final dayLogsMap = <int, HourlyLog>{};
+    final dayLogsMap = <int, List<HourlyLog>>{};
     for (final log in _allLogs) {
       if (log.dateStr == targetDateStr) {
-        dayLogsMap[log.hour] = log;
+        dayLogsMap.putIfAbsent(log.hour, () => []).add(log);
       }
     }
 
     final timeframeLogs = _getLogsForTimeframe();
-    final tagHoursMap =
-        <String, ({String name, String icon, String color, int hours})>{};
-    var totalTimeframeHours = 0;
+    final tagMinutesMap =
+        <String, ({String name, String icon, String color, int minutes})>{};
+    var totalTimeframeMinutes = 0;
     for (final l in timeframeLogs) {
-      totalTimeframeHours += 1;
-      final current = tagHoursMap[l.tagId] ??
-          (name: l.tagName, icon: l.tagIcon, color: l.tagColorHex, hours: 0);
-      tagHoursMap[l.tagId] = (
+      final mins = l.durationMinutes;
+      totalTimeframeMinutes += mins;
+      final current = tagMinutesMap[l.tagId] ??
+          (name: l.tagName, icon: l.tagIcon, color: l.tagColorHex, minutes: 0);
+      tagMinutesMap[l.tagId] = (
         name: current.name,
         icon: current.icon,
         color: current.color,
-        hours: current.hours + 1,
+        minutes: current.minutes + mins,
       );
     }
 
-    final sortedStats = tagHoursMap.values.toList()
-      ..sort((a, b) => b.hours.compareTo(a.hours));
+    final sortedStats = tagMinutesMap.values.toList()
+      ..sort((a, b) => b.minutes.compareTo(a.minutes));
 
     return Column(
       children: [
@@ -231,7 +232,7 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '$totalTimeframeHours / ${_timeframe == 'daily' ? '24' : _timeframe == 'weekly' ? '168' : _timeframe == '14d' ? '336' : _timeframe == 'monthly' ? '720' : '2160'} hrs',
+                            '${(totalTimeframeMinutes / 60.0).toStringAsFixed(1)} / ${_timeframe == 'daily' ? '24' : _timeframe == 'weekly' ? '168' : _timeframe == '14d' ? '336' : _timeframe == 'monthly' ? '720' : '2160'} hrs',
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.primary,
@@ -269,11 +270,11 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                         borderRadius: BorderRadius.circular(4),
                                         child: Row(
                                           children: sortedStats.map((stat) {
-                                            final flex = stat.hours;
+                                            final flex = stat.minutes;
                                             final color =
                                                 _parseHexColor(stat.color);
                                             return Expanded(
-                                              flex: flex,
+                                              flex: flex.clamp(1, 10000),
                                               child: Container(
                                                 height: 8,
                                                 color: color,
@@ -290,15 +291,16 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                   scrollDirection: Axis.horizontal,
                                   child: Row(
                                     children: sortedStats.take(4).map((stat) {
-                                      final pct = totalTimeframeHours > 0
-                                          ? ((stat.hours /
-                                                      totalTimeframeHours) *
+                                      final pct = totalTimeframeMinutes > 0
+                                          ? ((stat.minutes /
+                                                      totalTimeframeMinutes) *
                                                   100)
                                               .toStringAsFixed(0)
                                           : '0';
                                       final n = stat.name;
-                                      final h = stat.hours;
-                                      final statText = '$n: ${h}h ($pct%)';
+                                      final hStr = (stat.minutes / 60.0)
+                                          .toStringAsFixed(1);
+                                      final statText = '$n: ${hStr}h ($pct%)';
                                       return Padding(
                                         padding:
                                             const EdgeInsets.only(right: 12),
@@ -409,13 +411,13 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             itemCount: 24,
             itemBuilder: (context, hour) {
-              final log = dayLogsMap[hour];
+              final logs = dayLogsMap[hour];
               final isCurrentHour = _selectedDate.day == DateTime.now().day &&
                   _selectedDate.month == DateTime.now().month &&
                   _selectedDate.year == DateTime.now().year &&
                   hour == DateTime.now().hour;
 
-              if (log == null) {
+              if (logs == null || logs.isEmpty) {
                 return Card(
                   elevation: 0,
                   margin: const EdgeInsets.only(bottom: 8),
@@ -492,20 +494,22 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                 );
               }
 
-              final badgeColor = _parseHexColor(log.tagColorHex);
+              final firstLog = logs.first;
+              final primaryColor = _parseHexColor(firstLog.tagColorHex);
+
               return Card(
                 elevation: 0,
                 margin: const EdgeInsets.only(bottom: 8),
-                color: badgeColor.withValues(alpha: 0.08),
+                color: primaryColor.withValues(alpha: 0.08),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                   side: BorderSide(
-                    color: badgeColor.withValues(alpha: 0.4),
+                    color: primaryColor.withValues(alpha: 0.4),
                     width: 1.2,
                   ),
                 ),
                 child: InkWell(
-                  onTap: () => _openLogDialog(hour, log),
+                  onTap: () => _openLogDialog(hour, firstLog),
                   borderRadius: BorderRadius.circular(10),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -527,75 +531,84 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(log.tagIcon, style: const TextStyle(fontSize: 20)),
-                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    log.tagName,
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: logs.map((log) {
+                                  final tagColor =
+                                      _parseHexColor(log.tagColorHex);
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: tagColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: tagColor.withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          log.tagIcon,
+                                          style: const TextStyle(fontSize: 15),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '${log.tagName} (${log.durationMinutes}m)',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13,
+                                            color: tagColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                              if (firstLog.projectTitle != null &&
+                                  firstLog.projectTitle!.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    (firstLog.projectId != null &&
+                                            firstLog.projectId!.isNotEmpty &&
+                                            firstLog.projectTitle!
+                                                .startsWith('Project '))
+                                        ? (NotionService().getCachedPageTitle(
+                                              firstLog.projectId!,
+                                            ) ??
+                                            firstLog.projectTitle!)
+                                        : firstLog.projectTitle!,
                                     style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: badgeColor,
+                                      fontSize: 11,
+                                      color: theme
+                                          .colorScheme.onSecondaryContainer,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  if (() {
-                                    final dt = (log.projectId != null &&
-                                            log.projectId!.isNotEmpty &&
-                                            (log.projectTitle == null ||
-                                                log.projectTitle!
-                                                    .startsWith('Project ')))
-                                        ? (NotionService().getCachedPageTitle(
-                                              log.projectId!,
-                                            ) ??
-                                            log.projectTitle)
-                                        : log.projectTitle;
-                                    return dt != null && dt.isNotEmpty;
-                                  }()) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: theme
-                                            .colorScheme.secondaryContainer,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        (log.projectId != null &&
-                                                log.projectId!.isNotEmpty &&
-                                                (log.projectTitle == null ||
-                                                    log.projectTitle!
-                                                        .startsWith(
-                                                      'Project ',
-                                                    )))
-                                            ? (NotionService()
-                                                    .getCachedPageTitle(
-                                                  log.projectId!,
-                                                ) ??
-                                                log.projectTitle!)
-                                            : log.projectTitle!,
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: theme
-                                              .colorScheme.onSecondaryContainer,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              if (log.notes.isNotEmpty) ...[
+                                ),
+                              ],
+                              if (firstLog.notes.isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
-                                  log.notes,
+                                  firstLog.notes,
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: theme.colorScheme.onSurface
@@ -609,7 +622,7 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                         Icon(
                           Icons.edit_outlined,
                           size: 16,
-                          color: badgeColor,
+                          color: primaryColor,
                         ),
                       ],
                     ),

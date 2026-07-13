@@ -14,6 +14,7 @@ class HourlyLog extends Equatable {
     this.projectTitle,
     this.notes = '',
     this.notionPageId,
+    this.durationMinutes = 60,
     required this.loggedAt,
   });
 
@@ -31,6 +32,7 @@ class HourlyLog extends Equatable {
       projectTitle: json['projectTitle'] as String?,
       notes: json['notes'] as String? ?? '',
       notionPageId: json['notionPageId'] as String?,
+      durationMinutes: json['durationMinutes'] as int? ?? 60,
       loggedAt: json['loggedAt'] != null
           ? DateTime.tryParse(json['loggedAt'] as String) ?? DateTime.now()
           : DateTime.now(),
@@ -70,6 +72,9 @@ class HourlyLog extends Equatable {
   /// Notion Time Logs database page ID if synced successfully.
   final String? notionPageId;
 
+  /// Duration allocated to this log in minutes within its hour block (default 60).
+  final int durationMinutes;
+
   /// Exact timestamp when this log was created or last modified.
   final DateTime loggedAt;
 
@@ -86,6 +91,7 @@ class HourlyLog extends Equatable {
     String? projectTitle,
     String? notes,
     String? notionPageId,
+    int? durationMinutes,
     DateTime? loggedAt,
   }) {
     return HourlyLog(
@@ -100,6 +106,7 @@ class HourlyLog extends Equatable {
       projectTitle: projectTitle ?? this.projectTitle,
       notes: notes ?? this.notes,
       notionPageId: notionPageId ?? this.notionPageId,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
       loggedAt: loggedAt ?? this.loggedAt,
     );
   }
@@ -118,6 +125,7 @@ class HourlyLog extends Equatable {
       if (projectTitle != null) 'projectTitle': projectTitle,
       'notes': notes,
       if (notionPageId != null) 'notionPageId': notionPageId,
+      'durationMinutes': durationMinutes,
       'loggedAt': loggedAt.toIso8601String(),
     };
   }
@@ -135,6 +143,7 @@ class HourlyLog extends Equatable {
         projectTitle,
         notes,
         notionPageId,
+        durationMinutes,
         loggedAt,
       ];
 }

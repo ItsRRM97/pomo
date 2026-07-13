@@ -11,6 +11,7 @@ class NotionTask extends Equatable {
     this.projectTitle,
     this.timeHours = 0,
     this.timeMinutes = 0,
+    this.isArchived = false,
   });
 
   factory NotionTask.fromJson(Map<String, dynamic> json) {
@@ -26,6 +27,7 @@ class NotionTask extends Equatable {
       projectTitle: json['projectTitle'] as String?,
       timeHours: json['timeHours'] as int? ?? 0,
       timeMinutes: json['timeMinutes'] as int? ?? 0,
+      isArchived: json['isArchived'] as bool? ?? false,
     );
   }
 
@@ -47,18 +49,35 @@ class NotionTask extends Equatable {
       }
     }
 
-    // Done status
+    // Done status or Status property
     var status = 'To Do';
     final doneProp = props['Done'] as Map<String, dynamic>?;
     if (doneProp != null && doneProp['status'] is Map) {
       status = (doneProp['status'] as Map)['name'] as String? ?? 'To Do';
     }
+    final statusProp = props['Status'] as Map<String, dynamic>?;
+    if (statusProp != null && statusProp['status'] is Map) {
+      status = (statusProp['status'] as Map)['name'] as String? ?? status;
+    }
 
-    // Priority
+    // Priority or Type (Area/Resource)
     var priority = '';
     final prioProp = props['Priority'] as Map<String, dynamic>?;
     if (prioProp != null && prioProp['select'] is Map) {
       priority = (prioProp['select'] as Map)['name'] as String? ?? '';
+    }
+    final typeProp = props['Type'] as Map<String, dynamic>?;
+    if (typeProp != null) {
+      final typeMap = (typeProp['status'] ?? typeProp['select']) as Map?;
+      if (typeMap != null) {
+        final typeName = typeMap['name'] as String?;
+        if (typeName != null && typeName.isNotEmpty) {
+          priority = typeName; // 'Area' or 'Resource'
+        }
+      }
+    }
+    if (priority.isEmpty && statusProp != null) {
+      priority = 'Project';
     }
 
     // Due date
@@ -141,6 +160,15 @@ class NotionTask extends Equatable {
       timeMinutes = (minsProp['number'] as num).toInt();
     }
 
+    var isArchived = false;
+    final archProp = props['Archive'] as Map<String, dynamic>?;
+    if (archProp != null && archProp['checkbox'] == true) {
+      isArchived = true;
+    }
+    if (status.toLowerCase() == 'done' || status.toLowerCase() == 'archived') {
+      isArchived = true;
+    }
+
     return NotionTask(
       id: id,
       title: title,
@@ -151,6 +179,7 @@ class NotionTask extends Equatable {
       projectTitle: projectTitle,
       timeHours: timeHours,
       timeMinutes: timeMinutes,
+      isArchived: isArchived,
     );
   }
 
@@ -163,6 +192,7 @@ class NotionTask extends Equatable {
   final String? projectTitle;
   final int timeHours;
   final int timeMinutes;
+  final bool isArchived;
 
   int get timeTotalMin => timeHours * 60 + timeMinutes;
 
@@ -189,6 +219,7 @@ class NotionTask extends Equatable {
     String? Function()? projectTitle,
     int Function()? timeHours,
     int Function()? timeMinutes,
+    bool Function()? isArchived,
   }) {
     return NotionTask(
       id: id != null ? id() : this.id,
@@ -200,6 +231,7 @@ class NotionTask extends Equatable {
       projectTitle: projectTitle != null ? projectTitle() : this.projectTitle,
       timeHours: timeHours != null ? timeHours() : this.timeHours,
       timeMinutes: timeMinutes != null ? timeMinutes() : this.timeMinutes,
+      isArchived: isArchived != null ? isArchived() : this.isArchived,
     );
   }
 
@@ -214,6 +246,7 @@ class NotionTask extends Equatable {
       'projectTitle': projectTitle,
       'timeHours': timeHours,
       'timeMinutes': timeMinutes,
+      'isArchived': isArchived,
     };
   }
 
@@ -228,5 +261,6 @@ class NotionTask extends Equatable {
         projectTitle,
         timeHours,
         timeMinutes,
+        isArchived,
       ];
 }
