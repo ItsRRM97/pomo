@@ -175,26 +175,32 @@ class TimerPage extends StatelessWidget {
           listeners: [
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
-                  previous.status != current.status,
+                  previous.status != current.status &&
+                  previous.lap == current.lap,
               listener: (context, state) {
                 Logger().i('Start/Stop');
-                _notify(
-                  NotificationType.startStop,
-                  settingsState,
-                  state.status,
-                );
-              },
-            ),
-            // SKIP/NEXT LAP
-            BlocListener<TimerCubit, TimerState>(
-              listenWhen: (previous, current) => previous.lap != current.lap,
-              listener: (context, state) {
-                Logger().i('SKIP/NEXT LAP');
-                _notify(
-                  NotificationType.nextLap,
-                  settingsState,
-                  state.status,
-                );
+                if (state.status == TimerStatus.running) {
+                  final NotificationType startType;
+                  switch (state.lap) {
+                    case TimerLap.work:
+                      startType = NotificationType.workStart;
+                    case TimerLap.shortBreak:
+                      startType = NotificationType.shortBreakStart;
+                    case TimerLap.longBreak:
+                      startType = NotificationType.longBreakStart;
+                  }
+                  _notify(
+                    startType,
+                    settingsState,
+                    state.status,
+                  );
+                } else {
+                  _notify(
+                    NotificationType.startStop,
+                    settingsState,
+                    state.status,
+                  );
+                }
               },
             ),
             // TICK
@@ -217,7 +223,13 @@ class TimerPage extends StatelessWidget {
             // WORK START
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
-                  previous.lap != current.lap && current.lap == TimerLap.work,
+                  previous.lap != current.lap &&
+                  current.lap == TimerLap.work &&
+                  DurationHelper.isLapComplete(
+                    duration: previous.duration,
+                    lap: previous.lap,
+                    settingsState: settingsState,
+                  ),
               listener: (context, state) {
                 Logger().i('Work start');
                 _notify(
@@ -236,7 +248,13 @@ class TimerPage extends StatelessWidget {
             // WORK END
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
-                  previous.lap != current.lap && previous.lap == TimerLap.work,
+                  previous.lap != current.lap &&
+                  previous.lap == TimerLap.work &&
+                  DurationHelper.isLapComplete(
+                    duration: previous.duration,
+                    lap: previous.lap,
+                    settingsState: settingsState,
+                  ),
               listener: (context, state) {
                 Logger().i('Work end');
                 _notify(
@@ -256,7 +274,12 @@ class TimerPage extends StatelessWidget {
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  current.lap == TimerLap.shortBreak,
+                  current.lap == TimerLap.shortBreak &&
+                  DurationHelper.isLapComplete(
+                    duration: previous.duration,
+                    lap: previous.lap,
+                    settingsState: settingsState,
+                  ),
               listener: (context, state) {
                 Logger().i('Short break start');
                 _notify(
@@ -276,7 +299,12 @@ class TimerPage extends StatelessWidget {
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  previous.lap == TimerLap.shortBreak,
+                  previous.lap == TimerLap.shortBreak &&
+                  DurationHelper.isLapComplete(
+                    duration: previous.duration,
+                    lap: previous.lap,
+                    settingsState: settingsState,
+                  ),
               listener: (context, state) {
                 Logger().i('Short break end');
                 _notify(
@@ -296,7 +324,12 @@ class TimerPage extends StatelessWidget {
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  current.lap == TimerLap.longBreak,
+                  current.lap == TimerLap.longBreak &&
+                  DurationHelper.isLapComplete(
+                    duration: previous.duration,
+                    lap: previous.lap,
+                    settingsState: settingsState,
+                  ),
               listener: (context, state) {
                 Logger().i('Long break start');
                 _notify(
@@ -316,7 +349,12 @@ class TimerPage extends StatelessWidget {
             BlocListener<TimerCubit, TimerState>(
               listenWhen: (previous, current) =>
                   previous.lap != current.lap &&
-                  previous.lap == TimerLap.longBreak,
+                  previous.lap == TimerLap.longBreak &&
+                  DurationHelper.isLapComplete(
+                    duration: previous.duration,
+                    lap: previous.lap,
+                    settingsState: settingsState,
+                  ),
               listener: (context, state) {
                 Logger().i('Long break end');
                 _notify(
@@ -330,6 +368,33 @@ class TimerPage extends StatelessWidget {
                     data: _getRGBData(context),
                   );
                 }
+              },
+            ),
+            // MANUAL SKIP
+            BlocListener<TimerCubit, TimerState>(
+              listenWhen: (previous, current) =>
+                  previous.lap != current.lap &&
+                  !DurationHelper.isLapComplete(
+                    duration: previous.duration,
+                    lap: previous.lap,
+                    settingsState: settingsState,
+                  ),
+              listener: (context, state) {
+                Logger().i('Manual skip');
+                final NotificationType startType;
+                switch (state.lap) {
+                  case TimerLap.work:
+                    startType = NotificationType.workStart;
+                  case TimerLap.shortBreak:
+                    startType = NotificationType.shortBreakStart;
+                  case TimerLap.longBreak:
+                    startType = NotificationType.longBreakStart;
+                }
+                _notify(
+                  startType,
+                  settingsState,
+                  TimerStatus.running, // Bypass stopped guard
+                );
               },
             ),
             BlocListener<TimerCubit, TimerState>(

@@ -143,12 +143,6 @@ class _ActionButtonsState extends State<ActionButtons>
                   return IconButton.filledTonal(
                     tooltip: l10n.skipLap,
                     onPressed: () {
-                      widget.notify(
-                        NotificationType.nextLap,
-                        settingsState,
-                        state.status,
-                      );
-
                       _skipController
                           .forward(from: 0)
                           .then((_) => _skipController.reverse());
