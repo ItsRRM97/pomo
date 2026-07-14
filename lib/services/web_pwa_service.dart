@@ -18,4 +18,5 @@ abstract class WebPwaService {
   });
   void updatePip(String timeStr, {required bool isRunning});
   void closePip();
+  Future<bool> triggerServiceWorkerNotification(String title, String body);
 }

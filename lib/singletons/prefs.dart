@@ -150,6 +150,9 @@ class Prefs {
   static const String _quietHoursEndVarName = 'pomo_quiet_hours_end';
   static const String _trackerTagsVarName = 'pomo_tracker_tags';
   static const String _hourlyLogsVarName = 'pomo_hourly_logs';
+  static const String _pendingHourlyLogsVarName = 'pomo_pending_hourly_logs';
+  static const String _requestNotificationPermissionVarName =
+      'pomo_request_notification_permission';
 
   //* Getters
 
@@ -337,6 +340,13 @@ class Prefs {
     return Prefs().sharedPreferences.getBool(_enableWebhooksVarName) ?? false;
   }
 
+  static bool get requestNotificationPermission {
+    return Prefs()
+            .sharedPreferences
+            .getBool(_requestNotificationPermissionVarName) ??
+        false;
+  }
+
   static bool get enableSound {
     return Prefs().sharedPreferences.getBool(_enableSoundVarName) ?? true;
   }
@@ -448,6 +458,11 @@ class Prefs {
         <String>[];
   }
 
+  static List<String> get pendingHourlyLogs {
+    return Prefs().sharedPreferences.getStringList(_pendingHourlyLogsVarName) ??
+        <String>[];
+  }
+
   //* Setters
 
   static set themeMode(ThemeMode value) {
@@ -524,6 +539,12 @@ class Prefs {
 
   static set enableWebhooks(bool value) {
     Prefs().sharedPreferences.setBool(_enableWebhooksVarName, value);
+  }
+
+  static set requestNotificationPermission(bool value) {
+    Prefs()
+        .sharedPreferences
+        .setBool(_requestNotificationPermissionVarName, value);
   }
 
   static set enableSound(bool value) {
@@ -657,6 +678,10 @@ class Prefs {
     } else {
       Prefs().sharedPreferences.setString(_activeLogPageIdVarName, value);
     }
+  }
+
+  static set pendingHourlyLogs(List<String> value) {
+    Prefs().sharedPreferences.setStringList(_pendingHourlyLogsVarName, value);
   }
 
   static set pendingTimeLogs(List<String> value) {

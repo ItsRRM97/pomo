@@ -38,6 +38,10 @@ extension PwaManagerExtension on PwaManager {
 @JS('window.pwaManager.onPipClosedExternally')
 external set jsOnPipClosedExternally(JSFunction? val);
 
+@JS('window.pwaManager.showCustomNotification')
+external JSPromise<JSBoolean> showCustomNotification(
+    JSString title, JSString body);
+
 class WebPwaServiceWeb implements WebPwaService {
   factory WebPwaServiceWeb() => _instance;
   WebPwaServiceWeb._internal();
@@ -54,9 +58,8 @@ class WebPwaServiceWeb implements WebPwaService {
   @override
   Future<bool> requestNotificationPermission() async {
     try {
-      final manager = pwaManager;
-      if (manager != null) {
-        final result = await (manager as PwaManager)
+      if (pwaManager != null) {
+        final result = await (pwaManager as PwaManager)
             .requestNotificationPermission()
             .toDart;
         return result.toDart;
@@ -77,6 +80,27 @@ class WebPwaServiceWeb implements WebPwaService {
       (manager as PwaManager).showNotification(title.toJS, body.toJS);
     } catch (e) {
       _jsConsoleLog('[Focus] showNotification error: $e'.toJS);
+    }
+  }
+
+  @override
+  Future<bool> triggerServiceWorkerNotification(
+      String title, String body) async {
+    try {
+      if (pwaManager == null) {
+        _jsConsoleLog(
+            '[Focus] triggerServiceWorkerNotification: pwaManager is null'
+                .toJS);
+        return false;
+      }
+      _jsConsoleLog(
+          '[Focus] triggerServiceWorkerNotification: calling JS -> $title'
+              .toJS);
+      final result = await showCustomNotification(title.toJS, body.toJS).toDart;
+      return result.toDart;
+    } catch (e) {
+      _jsConsoleLog('[Focus] triggerServiceWorkerNotification error: $e'.toJS);
+      return false;
     }
   }
 
@@ -146,7 +170,7 @@ class WebPwaServiceWeb implements WebPwaService {
         (manager as PwaManager).closePip();
       }
       jsOnPipClosedExternally = null;
-      _isPipActive = false;
+      this._isPipActive = false;
     } catch (_) {}
   }
 }

@@ -40,6 +40,7 @@ class SettingsState extends Equatable {
     this.enableTimeTracker = true,
     this.quietHoursStart = '23:00',
     this.quietHoursEnd = '07:00',
+    this.requestNotificationPermission = false,
   });
 
   final ThemeMode themeMode;
@@ -56,6 +57,8 @@ class SettingsState extends Equatable {
   final bool enableTimeTracker;
   final String quietHoursStart;
   final String quietHoursEnd;
+
+  final bool requestNotificationPermission;
 
   final int workMinutes;
   final int shortBreakMinutes;
@@ -132,6 +135,7 @@ class SettingsState extends Equatable {
     bool Function()? enableTimeTracker,
     String Function()? quietHoursStart,
     String Function()? quietHoursEnd,
+    bool Function()? requestNotificationPermission,
   }) {
     return SettingsState(
       themeMode: themeMode != null ? themeMode() : this.themeMode,
@@ -214,6 +218,9 @@ class SettingsState extends Equatable {
           quietHoursStart != null ? quietHoursStart() : this.quietHoursStart,
       quietHoursEnd:
           quietHoursEnd != null ? quietHoursEnd() : this.quietHoursEnd,
+      requestNotificationPermission: requestNotificationPermission != null
+          ? requestNotificationPermission()
+          : this.requestNotificationPermission,
     );
   }
 
@@ -257,6 +264,7 @@ class SettingsState extends Equatable {
         enableTimeTracker,
         quietHoursStart,
         quietHoursEnd,
+        requestNotificationPermission,
       ];
 }
 

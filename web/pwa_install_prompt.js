@@ -38,7 +38,7 @@
     removePrompt();
     promptVisible = true;
 
-    var overlay = document.createElement('div');
+    var overlay = document.createElement('div'); overlay.className = 'overlay-style';
     overlay.id = 'focus-pwa-install';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-label', 'Install Focus app');

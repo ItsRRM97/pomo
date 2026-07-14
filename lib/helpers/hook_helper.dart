@@ -21,7 +21,7 @@ mixin HookHelper {
     TriggerMethod? method = TriggerMethod.post,
     dynamic data,
   }) async {
-    if (!Prefs.enableTimeTracker) {
+    if (!Prefs.enableWebhooks) {
       return;
     }
     if (urls == null || urls.isEmpty) {

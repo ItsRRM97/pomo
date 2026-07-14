@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
+import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/services/notion_service.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -98,6 +99,105 @@ class NotionSyncService {
       );
       return (success: false, logPageId: null);
     }
+  }
+
+  /// Synchronizes a single [HourlyLog] to the separate Hourly Timeline Notion
+  /// DB. Respects [Prefs.enableNotionSync], the API key guard, and enqueues to
+  /// a pending queue on failure.
+  Future<({bool success, String? pageId, HourlyLog log})> syncHourlyLog(
+    HourlyLog log,
+  ) async {
+    if (!Prefs.enableNotionSync) {
+      Logger().d('NotionSyncService: Notion sync disabled in Settings.');
+      return (success: false, pageId: null, log: log);
+    }
+
+    final apiKey = Prefs.notionApiKey;
+    if (!kIsWeb && apiKey.isEmpty) {
+      Logger().w('NotionSyncService: Notion API Key is empty.');
+      return (success: false, pageId: null, log: log);
+    }
+
+    try {
+      final result = await NotionService().syncHourlyLog(log);
+      if (result.success) {
+        if (Prefs.pendingHourlyLogs.isNotEmpty) {
+          unawaited(flushPendingHourlyLogs());
+        }
+      }
+      return (
+        success: result.success,
+        pageId: result.pageId,
+        log: result.log,
+      );
+    } catch (e, st) {
+      Logger().e(
+        'NotionSyncService: Hourly sync failed ($e)',
+        error: e,
+        stackTrace: st,
+      );
+      _enqueuePendingHourlyLog(log);
+      return (success: false, pageId: null, log: log);
+    }
+  }
+
+  void _enqueuePendingHourlyLog(HourlyLog log) {
+    try {
+      final payload = jsonEncode(log.toJson());
+      final queue = List<String>.from(Prefs.pendingHourlyLogs)..add(payload);
+      Prefs.pendingHourlyLogs = queue;
+      Logger().i(
+        'NotionSyncService: Enqueued pending hourly log offline '
+        '(${queue.length} items).',
+      );
+    } catch (e) {
+      Logger().e('NotionSyncService: Failed to enqueue pending hourly log: $e');
+    }
+  }
+
+  /// Attempts to retry syncing all offline pending hourly logs stored in
+  /// [Prefs.pendingHourlyLogs].
+  Future<int> flushPendingHourlyLogs() async {
+    if (!Prefs.enableNotionSync || Prefs.notionApiKey.isEmpty) {
+      return 0;
+    }
+
+    final queue = List<String>.from(Prefs.pendingHourlyLogs);
+    if (queue.isEmpty) return 0;
+
+    Logger().i(
+      'NotionSyncService: Flushing ${queue.length} pending hourly logs...',
+    );
+    final remainingQueue = <String>[];
+    var flushedCount = 0;
+
+    for (final item in queue) {
+      try {
+        final data = jsonDecode(item) as Map<String, dynamic>;
+        final log = HourlyLog.fromJson(data);
+
+        final result = await NotionService().syncHourlyLog(log);
+        if (result.success) {
+          flushedCount++;
+          if (result.log.notionPageId != null) {
+            await Prefs.saveHourlyLog(result.log);
+          }
+        } else {
+          remainingQueue.add(item);
+        }
+      } catch (e) {
+        Logger()
+            .w('NotionSyncService: Failed to flush pending hourly log ($e)');
+        remainingQueue.add(item);
+      }
+    }
+
+    Prefs.pendingHourlyLogs = remainingQueue;
+    Logger().i(
+      'NotionSyncService: Flushed $flushedCount pending hourly logs '
+      '(${remainingQueue.length} remaining).',
+    );
+    return flushedCount;
   }
 
   void _enqueuePendingLog({

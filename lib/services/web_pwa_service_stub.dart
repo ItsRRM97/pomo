@@ -35,6 +35,13 @@ class WebPwaServiceStub implements WebPwaService {
 
   @override
   void closePip() {}
+
+  @override
+  Future<bool> triggerServiceWorkerNotification(
+    String title,
+    String body,
+  ) async =>
+      false;
 }
 
 WebPwaService getWebPwaService() => WebPwaServiceStub();

@@ -242,4 +242,9 @@ class SettingsCubit extends Cubit<SettingsState> {
     Prefs.quietHoursEnd = value;
     emit(state.copyWith(quietHoursEnd: () => value));
   }
+
+  void setRequestNotificationPermission(bool value) {
+    Prefs.requestNotificationPermission = value;
+    emit(state.copyWith(requestNotificationPermission: () => value));
+  }
 }

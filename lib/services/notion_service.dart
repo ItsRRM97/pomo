@@ -13,6 +13,10 @@ class NotionService {
   final Dio _dio;
   static const String timeLogsDbId = 'acd9cab4-5560-456c-b9b5-586d9a5b391c';
 
+  /// Hourly Timeline database ID for 24-hour daily activity tracking.
+  /// Replace with actual ID once created via Notion MCP.
+  static const String hourlyTimelineDbId = '39d3dffe-a139-8190-9176-d98e3475c5ec';
+
   static DateTime? _lastTaskFetchTime;
   static String? _lastFetchedTaskId;
   static final Map<String, String> _pageTitleCache = {};
@@ -402,6 +406,204 @@ class NotionService {
       Logger().w('Idempotency check failed: $e');
       return null;
     }
+  }
+
+  /// Checks if an hourly log with [externalId] is already synced in the
+  /// Hourly Timeline DB. Returns the existing row's page ID if found, or null.
+  Future<String?> checkHourlyIdempotency(String externalId) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty) return null;
+
+    final url = '${_getBaseUrl()}databases/$hourlyTimelineDbId/query';
+    final payload = {
+      'filter': {
+        'property': 'External ID',
+        'rich_text': {
+          'equals': externalId,
+        },
+      },
+      'page_size': 1,
+    };
+
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        url,
+        data: payload,
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+      final results = response.data?['results'] as List? ?? [];
+      if (results.isNotEmpty && results.first is Map) {
+        return (results.first as Map<String, dynamic>)['id'] as String?;
+      }
+      return null;
+    } catch (e) {
+      Logger().w('Hourly idempotency check failed: $e');
+      return null;
+    }
+  }
+
+  /// Syncs a single [HourlyLog] to the separate Hourly Timeline Notion DB.
+  /// Performs an idempotency check on `External ID` = `log.id`, creates a row
+  /// if absent, or patches it if present. Sets [log.notionPageId] on success.
+  Future<({bool success, String? pageId, HourlyLog log})> syncHourlyLog(
+    HourlyLog log,
+  ) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty) {
+      throw Exception('Focus access code not set.');
+    }
+
+    final name =
+        '${log.hour.toString().padLeft(2, '0')}:00 - ${log.tagIcon} ${log.tagName}';
+    var pageId = log.notionPageId;
+
+    if (pageId != null && pageId.isNotEmpty) {
+      try {
+        final patchUrl = '${_getBaseUrl()}pages/$pageId';
+        await _dio.patch<Map<String, dynamic>>(
+          patchUrl,
+          data: {'properties': _hourlyProperties(log, name)},
+          options: Options(headers: _getHeaders(apiKey)),
+        );
+        Logger().i('Updated existing Hourly Timeline row $pageId');
+        return (
+          success: true,
+          pageId: pageId,
+          log: log.copyWith(notionPageId: pageId)
+        );
+      } on DioException catch (e) {
+        Logger().w('Failed to update hourly row $pageId (${e.message}).');
+        if (e.response?.statusCode == 404) {
+          pageId = null;
+        } else {
+          rethrow;
+        }
+      }
+    }
+
+    if (pageId == null || pageId.isEmpty) {
+      final existingPageId = await checkHourlyIdempotency(log.id);
+      if (existingPageId != null && existingPageId.isNotEmpty) {
+        pageId = existingPageId;
+        try {
+          final patchUrl = '${_getBaseUrl()}pages/$pageId';
+          await _dio.patch<Map<String, dynamic>>(
+            patchUrl,
+            data: {'properties': _hourlyProperties(log, name)},
+            options: Options(headers: _getHeaders(apiKey)),
+          );
+          Logger().i(
+              'Updated existing Hourly Timeline row $pageId via idempotency');
+          return (
+            success: true,
+            pageId: pageId,
+            log: log.copyWith(notionPageId: pageId)
+          );
+        } on DioException catch (e) {
+          Logger().w('Failed to patch hourly row $pageId (${e.message}).');
+          if (e.response?.statusCode != 404) rethrow;
+          pageId = null;
+        }
+      }
+    }
+
+    if (pageId == null || pageId.isEmpty) {
+      final url = '${_getBaseUrl()}pages';
+      final payload = {
+        'parent': {'database_id': hourlyTimelineDbId},
+        'properties': _hourlyProperties(log, name),
+      };
+
+      try {
+        final response = await _dio.post<Map<String, dynamic>>(
+          url,
+          data: payload,
+          options: Options(headers: _getHeaders(apiKey)),
+        );
+        pageId = response.data?['id'] as String?;
+        Logger().i('Created Hourly Timeline row $pageId ($hourlyTimelineDbId)');
+        return (
+          success: true,
+          pageId: pageId,
+          log: log.copyWith(notionPageId: pageId)
+        );
+      } on DioException catch (e) {
+        Logger()
+            .e('Failed to create Hourly Timeline row: ${e.message}', error: e);
+        throw Exception(
+          'Failed to create Notion Hourly Timeline row: '
+          '${e.response?.data ?? e.message}',
+        );
+      }
+    }
+
+    return (
+      success: true,
+      pageId: pageId,
+      log: log.copyWith(notionPageId: pageId)
+    );
+  }
+
+  Map<String, dynamic> _hourlyProperties(HourlyLog log, String name) {
+    return {
+      'Name': {
+        'title': [
+          {
+            'text': {'content': name}
+          },
+        ],
+      },
+      'Date': {
+        'date': {'start': log.dateStr},
+      },
+      'Hour': {'number': log.hour},
+      'Tag': {
+        'rich_text': [
+          {
+            'text': {'content': log.tagName}
+          },
+        ],
+      },
+      'Tag Icon': {
+        'rich_text': [
+          {
+            'text': {'content': log.tagIcon}
+          },
+        ],
+      },
+      'Project': {
+        'rich_text': [
+          {
+            'text': {'content': log.projectTitle ?? ''}
+          },
+        ],
+      },
+      'Notes': {
+        'rich_text': [
+          {
+            'text': {'content': log.notes}
+          },
+        ],
+      },
+      'Duration (min)': {'number': log.durationMinutes},
+      'Source': {
+        'rich_text': [
+          {
+            'text': {'content': 'pomo-hourly'}
+          },
+        ],
+      },
+      'External ID': {
+        'rich_text': [
+          {
+            'text': {'content': log.id}
+          },
+        ],
+      },
+      'Logged At': {
+        'date': {'start': log.loggedAt.toUtc().toIso8601String()},
+      },
+    };
   }
 
   /// Logs a completed or partial session to the PARA dashboard `Time Logs` DB

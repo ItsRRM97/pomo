@@ -23,7 +23,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       cache.addAll(
-        PRECACHE.map((url) => new Request(url, { cache: 'reload' })),
+        PRECACHE.map((url) => new Request(url, { cache: 'reload' }))
       ),
     ),
   );
@@ -86,6 +86,7 @@ self.addEventListener('fetch', (event) => {
   }
 });
 
+// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
