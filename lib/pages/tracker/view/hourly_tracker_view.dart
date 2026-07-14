@@ -577,25 +577,19 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                               if (firstLog.projectTitle != null &&
                                   firstLog.projectTitle!.isNotEmpty) ...[
                                 const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.secondaryContainer,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    (() {
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: (() {
+                                    final resolved = (() {
                                       if (firstLog.projectTitle == null ||
-                                          firstLog.projectTitle!.isEmpty)
+                                          firstLog.projectTitle!.isEmpty) {
                                         return '';
+                                      }
                                       if (firstLog.projectId == null ||
                                           firstLog.projectId!.isEmpty) {
                                         return firstLog.projectTitle!;
                                       }
-                                      // If title contains "Project " placeholder prefix, resolve from cache
                                       if (firstLog.projectTitle!
                                               .startsWith('Project ') ||
                                           firstLog.projectTitle!
@@ -618,14 +612,36 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                         }
                                       }
                                       return firstLog.projectTitle!;
-                                    })(),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: theme
-                                          .colorScheme.onSecondaryContainer,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                    })();
+
+                                    return resolved
+                                        .split(',')
+                                        .map((s) => s.trim())
+                                        .where((s) => s.isNotEmpty)
+                                        .map((title) {
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: theme
+                                              .colorScheme.secondaryContainer,
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          title,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: theme.colorScheme
+                                                .onSecondaryContainer,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList();
+                                  })(),
                                 ),
                               ],
                               if (firstLog.notes.isNotEmpty) ...[
