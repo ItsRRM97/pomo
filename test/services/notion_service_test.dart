@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/services/notion_service.dart';
 import 'package:pomo/services/notion_sync_service.dart';
@@ -45,6 +46,7 @@ void main() {
       Prefs.notionApiKey = '';
       Prefs.notionProxyUrl = '';
       Prefs.pendingTimeLogs = [];
+      Prefs.pendingHourlyLogs = [];
       NotionService.clearTaskFetchCache();
     });
 
@@ -131,6 +133,48 @@ void main() {
       expect(result.success, isFalse);
       expect(Prefs.pendingTimeLogs, isNotEmpty);
       expect(Prefs.pendingTimeLogs.first, contains('task-fail-1'));
+    });
+
+    test(
+        'syncHourlyLog queues to Prefs.pendingHourlyLogs on network/API failure',
+        () async {
+      Prefs.enableNotionSync = true;
+      Prefs.notionApiKey = 'secret_token';
+      Prefs.notionProxyUrl = 'http://invalid.domain.test:12345/api/notion/';
+      Prefs.pendingHourlyLogs = [];
+
+      final log = HourlyLog(
+        id: 'hlog-fail-1',
+        dateStr: '2026-07-14',
+        hour: 10,
+        tagId: 'tag_coding',
+        tagName: 'Coding',
+        tagIcon: '💻',
+        tagColorHex: '#4285F4',
+        loggedAt: DateTime.now(),
+      );
+
+      final result = await NotionSyncService().syncHourlyLog(log);
+
+      expect(result.success, isFalse);
+      expect(Prefs.pendingHourlyLogs, isNotEmpty);
+      expect(Prefs.pendingHourlyLogs.first, contains('hlog-fail-1'));
+    });
+
+    test('flushPendingHourlyLogs returns 0 when enableNotionSync is false',
+        () async {
+      Prefs.enableNotionSync = false;
+      Prefs.pendingHourlyLogs = ['{"id":"1","hour":10}'];
+      final flushed = await NotionSyncService().flushPendingHourlyLogs();
+      expect(flushed, equals(0));
+    });
+
+    test('flushPendingHourlyLogs returns 0 when queue is empty', () async {
+      Prefs.enableNotionSync = true;
+      Prefs.notionApiKey = 'secret_token';
+      Prefs.pendingHourlyLogs = [];
+      final flushed = await NotionSyncService().flushPendingHourlyLogs();
+      expect(flushed, equals(0));
     });
   });
 

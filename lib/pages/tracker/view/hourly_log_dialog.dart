@@ -5,6 +5,7 @@ import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/pages/tracker/view/tag_create_dialog.dart';
 import 'package:pomo/services/notion_service.dart';
+import 'package:pomo/services/notion_sync_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 /// Interactive modal allowing users to log activity for a 1-hour block.
@@ -218,32 +219,6 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
             ),
           ];
 
-    var notionPageId = widget.existingLog?.notionPageId;
-    final hoursCount = (_endHour - _startHour).clamp(1, 24);
-
-    if (_selectedProject != null) {
-      try {
-        final result = await NotionService().logSession(
-          task: _selectedProject!,
-          durationMinutes: hoursCount * 60,
-          totalDurationMinutes: hoursCount * 60,
-          endedAt: DateTime(
-            widget.selectedDate.year,
-            widget.selectedDate.month,
-            widget.selectedDate.day,
-            _endHour == 24 ? 23 : _endHour,
-            _endHour == 24 ? 59 : 0,
-          ),
-          existingLogPageId: notionPageId,
-        );
-        if (result.success && result.pageId != null) {
-          notionPageId = result.pageId;
-        }
-      } catch (e) {
-        Logger().w('HourlyLogDialog: Notion sync warning ($e)');
-      }
-    }
-
     final k = tagsToSave.length;
     final baseMins = 60 ~/ k;
     final firstMins = 60 - (baseMins * (k - 1));
@@ -260,7 +235,12 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                 ? 'hlog_${dateStr}_$h'
                 : 'hlog_${dateStr}_${h}_${tag.id}';
 
-        final newLog = HourlyLog(
+        final existingNotionPageId =
+            (widget.existingLog != null && widget.existingLog!.id == logId)
+                ? widget.existingLog!.notionPageId
+                : null;
+
+        var newLog = HourlyLog(
           id: logId,
           dateStr: dateStr,
           hour: h,
@@ -271,10 +251,22 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
           projectId: _selectedProject?.id,
           projectTitle: _selectedProject?.title,
           notes: _notesController.text.trim(),
-          notionPageId: notionPageId,
+          notionPageId: existingNotionPageId,
           durationMinutes: mins,
           loggedAt: DateTime.now(),
         );
+
+        try {
+          final syncResult = await NotionSyncService().syncHourlyLog(newLog);
+          if (syncResult.success) {
+            newLog = syncResult.log;
+          }
+        } catch (e) {
+          Logger().w(
+            'HourlyLogDialog: Failed to sync hourly log to Notion: $e',
+          );
+        }
+
         newLogsForHour.add(newLog);
       }
 

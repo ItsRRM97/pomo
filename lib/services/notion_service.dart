@@ -15,7 +15,8 @@ class NotionService {
 
   /// Hourly Timeline database ID for 24-hour daily activity tracking.
   /// Replace with actual ID once created via Notion MCP.
-  static const String hourlyTimelineDbId = '39d3dffe-a139-8190-9176-d98e3475c5ec';
+  static const String hourlyTimelineDbId =
+      '39d3dffe-a139-8190-9176-d98e3475c5ec';
 
   static DateTime? _lastTaskFetchTime;
   static String? _lastFetchedTaskId;
