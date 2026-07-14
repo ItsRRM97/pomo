@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -122,18 +123,42 @@ class _SoundPresetFieldState extends State<_SoundPresetField> {
   }
 
   Future<void> _pickCustomFile() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+      withData: kIsWeb,
+    );
     if (result == null) {
       return;
     }
 
-    final path = result.files.single.path;
-    if (path == null) {
-      return;
+    if (kIsWeb) {
+      final bytes = result.files.single.bytes;
+      if (bytes == null) {
+        return;
+      }
+      if (bytes.lengthInBytes > 1 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Custom sound file must be under 1MB.'),
+            ),
+          );
+        }
+        return;
+      }
+      final base64Str = base64Encode(bytes);
+      final extension = result.files.single.extension ?? 'mp3';
+      final mimeType = 'audio/$extension';
+      final dataUrl = 'data:$mimeType;base64,$base64Str';
+      widget.onChanged(dataUrl);
+    } else {
+      final path = result.files.single.path;
+      if (path == null) {
+        return;
+      }
+      Logger().i('Selected file: $path');
+      widget.onChanged(path);
     }
-
-    Logger().i('Selected file: $path');
-    widget.onChanged(path);
   }
 
   Future<void> _previewSound() async {
@@ -158,11 +183,10 @@ class _SoundPresetFieldState extends State<_SoundPresetField> {
           child: Text(preset.label),
         ),
       ),
-      if (!kIsWeb)
-        DropdownMenuItem<String>(
-          value: _customFileId,
-          child: Text(l10n.customSoundFile),
-        ),
+      DropdownMenuItem<String>(
+        value: _customFileId,
+        child: Text(l10n.customSoundFile),
+      ),
     ];
 
     return Column(

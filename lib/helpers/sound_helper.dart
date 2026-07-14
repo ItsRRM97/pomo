@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 /// Bundled timer alert sounds. All royalty-free generated tones or existing
 /// assets.
@@ -87,6 +88,14 @@ class SoundHelper {
 
     if (storedValue.startsWith('sounds/')) {
       return AssetSource(storedValue);
+    }
+
+    if (kIsWeb ||
+        storedValue.startsWith('data:') ||
+        storedValue.startsWith('blob:') ||
+        storedValue.startsWith('http://') ||
+        storedValue.startsWith('https://')) {
+      return UrlSource(storedValue);
     }
 
     return DeviceFileSource(storedValue);
