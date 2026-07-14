@@ -189,4 +189,33 @@ void main() {
       expect(NotionService.clearTaskFetchCache, returnsNormally);
     });
   });
+
+  group('NotionService.resolveLogTitles with multiple projects', () {
+    setUp(() {
+      NotionService.clearTaskFetchCache();
+    });
+
+    test('splits, resolves, and joins multiple project titles', () async {
+      final service = NotionService();
+      service.cachePageTitle('proj-1', '📽️ Project Alpha');
+      service.cachePageTitle('proj-2', '🏔️ Area Beta');
+
+      final log = HourlyLog(
+        id: 'hlog-1',
+        dateStr: '2026-07-15',
+        hour: 12,
+        tagId: 'tag_coding',
+        tagName: 'Coding',
+        tagIcon: '💻',
+        tagColorHex: '#4285F4',
+        projectId: 'proj-1,proj-2',
+        projectTitle: 'Project Alpha, Project Beta',
+        loggedAt: DateTime.now(),
+      );
+
+      final resolved = await service.resolveLogTitles([log]);
+      expect(resolved.first.projectTitle,
+          equals('📽️ Project Alpha, 🏔️ Area Beta'));
+    });
+  });
 }

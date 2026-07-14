@@ -324,17 +324,15 @@ class NotionService {
     return null;
   }
 
-  /// Resolves project titles for [HourlyLog]s by looking up
-  /// the title of any `projectId` from the Notion API.
   Future<List<HourlyLog>> resolveLogTitles(List<HourlyLog> logs) async {
     final missingIds = <String>{};
     for (final log in logs) {
-      if (log.projectId != null &&
-          log.projectId!.isNotEmpty &&
-          (log.projectTitle == null ||
-              (log.projectTitle?.startsWith('Project ') ?? false))) {
-        if (!_pageTitleCache.containsKey(log.projectId)) {
-          missingIds.add(log.projectId!);
+      if (log.projectId != null && log.projectId!.isNotEmpty) {
+        final ids = log.projectId!.split(',').where((s) => s.isNotEmpty);
+        for (final id in ids) {
+          if (!_pageTitleCache.containsKey(id)) {
+            missingIds.add(id);
+          }
         }
       }
     }
@@ -353,14 +351,27 @@ class NotionService {
 
     var anyChanged = false;
     final updated = logs.map((log) {
-      if (log.projectId != null &&
-          log.projectId!.isNotEmpty &&
-          (log.projectTitle == null ||
-              (log.projectTitle?.startsWith('Project ') ?? false))) {
-        final cachedTitle = _pageTitleCache[log.projectId];
-        if (cachedTitle != null && cachedTitle.isNotEmpty) {
-          anyChanged = true;
-          return log.copyWith(projectTitle: cachedTitle);
+      if (log.projectId != null && log.projectId!.isNotEmpty) {
+        final ids =
+            log.projectId!.split(',').where((s) => s.isNotEmpty).toList();
+        final titles = <String>[];
+        var resolvedAll = true;
+
+        for (final id in ids) {
+          final cachedTitle = _pageTitleCache[id];
+          if (cachedTitle != null && cachedTitle.isNotEmpty) {
+            titles.add(cachedTitle);
+          } else {
+            resolvedAll = false;
+          }
+        }
+
+        if (resolvedAll && titles.isNotEmpty) {
+          final newTitle = titles.join(', ');
+          if (log.projectTitle != newTitle) {
+            anyChanged = true;
+            return log.copyWith(projectTitle: newTitle);
+          }
         }
       }
       return log;

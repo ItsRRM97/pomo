@@ -587,15 +587,38 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    (firstLog.projectId != null &&
-                                            firstLog.projectId!.isNotEmpty &&
-                                            firstLog.projectTitle!
-                                                .startsWith('Project '))
-                                        ? (NotionService().getCachedPageTitle(
-                                              firstLog.projectId!,
-                                            ) ??
-                                            firstLog.projectTitle!)
-                                        : firstLog.projectTitle!,
+                                    (() {
+                                      if (firstLog.projectTitle == null ||
+                                          firstLog.projectTitle!.isEmpty)
+                                        return '';
+                                      if (firstLog.projectId == null ||
+                                          firstLog.projectId!.isEmpty) {
+                                        return firstLog.projectTitle!;
+                                      }
+                                      // If title contains "Project " placeholder prefix, resolve from cache
+                                      if (firstLog.projectTitle!
+                                              .startsWith('Project ') ||
+                                          firstLog.projectTitle!
+                                              .contains('Project ')) {
+                                        final ids = firstLog.projectId!
+                                            .split(',')
+                                            .where((s) => s.isNotEmpty)
+                                            .toList();
+                                        final titles = <String>[];
+                                        for (final id in ids) {
+                                          final cached = NotionService()
+                                              .getCachedPageTitle(id);
+                                          if (cached != null &&
+                                              cached.isNotEmpty) {
+                                            titles.add(cached);
+                                          }
+                                        }
+                                        if (titles.isNotEmpty) {
+                                          return titles.join(', ');
+                                        }
+                                      }
+                                      return firstLog.projectTitle!;
+                                    })(),
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: theme

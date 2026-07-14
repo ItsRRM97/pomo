@@ -36,7 +36,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   late int _endHour;
 
   List<NotionTask> _projects = [];
-  NotionTask? _selectedProject;
+  List<NotionTask> _selectedProjects = [];
   bool _isLoadingProjects = true;
   bool _isSaving = false;
 
@@ -118,19 +118,26 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       if (mounted) {
         setState(() {
           _projects = items;
+          final List<String> existingIds = [];
           if (widget.existingLog?.projectId != null) {
-            _selectedProject = _projects.cast<NotionTask?>().firstWhere(
-                  (p) => p?.id == widget.existingLog!.projectId,
-                  orElse: () => null,
-                );
+            existingIds.addAll(
+              widget.existingLog!.projectId!
+                  .split(',')
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty),
+            );
           } else if (widget.existingLogsForHour != null &&
               widget.existingLogsForHour!.isNotEmpty &&
               widget.existingLogsForHour!.first.projectId != null) {
-            _selectedProject = _projects.cast<NotionTask?>().firstWhere(
-                  (p) => p?.id == widget.existingLogsForHour!.first.projectId,
-                  orElse: () => null,
-                );
+            existingIds.addAll(
+              widget.existingLogsForHour!.first.projectId!
+                  .split(',')
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty),
+            );
           }
+          _selectedProjects =
+              _projects.where((p) => existingIds.contains(p.id)).toList();
           _isLoadingProjects = false;
         });
       }
@@ -143,20 +150,16 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   }
 
   Future<void> _showProjectPicker() async {
-    final selected = await showDialog<NotionTask?>(
+    final selected = await showDialog<List<NotionTask>?>(
       context: context,
       builder: (ctx) => _ProjectPickerDialog(
         projects: _projects,
-        currentSelected: _selectedProject,
+        currentSelected: _selectedProjects,
       ),
     );
     if (selected != null && mounted) {
       setState(() {
-        if (selected.id == '__clear__') {
-          _selectedProject = null;
-        } else {
-          _selectedProject = selected;
-        }
+        _selectedProjects = selected;
       });
     }
   }
@@ -240,6 +243,13 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                 ? widget.existingLog!.notionPageId
                 : null;
 
+        final String? projectIds = _selectedProjects.isNotEmpty
+            ? _selectedProjects.map((p) => p.id).join(',')
+            : null;
+        final String? projectTitles = _selectedProjects.isNotEmpty
+            ? _selectedProjects.map((p) => p.title).join(', ')
+            : null;
+
         var newLog = HourlyLog(
           id: logId,
           dateStr: dateStr,
@@ -248,8 +258,8 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
           tagName: tag.name,
           tagIcon: tag.icon,
           tagColorHex: tag.colorHex,
-          projectId: _selectedProject?.id,
-          projectTitle: _selectedProject?.title,
+          projectId: projectIds,
+          projectTitle: projectTitles,
           notes: _notesController.text.trim(),
           notionPageId: existingNotionPageId,
           durationMinutes: mins,
@@ -582,56 +592,65 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: _selectedProject == null
+                        child: _selectedProjects.isEmpty
                             ? Text(
-                                'Select a project, area, or resource...',
+                                'Select projects, areas, or resources...',
                                 style: TextStyle(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               )
-                            : Row(
-                                children: [
-                                  Container(
+                            : Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: _selectedProjects.map((proj) {
+                                  final Color badgeBg = proj.priority == 'Area'
+                                      ? Colors.orange.withValues(alpha: 0.2)
+                                      : proj.priority == 'Resource'
+                                          ? Colors.purple.withValues(alpha: 0.2)
+                                          : Colors.blue.withValues(alpha: 0.2);
+                                  final String badgeText =
+                                      proj.priority == 'Area'
+                                          ? '🏔️ Area'
+                                          : proj.priority == 'Resource'
+                                              ? '🟣 Resource'
+                                              : '📽️ Project';
+                                  return Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
+                                      horizontal: 8,
+                                      vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: _selectedProject!.priority ==
-                                              'Area'
-                                          ? Colors.orange.withValues(alpha: 0.2)
-                                          : _selectedProject!.priority ==
-                                                  'Resource'
-                                              ? Colors.purple
-                                                  .withValues(alpha: 0.2)
-                                              : Colors.blue
-                                                  .withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      _selectedProject!.priority == 'Area'
-                                          ? '🏔️ Area'
-                                          : _selectedProject!.priority ==
-                                                  'Resource'
-                                              ? '🟣 Resource'
-                                              : '📽️ Project',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
+                                      color: badgeBg,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: theme.colorScheme.outlineVariant,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _selectedProject!.title,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          badgeText,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            proj.title,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
+                                  );
+                                }).toList(),
                               ),
                       ),
                       const Icon(Icons.arrow_drop_down),
@@ -695,7 +714,7 @@ class _ProjectPickerDialog extends StatefulWidget {
   });
 
   final List<NotionTask> projects;
-  final NotionTask? currentSelected;
+  final List<NotionTask> currentSelected;
 
   @override
   State<_ProjectPickerDialog> createState() => _ProjectPickerDialogState();
@@ -704,11 +723,13 @@ class _ProjectPickerDialog extends StatefulWidget {
 class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
   String _search = '';
   late TextEditingController _controller;
+  final List<NotionTask> _selectedTasks = [];
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController();
+    _selectedTasks.addAll(widget.currentSelected);
   }
 
   @override
@@ -733,7 +754,7 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
         children: [
           const Icon(Icons.folder_special, size: 22),
           const SizedBox(width: 8),
-          const Expanded(child: Text('Select Project / Area / Resource')),
+          const Expanded(child: Text('Select Projects / Areas')),
           IconButton(
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
@@ -767,9 +788,11 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
             ),
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => Navigator.of(context).pop(
-                const NotionTask(id: '__clear__', title: 'None'),
-              ),
+              onTap: () {
+                setState(() {
+                  _selectedTasks.clear();
+                });
+              },
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 padding:
@@ -787,7 +810,7 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
                     Icon(Icons.clear, color: theme.colorScheme.error, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      'Clear Attachment / None',
+                      'Clear All Selected',
                       style: TextStyle(
                         color: theme.colorScheme.error,
                         fontWeight: FontWeight.w600,
@@ -819,7 +842,7 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
                       itemBuilder: (ctx, i) {
                         final item = filtered[i];
                         final isSelected =
-                            widget.currentSelected?.id == item.id;
+                            _selectedTasks.any((t) => t.id == item.id);
 
                         String badgeText;
                         Color badgeBg;
@@ -835,7 +858,16 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
                         }
 
                         return ListTile(
-                          onTap: () => Navigator.of(context).pop(item),
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedTasks
+                                    .removeWhere((t) => t.id == item.id);
+                              } else {
+                                _selectedTasks.add(item);
+                              }
+                            });
+                          },
                           selected: isSelected,
                           leading: Container(
                             padding: const EdgeInsets.symmetric(
@@ -873,12 +905,19 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
                                   ),
                                 )
                               : null,
-                          trailing: isSelected
-                              ? Icon(
-                                  Icons.check_circle,
-                                  color: theme.colorScheme.primary,
-                                )
-                              : null,
+                          trailing: Checkbox(
+                            value: isSelected,
+                            onChanged: (bool? val) {
+                              setState(() {
+                                if (val == true) {
+                                  if (!isSelected) _selectedTasks.add(item);
+                                } else {
+                                  _selectedTasks
+                                      .removeWhere((t) => t.id == item.id);
+                                }
+                              });
+                            },
+                          ),
                         );
                       },
                     ),
@@ -886,6 +925,16 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_selectedTasks),
+          child: const Text('Apply'),
+        ),
+      ],
     );
   }
 }
