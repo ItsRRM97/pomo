@@ -1,1 +1,442 @@
-<base href="/focus/">
+<!DOCTYPE html><html><head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A simple Pomodoro timer app for focused work sessions">
+
+  <!-- PWA / installability -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Focus">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png?">
+
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" sizes="57x57" href="icons/apple-icon-57x57.png?">
+  <link rel="apple-touch-icon" sizes="60x60" href="icons/apple-icon-60x60.png?">
+  <link rel="apple-touch-icon" sizes="72x72" href="icons/apple-icon-72x72.png?">
+  <link rel="apple-touch-icon" sizes="76x76" href="icons/apple-icon-76x76.png?">
+  <link rel="apple-touch-icon" sizes="114x114" href="icons/apple-icon-114x114.png?">
+  <link rel="apple-touch-icon" sizes="120x120" href="icons/apple-icon-120x120.png?">
+  <link rel="apple-touch-icon" sizes="144x144" href="icons/apple-icon-144x144.png?">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-icon-152x152.png?">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-icon-180x180.png?">
+  <link rel="icon" type="image/png" sizes="192x192"  href="icons/android-icon-192x192.png?">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png?">
+  <link rel="icon" type="image/png" sizes="96x96" href="icons/favicon-96x96.png?">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png?">
+  <meta name="msapplication-TileColor" content="#201a1b">
+  <meta name="msapplication-TileImage" content="icons/ms-icon-144x144.png?">
+  <meta name="theme-color" content="#201a1b">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png?">
+
+  <title>Focus - Pomodoro Timer</title>
+  <link rel="manifest" href="/focus/manifest.json">
+
+
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+
+
+
+
+  <style id="splash-screen-style">
+    html {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #201a1b;
+          background-size: 100% 100%;
+    }
+
+    .center {
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+    }
+
+    .contain {
+      display:block;
+      width:100%; height:100%;
+      object-fit: contain;
+    }
+
+    .stretch {
+      display:block;
+      width:100%; height:100%;
+    }
+
+    .cover {
+      display:block;
+      width:100%; height:100%;
+      object-fit: cover;
+    }
+
+    .bottom {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      -ms-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
+    }
+
+    .bottomLeft {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+    }
+
+    .bottomRight {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+    }
+
+    #focus-pwa-install {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.55);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .focus-pwa-card {
+      width: min(420px, 100%);
+      background: #201a1b;
+      color: #f5f0f1;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    .focus-pwa-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .focus-pwa-title {
+      margin: 0 0 8px;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .focus-pwa-body {
+      margin: 0 0 12px;
+      line-height: 1.45;
+      color: rgba(245, 240, 241, 0.88);
+    }
+
+    .focus-pwa-steps {
+      margin: 0 0 16px 18px;
+      padding: 0;
+      color: rgba(245, 240, 241, 0.88);
+      line-height: 1.5;
+    }
+
+    .focus-pwa-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .focus-pwa-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .focus-pwa-btn-primary {
+      background: #e57373;
+      color: #201a1b;
+    }
+
+    .focus-pwa-btn-secondary {
+      background: rgba(255, 255, 255, 0.12);
+      color: #f5f0f1;
+    }
+
+    .focus-pwa-btn-ghost {
+      background: transparent;
+      color: rgba(245, 240, 241, 0.72);
+    }
+  </style>
+  <script id="splash-screen-script">
+    function removeSplashFromWeb() {
+      document.getElementById("splash")?.remove();
+      document.getElementById("splash-branding")?.remove();
+      document.body.style.background = "transparent";
+    }
+  </script>
+</head>
+
+<body>
+  <picture id="splash">
+      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+  </picture>
+
+
+
+  <script src="pwa_install_prompt.js"></script>
+  <script>
+    window.pwaManager = {
+      pipWindow: null,
+      onPipClosedExternally: null,
+
+      requestNotificationPermission: async function() {
+        if (!('Notification' in window)) return false;
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      },
+
+      _sendViaServiceWorker: function(title, body) {
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(function(reg) {
+            reg.showNotification(title, {
+              body: body,
+              icon: '/focus/icons/Icon-192.png',
+              badge: '/focus/icons/Icon-192.png',
+              tag: 'focus-timer',
+              renotify: true
+            });
+          }).catch(function(e) {
+            console.warn('SW notification failed:', e);
+          });
+        }
+      },
+
+      showNotification: function(title, body) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        // Chrome on macOS/mobile silently drops new Notification() when the
+        // page is not focused. Always use the service worker path instead.
+        this._sendViaServiceWorker(title, body);
+      },
+
+      // Call from the browser console to fire a test notification immediately.
+      testNotification: function() {
+        if (Notification.permission !== 'granted') {
+          console.warn('Notification permission not granted. Call pwaManager.requestNotificationPermission() first.');
+          return;
+        }
+        this._sendViaServiceWorker('Focus - Test Notification', 'Notifications are working!');
+      },
+
+      isDocumentPipSupported: function() {
+        return 'documentPictureInPicture' in window;
+      },
+
+      openDocumentPip: async function(initialTime, isRunning, onPauseToggle, onSkip) {
+        if (!this.isDocumentPipSupported()) return false;
+        try {
+          this.pipWindow = await window.documentPictureInPicture.requestWindow({
+            width: 260,
+            height: 120
+          });
+          const pipDoc = this.pipWindow.document;
+
+          // Inject basic CSS styling
+          const style = pipDoc.createElement('style');
+          style.textContent = `
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: #201a1b;
+              color: #f5f0f1;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              height: 100vh;
+              overflow: hidden;
+              box-sizing: border-box;
+            }
+            .timer-text {
+              font-size: 36px;
+              font-weight: bold;
+              margin-bottom: 12px;
+              font-variant-numeric: tabular-nums;
+              letter-spacing: -0.5px;
+            }
+            .controls {
+              display: flex;
+              gap: 12px;
+            }
+            .btn {
+              background-color: rgba(255, 255, 255, 0.12);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 999px;
+              color: #f5f0f1;
+              cursor: pointer;
+              font-size: 13px;
+              font-weight: 600;
+              padding: 6px 14px;
+              transition: all 0.2s ease;
+            }
+            .btn:hover {
+              background-color: rgba(255, 255, 255, 0.2);
+            }
+            .btn-primary {
+              background-color: #e57373;
+              color: #201a1b;
+              border: none;
+            }
+            .btn-primary:hover {
+              background-color: #ef9a9a;
+            }
+          `;
+          pipDoc.head.appendChild(style);
+
+          const container = pipDoc.createElement('div');
+          container.style.display = 'flex';
+          container.style.flexDirection = 'column';
+          container.style.alignItems = 'center';
+
+          const timerSpan = pipDoc.createElement('span');
+          timerSpan.className = 'timer-text';
+          timerSpan.id = 'pip-timer';
+          timerSpan.textContent = initialTime;
+          container.appendChild(timerSpan);
+
+          const controlsDiv = pipDoc.createElement('div');
+          controlsDiv.className = 'controls';
+
+          const toggleBtn = pipDoc.createElement('button');
+          toggleBtn.className = 'btn ' + (isRunning ? 'btn-secondary' : 'btn-primary');
+          toggleBtn.id = 'pip-toggle';
+          toggleBtn.textContent = isRunning ? 'Pause' : 'Start';
+          toggleBtn.addEventListener('click', () => {
+            if (onPauseToggle) onPauseToggle();
+          });
+          controlsDiv.appendChild(toggleBtn);
+
+          const skipBtn = pipDoc.createElement('button');
+          skipBtn.className = 'btn btn-secondary';
+          skipBtn.id = 'pip-skip';
+          skipBtn.textContent = 'Skip';
+          skipBtn.addEventListener('click', () => {
+            if (onSkip) onSkip();
+          });
+          controlsDiv.appendChild(skipBtn);
+
+          container.appendChild(controlsDiv);
+          pipDoc.body.appendChild(container);
+
+          // Handle close event
+          this.pipWindow.addEventListener('pagehide', () => {
+            this.pipWindow = null;
+            if (this.onPipClosedExternally) {
+              this.onPipClosedExternally();
+            }
+          });
+
+          return true;
+        } catch (e) {
+          console.error("Failed to open Document PiP window:", e);
+          return false;
+        }
+      },
+
+      updatePip: function(timeStr, isRunning) {
+        if (!this.pipWindow) return;
+        const pipDoc = this.pipWindow.document;
+        const timerSpan = pipDoc.getElementById('pip-timer');
+        if (timerSpan) {
+          timerSpan.textContent = timeStr;
+        }
+        const toggleBtn = pipDoc.getElementById('pip-toggle');
+        if (toggleBtn) {
+          toggleBtn.textContent = isRunning ? 'Pause' : 'Start';
+          toggleBtn.className = 'btn ' + (isRunning ? 'btn-secondary' : 'btn-primary');
+        }
+      },
+
+      closePip: function() {
+        if (this.pipWindow) {
+          this.pipWindow.close();
+          this.pipWindow = null;
+        }
+      },
+
+      showCustomNotification: async function(title, body) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+        try {
+          if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification(title, {
+              body: body,
+              icon: '/focus/icons/Icon-192.png',
+              badge: '/focus/icons/Icon-192.png',
+              tag: 'focus-timer',
+              renotify: true
+            });
+            return true;
+          }
+        } catch (e) {
+          console.warn('SW notification failed:', e);
+        }
+        return false;
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        // Clean up legacy flutter service worker if present
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          registrations.forEach(function (registration) {
+            if (registration.active &&
+                registration.active.scriptURL.includes('flutter_service_worker.js')) {
+              registration.unregister();
+            }
+          });
+        });
+
+        // Trigger page reload when service worker changes to active
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+
+        navigator.serviceWorker.register('pwa_service_worker.js');
+      });
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+
+
+
+
+</body></html>
