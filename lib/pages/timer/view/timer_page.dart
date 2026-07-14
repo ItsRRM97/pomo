@@ -105,8 +105,6 @@ class TimerPage extends StatelessWidget {
       return;
     }
 
-    final player = AudioPlayer();
-
     try {
       var sourceFile = '';
 
@@ -130,10 +128,10 @@ class TimerPage extends StatelessWidget {
           Logger().d('NotificationType.longBreakEnd');
           sourceFile = settingsState.customLongBreakEndSound;
         case NotificationType.startStop:
-          await player.play(AssetSource('sounds/pop.aac'));
+          await SoundHelper.play(AssetSource('sounds/pop.aac'));
         case NotificationType.nextLap:
           Logger().d('NotificationType.nextLap');
-          await player.play(AssetSource('sounds/ding_dong.aac'));
+          await SoundHelper.play(AssetSource('sounds/ding_dong.aac'));
         case NotificationType.tick:
           break;
       }
@@ -142,11 +140,11 @@ class TimerPage extends StatelessWidget {
           type != NotificationType.tick &&
           type != NotificationType.nextLap &&
           sourceFile != '') {
-        await player.play(SoundHelper.resolveSource(sourceFile));
+        await SoundHelper.play(SoundHelper.resolveSource(sourceFile));
       }
     } catch (e) {
-      await player.stop();
-      await player.play(AssetSource(SoundHelper.defaultAsset));
+      await SoundHelper.stop();
+      await SoundHelper.play(AssetSource(SoundHelper.defaultAsset));
     }
   }
 

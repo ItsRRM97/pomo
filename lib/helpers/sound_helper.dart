@@ -80,6 +80,16 @@ class TimerSoundPreset {
 
 class SoundHelper {
   static const defaultAsset = 'sounds/ding_dong.aac';
+  static final AudioPlayer _player = AudioPlayer();
+
+  static Future<void> play(Source source) async {
+    await _player.stop();
+    await _player.play(source);
+  }
+
+  static Future<void> stop() async {
+    await _player.stop();
+  }
 
   static Source resolveSource(String storedValue) {
     if (storedValue.isEmpty) {
