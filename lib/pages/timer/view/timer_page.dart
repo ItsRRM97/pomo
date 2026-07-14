@@ -106,41 +106,57 @@ class TimerPage extends StatelessWidget {
     }
 
     try {
-      var sourceFile = '';
-
+      Source? source;
       switch (type) {
         case NotificationType.workStart:
           Logger().d('NotificationType.workStart');
-          sourceFile = settingsState.customWorkStartSound;
+          source =
+              SoundHelper.resolveSource(settingsState.customWorkStartSound);
+          break;
         case NotificationType.workEnd:
           Logger().d('NotificationType.workEnd');
-          sourceFile = settingsState.customWorkEndSound;
+          source = SoundHelper.resolveSource(settingsState.customWorkEndSound);
+          break;
         case NotificationType.shortBreakStart:
           Logger().d('NotificationType.shortBreakStart');
-          sourceFile = settingsState.customShortBreakStartSound;
+          source = SoundHelper.resolveSource(
+            settingsState.customShortBreakStartSound,
+          );
+          break;
         case NotificationType.shortBreakEnd:
           Logger().d('NotificationType.shortBreakEnd');
-          sourceFile = settingsState.customShortBreakEndSound;
+          source = SoundHelper.resolveSource(
+            settingsState.customShortBreakEndSound,
+          );
+          break;
         case NotificationType.longBreakStart:
           Logger().d('NotificationType.longBreakStart');
-          sourceFile = settingsState.customLongBreakStartSound;
+          source = SoundHelper.resolveSource(
+            settingsState.customLongBreakStartSound,
+          );
+          break;
         case NotificationType.longBreakEnd:
           Logger().d('NotificationType.longBreakEnd');
-          sourceFile = settingsState.customLongBreakEndSound;
+          source = SoundHelper.resolveSource(
+            settingsState.customLongBreakEndSound,
+          );
+          break;
         case NotificationType.startStop:
           await SoundHelper.play(AssetSource('sounds/pop.aac'));
+          break;
         case NotificationType.nextLap:
           Logger().d('NotificationType.nextLap');
           await SoundHelper.play(AssetSource('sounds/ding_dong.aac'));
+          break;
         case NotificationType.tick:
           break;
       }
 
-      if (type != NotificationType.startStop &&
+      if (source != null &&
+          type != NotificationType.startStop &&
           type != NotificationType.tick &&
-          type != NotificationType.nextLap &&
-          sourceFile != '') {
-        await SoundHelper.play(SoundHelper.resolveSource(sourceFile));
+          type != NotificationType.nextLap) {
+        await SoundHelper.play(source);
       }
     } catch (e) {
       await SoundHelper.stop();
