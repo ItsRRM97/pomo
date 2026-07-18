@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pomo/helpers/notion_url_helper.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class NotionExpansion extends StatelessWidget {
   const NotionExpansion({super.key});
@@ -126,6 +128,15 @@ class NotionExpansion extends StatelessWidget {
               onChanged: (value) => context
                   .read<SettingsCubit>()
                   .setNotionHourlyTimelineDatabaseId(value),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () {
+                final url = NotionUrlHelper.timeLogsDatabaseUrl;
+                launchUrl(Uri.parse(url));
+              },
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open Notion Time Logs'),
             ),
           ],
         );
