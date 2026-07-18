@@ -209,6 +209,26 @@ class NotionSyncService {
     }
   }
 
+  /// Deletes a Time Log record in Notion.
+  Future<bool> deleteSessionRecord(String pageId) async {
+    if (pageId.isEmpty) return false;
+    if (!Prefs.enableNotionSync) return false;
+    final apiKey = Prefs.notionApiKey;
+    if (!kIsWeb && apiKey.isEmpty) return false;
+
+    Logger().i('NotionSyncService: Deleting session record $pageId...');
+    try {
+      return await NotionService().deletePage(pageId);
+    } catch (e, st) {
+      Logger().w(
+        'NotionSyncService: Failed to delete session record $pageId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
+    }
+  }
+
   /// Synchronizes a single [HourlyLog] to the separate Hourly Timeline Notion
   /// DB. Respects [Prefs.enableNotionSync], the API key guard, and enqueues to
   /// a pending queue on failure.

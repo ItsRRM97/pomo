@@ -76,7 +76,7 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   /// Updates the existing Notion Time Log record with current elapsed time.
-  /// Called on pause, lap transition, and reset.
+  /// Called on pause (stop).
   void _updateNotionRecord() {
     if (!Prefs.enableTimeTracker) return;
     if (state.activeTask == null) return;
@@ -111,6 +111,33 @@ class TimerCubit extends Cubit<TimerState> {
     });
   }
 
+  /// Finalizes the current session by either deleting it (if under 1 minute)
+  /// or updating it with the final elapsed time (if 1 minute or more).
+  /// Called when resetting the timer, changing/clearing tasks, or changing laps.
+  void _finalizeSession() {
+    if (!Prefs.enableTimeTracker) return;
+    if (state.activeTask == null) return;
+    if (state.lap != TimerLap.work) return;
+
+    final logPageId = state.activeLogPageId;
+    if (logPageId == null || logPageId.isEmpty) return;
+
+    final totalMinutes = state.duration.inMinutes;
+    if (totalMinutes < 1) {
+      // The session has no valid tracked focus time; delete it to avoid clutter
+      NotionSyncService().deleteSessionRecord(logPageId);
+    } else {
+      // Finalize the record with the latest elapsed minutes
+      final taskToSync = state.activeTask!;
+      NotionSyncService().updateSessionRecord(
+        task: taskToSync,
+        totalElapsed: state.duration,
+        existingLogPageId: logPageId,
+        endedAt: DateTime.now(),
+      );
+    }
+  }
+
   void start() {
     emit(
       state.copyWith(
@@ -141,8 +168,8 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void reset() {
-    // Finalize the current Notion record before resetting
-    _updateNotionRecord();
+    // Finalize or delete the current Notion record before resetting
+    _finalizeSession();
 
     final currentTask = state.activeTask;
     emit(TimerState(activeTask: currentTask));
@@ -152,8 +179,8 @@ class TimerCubit extends Cubit<TimerState> {
 
   void selectTask(NotionTask? task) {
     if (state.activeTask?.id != task?.id) {
-      // Finalize any existing session before switching
-      _updateNotionRecord();
+      // Finalize or delete any existing session before switching
+      _finalizeSession();
 
       Prefs.duration = Duration.zero;
       Prefs.activeLogPageId = null;
@@ -172,8 +199,8 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void clearTask() {
-    // Finalize any existing session before clearing
-    _updateNotionRecord();
+    // Finalize or delete any existing session before clearing
+    _finalizeSession();
 
     Prefs.duration = Duration.zero;
     Prefs.activeLogPageId = null;
@@ -188,8 +215,8 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void lap({required SettingsState settingsState, bool autoAdvance = true}) {
-    // Finalize the current Notion record before transitioning laps
-    _updateNotionRecord();
+    // Finalize or delete the current Notion record before transitioning laps
+    _finalizeSession();
 
     final nextLap = LapHelper.getNextLap(
       state.lap,

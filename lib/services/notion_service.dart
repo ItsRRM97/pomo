@@ -844,6 +844,30 @@ class NotionService {
     }
   }
 
+  /// Archives (deletes) a page in Notion by setting 'archived' to true.
+  Future<bool> deletePage(String pageId) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty) return false;
+
+    final url = '${_getBaseUrl()}pages/$pageId';
+    final payload = {
+      'archived': true,
+    };
+
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        url,
+        data: payload,
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+      Logger().i('Archived (deleted) page $pageId in Notion');
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      Logger().e('Failed to delete page $pageId: ${e.message}', error: e);
+      return false;
+    }
+  }
+
   /// Tests connection using the provided [apiKey] by querying 1 task.
   Future<bool> testConnection(String apiKey) async {
     final dbId = Prefs.notionDatabaseId;
