@@ -6,7 +6,7 @@ This document explains the technical design, architectural patterns, and subsyst
 
 ## 1. High-Level Architectural Overview
 
-`pomo` follows a clean, modular architecture separating presentation (`lib/pages/`, `lib/widgets/`), state management (`flutter_bloc` / `Cubit`), pure domain logic (`lib/helpers/`), persistence (`lib/singletons/prefs.dart`), and platform-specific shell integration (`lib/desktop/`).
+`pomo` follows a clean, modular architecture separating presentation (`lib/pages/`, `lib/widgets/`), state management (`flutter_bloc` / `Cubit`), pure domain logic (`lib/helpers/`), persistence (`lib/singletons/prefs.dart`), and platform-specific shell integration (`lib/desktop/`). Hourly time tracking lives under `lib/pages/tracker/` (Activity Grid, Missed Hours, Notion Hourly Timeline sync via `Prefs` + `NotionSyncService`).
 
 ```
 +-----------------------------------------------------------------------------------+

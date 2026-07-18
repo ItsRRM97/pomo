@@ -430,12 +430,15 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
             ),
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Select Activity Tags (Multi-Select Enabled)',
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                Expanded(
+                  child: Text(
+                    'Select Activity Tags (Multi-Select Enabled)',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: _openCreateTag,
@@ -443,6 +446,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                   label: const Text('New Tag'),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
               ],

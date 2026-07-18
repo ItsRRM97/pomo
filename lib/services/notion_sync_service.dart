@@ -290,6 +290,13 @@ class NotionSyncService {
       return (success: false, pageId: null, log: log);
     }
 
+    if (Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty) {
+      Logger().w(
+        'NotionSyncService: Hourly Timeline Database ID is empty.',
+      );
+      return (success: false, pageId: null, log: log);
+    }
+
     final apiKey = Prefs.notionApiKey;
     if (!kIsWeb && apiKey.isEmpty) {
       Logger().w('NotionSyncService: Notion API Key is empty.');
@@ -337,6 +344,10 @@ class NotionSyncService {
   /// [Prefs.pendingHourlyLogs].
   Future<int> flushPendingHourlyLogs() async {
     if (!Prefs.enableNotionSync || Prefs.notionApiKey.isEmpty) {
+      return 0;
+    }
+
+    if (Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty) {
       return 0;
     }
 

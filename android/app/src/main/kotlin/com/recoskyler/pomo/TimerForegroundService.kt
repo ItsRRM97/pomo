@@ -37,9 +37,68 @@ class TimerForegroundService : Service() {
                 putExtra("isHourly", isHourly)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
+                try {
+                    context.startForegroundService(intent)
+                } catch (e: Exception) {
+                    // D5: Android 16 may throw ForegroundServiceStartNotAllowedException
+                    // when starting from the background. Fall back to a plain notification.
+                    postFallbackNotification(context, title, text, isHourly)
+                }
             } else {
                 context.startService(intent)
+            }
+        }
+
+        private fun postFallbackNotification(
+            context: Context,
+            title: String,
+            text: String,
+            isHourly: Boolean,
+        ) {
+            ensureChannel(context)
+            val openAppIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val openAppPendingIntent = PendingIntent.getActivity(
+                context, 0, openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val coffeeColor = Color.parseColor("#8D6E63")
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle(text)
+                .setContentText(title)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setColor(coffeeColor)
+                .setContentIntent(openAppPendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            if (isHourly) {
+                builder.setSubText("Hourly Tracker")
+                builder.setCategory(NotificationCompat.CATEGORY_REMINDER)
+            } else {
+                builder.setSubText("Focus Timer")
+                builder.setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            }
+            val manager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            manager?.notify(NOTIFICATION_ID, builder.build())
+        }
+
+        private fun ensureChannel(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val manager =
+                    context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "Focus Timer",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "Shows active Focus Pomodoro countdown"
+                    setShowBadge(true)
+                }
+                manager?.createNotificationChannel(channel)
             }
         }
 

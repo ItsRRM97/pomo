@@ -177,6 +177,21 @@ void main() {
       expect(flushed, equals(0));
     });
 
+    test('flushPendingHourlyLogs returns 0 when hourly timeline DB id empty',
+        () async {
+      Prefs.enableNotionSync = true;
+      Prefs.notionApiKey = 'secret_token';
+      Prefs.notionHourlyTimelineDatabaseId = '';
+      Prefs.pendingHourlyLogs = [
+        '{"id":"1","dateStr":"2026-07-18","hour":10,'
+            '"tagId":"work","tagName":"Work","tagIcon":"💼",'
+            '"tagColor":"#000000","durationMinutes":60,'
+            '"loggedAt":"2026-07-18T10:00:00.000"}',
+      ];
+      final flushed = await NotionSyncService().flushPendingHourlyLogs();
+      expect(flushed, equals(0));
+    });
+
     test('sessionCreditMinutes credits only the unsynced delta', () {
       // Pause at 10m then again at 15m: +10 then +5, not +10 then +15.
       expect(

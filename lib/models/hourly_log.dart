@@ -69,7 +69,7 @@ class HourlyLog extends Equatable {
   /// Custom text note/description typed by the user.
   final String notes;
 
-  /// Notion Time Logs database page ID if synced successfully.
+  /// Notion Hourly Timeline database page ID if synced successfully.
   final String? notionPageId;
 
   /// Duration allocated to this log in minutes within its hour block (default 60).

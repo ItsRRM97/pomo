@@ -161,7 +161,8 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'All non-sleep hours in this period are tracked.',
+                        'Quiet hours are excluded. All other hours in this '
+                        'period are tracked.',
                       ),
                     ],
                   ),
@@ -195,10 +196,11 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
                         trailing: FilledButton.icon(
                           onPressed: () =>
                               _logMissedBlock(item.date, item.hour),
-                          icon: const Icon(Icons.add, size: 16),
+                          icon: const Icon(Icons.add, size: 18),
                           label: const Text('Log Now'),
                           style: FilledButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
+                            minimumSize: const Size(88, 44),
+                            tapTargetSize: MaterialTapTargetSize.padded,
                           ),
                         ),
                       ),

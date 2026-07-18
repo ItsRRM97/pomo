@@ -19,4 +19,18 @@ class NotionUrlHelper {
     final dbId = _stripDashes(Prefs.notionDatabaseId);
     return 'https://www.notion.so/$dbId';
   }
+
+  /// Whether an Hourly Timeline database ID is configured in Prefs.
+  static bool get hasHourlyTimelineDatabaseId =>
+      Prefs.notionHourlyTimelineDatabaseId.trim().isNotEmpty;
+
+  /// Returns the Notion URL for the Hourly Timeline database configured in Prefs.
+  ///
+  /// Returns an empty string when no database ID is set.
+  static String get hourlyTimelineDatabaseUrl {
+    final raw = Prefs.notionHourlyTimelineDatabaseId.trim();
+    if (raw.isEmpty) return '';
+    final dbId = _stripDashes(raw);
+    return 'https://www.notion.so/$dbId';
+  }
 }

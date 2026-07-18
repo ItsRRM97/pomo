@@ -138,6 +138,25 @@ class NotionExpansion extends StatelessWidget {
               icon: const Icon(Icons.open_in_new),
               label: const Text('Open Notion Time Logs'),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                if (!NotionUrlHelper.hasHourlyTimelineDatabaseId) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Set Hourly Timeline Database ID in Settings',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                final url = NotionUrlHelper.hourlyTimelineDatabaseUrl;
+                launchUrl(Uri.parse(url));
+              },
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open Notion Hourly Timeline'),
+            ),
           ],
         );
       },
