@@ -11,12 +11,10 @@ class NotionService {
   static final NotionService _instance = NotionService._internal();
 
   final Dio _dio;
-  static const String timeLogsDbId = 'acd9cab4-5560-456c-b9b5-586d9a5b391c';
+  static String get timeLogsDbId => Prefs.notionTimeLogsDatabaseId;
 
   /// Hourly Timeline database ID for 24-hour daily activity tracking.
-  /// Replace with actual ID once created via Notion MCP.
-  static const String hourlyTimelineDbId =
-      '39d3dffe-a139-8190-9176-d98e3475c5ec';
+  static String get hourlyTimelineDbId => Prefs.notionHourlyTimelineDatabaseId;
 
   static DateTime? _lastTaskFetchTime;
   static String? _lastFetchedTaskId;
@@ -197,8 +195,8 @@ class NotionService {
       return [];
     }
 
-    const projectsDbId = '1d33dffe-a139-8160-b230-f2cdb7317b26';
-    const areasDbId = '1d33dffe-a139-8152-9ed2-f3eddc9bd5f8';
+    final projectsDbId = Prefs.notionProjectsDatabaseId;
+    final areasDbId = Prefs.notionAreasDatabaseId;
 
     final results = <NotionTask>[];
 

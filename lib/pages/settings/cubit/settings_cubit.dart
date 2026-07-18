@@ -45,6 +45,11 @@ class SettingsCubit extends Cubit<SettingsState> {
         notionApiKey: Prefs.notionApiKey,
         enableNotionSync: Prefs.enableNotionSync,
         notionProxyUrl: Prefs.notionProxyUrl,
+        notionDatabaseId: Prefs.notionDatabaseId,
+        notionTimeLogsDatabaseId: Prefs.notionTimeLogsDatabaseId,
+        notionProjectsDatabaseId: Prefs.notionProjectsDatabaseId,
+        notionAreasDatabaseId: Prefs.notionAreasDatabaseId,
+        notionHourlyTimelineDatabaseId: Prefs.notionHourlyTimelineDatabaseId,
         enableTimeTracker: Prefs.enableTimeTracker,
         quietHoursStart: Prefs.quietHoursStart,
         quietHoursEnd: Prefs.quietHoursEnd,
@@ -225,6 +230,31 @@ class SettingsCubit extends Cubit<SettingsState> {
   void setNotionProxyUrl(String value) {
     Prefs.notionProxyUrl = value;
     emit(state.copyWith(notionProxyUrl: () => value));
+  }
+
+  void setNotionDatabaseId(String value) {
+    Prefs.notionDatabaseId = value;
+    emit(state.copyWith(notionDatabaseId: () => value));
+  }
+
+  void setNotionTimeLogsDatabaseId(String value) {
+    Prefs.notionTimeLogsDatabaseId = value;
+    emit(state.copyWith(notionTimeLogsDatabaseId: () => value));
+  }
+
+  void setNotionProjectsDatabaseId(String value) {
+    Prefs.notionProjectsDatabaseId = value;
+    emit(state.copyWith(notionProjectsDatabaseId: () => value));
+  }
+
+  void setNotionAreasDatabaseId(String value) {
+    Prefs.notionAreasDatabaseId = value;
+    emit(state.copyWith(notionAreasDatabaseId: () => value));
+  }
+
+  void setNotionHourlyTimelineDatabaseId(String value) {
+    Prefs.notionHourlyTimelineDatabaseId = value;
+    emit(state.copyWith(notionHourlyTimelineDatabaseId: () => value));
   }
 
   // ignore: avoid_positional_boolean_parameters

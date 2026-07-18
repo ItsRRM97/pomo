@@ -37,6 +37,11 @@ class SettingsState extends Equatable {
     this.notionApiKey = '',
     this.enableNotionSync = false,
     this.notionProxyUrl = '',
+    this.notionDatabaseId = '',
+    this.notionTimeLogsDatabaseId = '',
+    this.notionProjectsDatabaseId = '',
+    this.notionAreasDatabaseId = '',
+    this.notionHourlyTimelineDatabaseId = '',
     this.enableTimeTracker = true,
     this.quietHoursStart = '23:00',
     this.quietHoursEnd = '07:00',
@@ -53,6 +58,11 @@ class SettingsState extends Equatable {
 
   final String notionApiKey;
   final String notionProxyUrl;
+  final String notionDatabaseId;
+  final String notionTimeLogsDatabaseId;
+  final String notionProjectsDatabaseId;
+  final String notionAreasDatabaseId;
+  final String notionHourlyTimelineDatabaseId;
 
   final bool enableTimeTracker;
   final String quietHoursStart;
@@ -132,6 +142,11 @@ class SettingsState extends Equatable {
     String Function()? notionApiKey,
     bool Function()? enableNotionSync,
     String Function()? notionProxyUrl,
+    String Function()? notionDatabaseId,
+    String Function()? notionTimeLogsDatabaseId,
+    String Function()? notionProjectsDatabaseId,
+    String Function()? notionAreasDatabaseId,
+    String Function()? notionHourlyTimelineDatabaseId,
     bool Function()? enableTimeTracker,
     String Function()? quietHoursStart,
     String Function()? quietHoursEnd,
@@ -211,6 +226,20 @@ class SettingsState extends Equatable {
           enableNotionSync != null ? enableNotionSync() : this.enableNotionSync,
       notionProxyUrl:
           notionProxyUrl != null ? notionProxyUrl() : this.notionProxyUrl,
+      notionDatabaseId:
+          notionDatabaseId != null ? notionDatabaseId() : this.notionDatabaseId,
+      notionTimeLogsDatabaseId: notionTimeLogsDatabaseId != null
+          ? notionTimeLogsDatabaseId()
+          : this.notionTimeLogsDatabaseId,
+      notionProjectsDatabaseId: notionProjectsDatabaseId != null
+          ? notionProjectsDatabaseId()
+          : this.notionProjectsDatabaseId,
+      notionAreasDatabaseId: notionAreasDatabaseId != null
+          ? notionAreasDatabaseId()
+          : this.notionAreasDatabaseId,
+      notionHourlyTimelineDatabaseId: notionHourlyTimelineDatabaseId != null
+          ? notionHourlyTimelineDatabaseId()
+          : this.notionHourlyTimelineDatabaseId,
       enableTimeTracker: enableTimeTracker != null
           ? enableTimeTracker()
           : this.enableTimeTracker,
@@ -261,6 +290,11 @@ class SettingsState extends Equatable {
         notionApiKey,
         enableNotionSync,
         notionProxyUrl,
+        notionDatabaseId,
+        notionTimeLogsDatabaseId,
+        notionProjectsDatabaseId,
+        notionAreasDatabaseId,
+        notionHourlyTimelineDatabaseId,
         enableTimeTracker,
         quietHoursStart,
         quietHoursEnd,

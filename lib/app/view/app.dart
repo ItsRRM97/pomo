@@ -96,6 +96,30 @@ class App extends StatelessWidget {
                 '/about': (context) => const AboutPage(),
                 '/deniz': (context) => const DenizPage(),
               },
+              onGenerateInitialRoutes: (initialRoute) {
+                if (initialRoute == '/tracker') {
+                  return [
+                    MaterialPageRoute<dynamic>(
+                      builder: (context) => const HomeShell(initialIndex: 1),
+                      settings: const RouteSettings(name: '/tracker'),
+                    ),
+                  ];
+                }
+                if (initialRoute == '/settings') {
+                  return [
+                    MaterialPageRoute<dynamic>(
+                      builder: (context) => const HomeShell(initialIndex: 2),
+                      settings: const RouteSettings(name: '/settings'),
+                    ),
+                  ];
+                }
+                return [
+                  MaterialPageRoute<dynamic>(
+                    builder: (context) => const HomeShell(),
+                    settings: const RouteSettings(name: '/'),
+                  ),
+                ];
+              },
               initialRoute: '/',
             );
           },

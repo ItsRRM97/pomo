@@ -1,11 +1,16 @@
 package com.recoskyler.pomo
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
@@ -40,19 +45,51 @@ class MainActivity : FlutterActivity() {
                     val granted = checkAndRequestNotificationPermission()
                     result.success(granted)
                 }
+                "isIgnoringBatteryOptimizations" -> {
+                    val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                    val ignoring = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        powerManager.isIgnoringBatteryOptimizations(packageName)
+                    } else {
+                        true
+                    }
+                    result.success(ignoring)
+                }
+                "requestIgnoreBatteryOptimizations" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                        val ignoring = powerManager.isIgnoringBatteryOptimizations(packageName)
+                        if (!ignoring) {
+                            try {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:$packageName")
+                                }
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.success(false)
+                            }
+                        } else {
+                            result.success(true)
+                        }
+                    } else {
+                        result.success(true)
+                    }
+                }
                 "startForeground" -> {
                     checkAndRequestNotificationPermission()
                     val title = call.argument<String>("title") ?: "Focus Timer"
                     val text = call.argument<String>("text") ?: "25:00"
                     val isRunning = call.argument<Boolean>("isRunning") ?: true
-                    TimerForegroundService.startService(this, title, text, isRunning)
+                    val isHourly = call.argument<Boolean>("isHourly") ?: (title.contains("Time Tracker") || title.contains("Check-in"))
+                    TimerForegroundService.startService(this, title, text, isRunning, isHourly)
                     result.success(true)
                 }
                 "updateNotification" -> {
                     val title = call.argument<String>("title") ?: "Focus Timer"
                     val text = call.argument<String>("text") ?: "25:00"
                     val isRunning = call.argument<Boolean>("isRunning") ?: true
-                    TimerForegroundService.updateService(this, title, text, isRunning)
+                    val isHourly = call.argument<Boolean>("isHourly") ?: (title.contains("Time Tracker") || title.contains("Check-in"))
+                    TimerForegroundService.updateService(this, title, text, isRunning, isHourly)
                     result.success(true)
                 }
                 "stopForeground" -> {

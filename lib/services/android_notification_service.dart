@@ -78,12 +78,14 @@ class AndroidNotificationService {
           'title': titleText,
           'text': formattedTime,
           'isRunning': isRunning,
+          'isHourly': false,
         });
       } else if (_isServiceActive) {
         await _channel.invokeMethod<bool>('updateNotification', {
           'title': titleText,
           'text': formattedTime,
           'isRunning': isRunning,
+          'isHourly': false,
         });
       }
     } catch (e) {
@@ -110,6 +112,7 @@ class AndroidNotificationService {
         'title': 'Time Tracker: Check-in Required',
         'text': 'Log what you did between $start:00 and $end:00.',
         'isRunning': false,
+        'isHourly': true,
       });
     } catch (e) {
       // Ignore channel exceptions

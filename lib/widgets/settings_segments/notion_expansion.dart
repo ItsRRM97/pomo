@@ -49,6 +49,84 @@ class NotionExpansion extends StatelessWidget {
               onChanged: (value) =>
                   context.read<SettingsCubit>().setNotionProxyUrl(value),
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Tasks Database ID',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              decoration: const InputDecoration(
+                hintText: 'e.g., 1d33dffe-a139-81c6-8ce5-ee843fbf3579',
+                border: OutlineInputBorder(),
+              ),
+              initialValue: state.notionDatabaseId,
+              onChanged: (value) =>
+                  context.read<SettingsCubit>().setNotionDatabaseId(value),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Time Logs Database ID',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              decoration: const InputDecoration(
+                hintText: 'e.g., acd9cab4-5560-456c-b9b5-586d9a5b391c',
+                border: OutlineInputBorder(),
+              ),
+              initialValue: state.notionTimeLogsDatabaseId,
+              onChanged: (value) => context
+                  .read<SettingsCubit>()
+                  .setNotionTimeLogsDatabaseId(value),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'PARA Projects Database ID',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              decoration: const InputDecoration(
+                hintText: 'e.g., 1d33dffe-a139-8160-b230-f2cdb7317b26',
+                border: OutlineInputBorder(),
+              ),
+              initialValue: state.notionProjectsDatabaseId,
+              onChanged: (value) => context
+                  .read<SettingsCubit>()
+                  .setNotionProjectsDatabaseId(value),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'PARA Areas Database ID',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              decoration: const InputDecoration(
+                hintText: 'e.g., 1d33dffe-a139-8152-9ed2-f3eddc9bd5f8',
+                border: OutlineInputBorder(),
+              ),
+              initialValue: state.notionAreasDatabaseId,
+              onChanged: (value) =>
+                  context.read<SettingsCubit>().setNotionAreasDatabaseId(value),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Hourly Timeline Database ID',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              decoration: const InputDecoration(
+                hintText: 'e.g., 39d3dffe-a139-8190-9176-d98e3475c5ec',
+                border: OutlineInputBorder(),
+              ),
+              initialValue: state.notionHourlyTimelineDatabaseId,
+              onChanged: (value) => context
+                  .read<SettingsCubit>()
+                  .setNotionHourlyTimelineDatabaseId(value),
+            ),
           ],
         );
       },

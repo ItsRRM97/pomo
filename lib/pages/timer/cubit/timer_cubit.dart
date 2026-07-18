@@ -122,6 +122,7 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void stop() {
+    _syncActiveTaskIfEligible();
     emit(
       state.copyWith(
         status: () => TimerStatus.stopped,

@@ -129,6 +129,8 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final width = MediaQuery.of(context).size.width;
+    final isSmallScreen = width < 600;
     final targetDateStr = _formatDateStr(_selectedDate);
     final dayLogsMap = <int, List<HourlyLog>>{};
     for (final log in _allLogs) {
@@ -212,16 +214,18 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                 ],
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
+              if (isSmallScreen)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(10),
-                        border:
-                            Border.all(color: theme.colorScheme.outlineVariant),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,23 +245,24 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: Container(
+                    const SizedBox(height: 10),
+                    Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(10),
-                        border:
-                            Border.all(color: theme.colorScheme.outlineVariant),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                       ),
                       child: sortedStats.isEmpty
                           ? const Center(
-                              child: Text(
-                                'No activity logged for this period yet.',
-                                style: TextStyle(fontSize: 12),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Text(
+                                  'No activity logged for this period yet.',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                               ),
                             )
                           : Column(
@@ -329,9 +334,133 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                               ],
                             ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Total Logged',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${(totalTimeframeMinutes / 60.0).toStringAsFixed(1)} / ${_timeframe == 'daily' ? '24' : _timeframe == 'weekly' ? '168' : _timeframe == '14d' ? '336' : _timeframe == 'monthly' ? '720' : '2160'} hrs',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: sortedStats.isEmpty
+                            ? const Center(
+                                child: Text(
+                                  'No activity logged for this period yet.',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          child: Row(
+                                            children: sortedStats.map((stat) {
+                                              final flex = stat.minutes;
+                                              final color =
+                                                  _parseHexColor(stat.color);
+                                              return Expanded(
+                                                flex: flex.clamp(1, 10000),
+                                                child: Container(
+                                                  height: 8,
+                                                  color: color,
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: sortedStats.take(4).map((stat) {
+                                        final pct = totalTimeframeMinutes > 0
+                                            ? ((stat.minutes /
+                                                        totalTimeframeMinutes) *
+                                                    100)
+                                                .toStringAsFixed(0)
+                                            : '0';
+                                        final n = stat.name;
+                                        final hStr = (stat.minutes / 60.0)
+                                            .toStringAsFixed(1);
+                                        final statText = '$n: ${hStr}h ($pct%)';
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(right: 12),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                stat.icon,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                statText,
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
   desktop_multi_window
+  permission_handler_windows
   screen_retriever_windows
   tray_manager
   url_launcher_windows

@@ -28,12 +28,13 @@ class TimerForegroundService : Service() {
 
         var actionListener: ((String) -> Unit)? = null
 
-        fun startService(context: Context, title: String, text: String, isRunning: Boolean) {
+        fun startService(context: Context, title: String, text: String, isRunning: Boolean, isHourly: Boolean = false) {
             val intent = Intent(context, TimerForegroundService::class.java).apply {
                 action = ACTION_START
                 putExtra("title", title)
                 putExtra("text", text)
                 putExtra("isRunning", isRunning)
+                putExtra("isHourly", isHourly)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -42,12 +43,13 @@ class TimerForegroundService : Service() {
             }
         }
 
-        fun updateService(context: Context, title: String, text: String, isRunning: Boolean) {
+        fun updateService(context: Context, title: String, text: String, isRunning: Boolean, isHourly: Boolean = false) {
             val intent = Intent(context, TimerForegroundService::class.java).apply {
                 action = ACTION_UPDATE
                 putExtra("title", title)
                 putExtra("text", text)
                 putExtra("isRunning", isRunning)
+                putExtra("isHourly", isHourly)
             }
             context.startService(intent)
         }
@@ -63,6 +65,7 @@ class TimerForegroundService : Service() {
     private var currentTitle: String = "Focus Timer"
     private var currentText: String = "25:00"
     private var isCurrentlyRunning: Boolean = true
+    private var isHourly: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -77,12 +80,14 @@ class TimerForegroundService : Service() {
                 currentTitle = intent.getStringExtra("title") ?: currentTitle
                 currentText = intent.getStringExtra("text") ?: currentText
                 isCurrentlyRunning = intent.getBooleanExtra("isRunning", true)
+                isHourly = intent.getBooleanExtra("isHourly", false)
                 startForegroundNotification()
             }
             ACTION_UPDATE -> {
                 currentTitle = intent.getStringExtra("title") ?: currentTitle
                 currentText = intent.getStringExtra("text") ?: currentText
                 isCurrentlyRunning = intent.getBooleanExtra("isRunning", true)
+                isHourly = intent.getBooleanExtra("isHourly", false)
                 updateNotification()
             }
             ACTION_PLAY -> {
@@ -156,10 +161,9 @@ class TimerForegroundService : Service() {
 
         val coffeeColor = Color.parseColor("#8D6E63") // Warm coffee / mocha accent color
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(currentText)
             .setContentText(currentTitle)
-            .setSubText("Focus Timer")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setColor(coffeeColor)
             .setColorized(false)
@@ -168,13 +172,21 @@ class TimerForegroundService : Service() {
                 .bigText(currentTitle))
             .setContentIntent(openAppPendingIntent)
             .setOngoing(true)
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(toggleActionIcon, toggleActionTitle, togglePendingIntent)
-            .addAction(android.R.drawable.ic_delete, "Stop", stopPendingIntent)
-            .build()
+
+        if (isHourly) {
+            builder.setSubText("Hourly Tracker")
+            builder.setCategory(NotificationCompat.CATEGORY_REMINDER)
+        } else {
+            builder.setSubText("Focus Timer")
+            builder.setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            builder.addAction(toggleActionIcon, toggleActionTitle, togglePendingIntent)
+            builder.addAction(android.R.drawable.ic_delete, "Stop", stopPendingIntent)
+        }
+
+        return builder.build()
     }
 
     private fun startForegroundNotification() {

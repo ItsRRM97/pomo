@@ -141,6 +141,14 @@ class Prefs {
   static const String _enableNotionSyncVarName = 'pomo_enable_notion_sync';
   static const String _notionProxyUrlVarName = 'pomo_notion_proxy_url';
   static const String _notionDatabaseIdVarName = 'pomo_notion_database_id';
+  static const String _notionTimeLogsDatabaseIdVarName =
+      'pomo_notion_time_logs_database_id';
+  static const String _notionProjectsDatabaseIdVarName =
+      'pomo_notion_projects_database_id';
+  static const String _notionAreasDatabaseIdVarName =
+      'pomo_notion_areas_database_id';
+  static const String _notionHourlyTimelineDatabaseIdVarName =
+      'pomo_notion_hourly_timeline_database_id';
   static const String _activeTaskJsonVarName = 'pomo_active_task_json';
   static const String _syncedMinutesVarName = 'pomo_synced_minutes';
   static const String _activeLogPageIdVarName = 'pomo_active_log_page_id';
@@ -217,6 +225,32 @@ class Prefs {
   static String get notionDatabaseId {
     return Prefs().sharedPreferences.getString(_notionDatabaseIdVarName) ??
         '1d33dffe-a139-81c6-8ce5-ee843fbf3579';
+  }
+
+  static String get notionTimeLogsDatabaseId {
+    return Prefs()
+            .sharedPreferences
+            .getString(_notionTimeLogsDatabaseIdVarName) ??
+        'acd9cab4-5560-456c-b9b5-586d9a5b391c';
+  }
+
+  static String get notionProjectsDatabaseId {
+    return Prefs()
+            .sharedPreferences
+            .getString(_notionProjectsDatabaseIdVarName) ??
+        '1d33dffe-a139-8160-b230-f2cdb7317b26';
+  }
+
+  static String get notionAreasDatabaseId {
+    return Prefs().sharedPreferences.getString(_notionAreasDatabaseIdVarName) ??
+        '1d33dffe-a139-8152-9ed2-f3eddc9bd5f8';
+  }
+
+  static String get notionHourlyTimelineDatabaseId {
+    return Prefs()
+            .sharedPreferences
+            .getString(_notionHourlyTimelineDatabaseIdVarName) ??
+        '39d3dffe-a139-8190-9176-d98e3475c5ec';
   }
 
   static String get activeTaskJson {
@@ -654,6 +688,28 @@ class Prefs {
 
   static set notionDatabaseId(String value) {
     Prefs().sharedPreferences.setString(_notionDatabaseIdVarName, value);
+  }
+
+  static set notionTimeLogsDatabaseId(String value) {
+    Prefs()
+        .sharedPreferences
+        .setString(_notionTimeLogsDatabaseIdVarName, value);
+  }
+
+  static set notionProjectsDatabaseId(String value) {
+    Prefs()
+        .sharedPreferences
+        .setString(_notionProjectsDatabaseIdVarName, value);
+  }
+
+  static set notionAreasDatabaseId(String value) {
+    Prefs().sharedPreferences.setString(_notionAreasDatabaseIdVarName, value);
+  }
+
+  static set notionHourlyTimelineDatabaseId(String value) {
+    Prefs()
+        .sharedPreferences
+        .setString(_notionHourlyTimelineDatabaseIdVarName, value);
   }
 
   static set activeTaskJson(String value) {
