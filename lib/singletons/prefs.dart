@@ -152,6 +152,8 @@ class Prefs {
   static const String _activeTaskJsonVarName = 'pomo_active_task_json';
   static const String _syncedMinutesVarName = 'pomo_synced_minutes';
   static const String _activeLogPageIdVarName = 'pomo_active_log_page_id';
+  static const String _activeSessionExternalIdVarName =
+      'pomo_active_session_external_id';
   static const String _pendingTimeLogsVarName = 'pomo_pending_time_logs';
   static const String _enableTimeTrackerVarName = 'pomo_enable_time_tracker';
   static const String _quietHoursStartVarName = 'pomo_quiet_hours_start';
@@ -487,6 +489,11 @@ class Prefs {
     return Prefs().sharedPreferences.getString(_activeLogPageIdVarName);
   }
 
+  /// Stable External ID for the open Pomodoro Time Log session.
+  static String? get activeSessionExternalId {
+    return Prefs().sharedPreferences.getString(_activeSessionExternalIdVarName);
+  }
+
   static List<String> get pendingTimeLogs {
     return Prefs().sharedPreferences.getStringList(_pendingTimeLogsVarName) ??
         <String>[];
@@ -736,6 +743,23 @@ class Prefs {
     }
   }
 
+  static set activeSessionExternalId(String? value) {
+    if (value == null || value.isEmpty) {
+      Prefs().sharedPreferences.remove(_activeSessionExternalIdVarName);
+    } else {
+      Prefs()
+          .sharedPreferences
+          .setString(_activeSessionExternalIdVarName, value);
+    }
+  }
+
+  /// Clears Notion session sync fields for the open Pomodoro focus block.
+  static void clearSessionSyncState() {
+    Prefs().sharedPreferences.remove(_syncedMinutesVarName);
+    Prefs().sharedPreferences.remove(_activeLogPageIdVarName);
+    Prefs().sharedPreferences.remove(_activeSessionExternalIdVarName);
+  }
+
   static set pendingHourlyLogs(List<String> value) {
     Prefs().sharedPreferences.setStringList(_pendingHourlyLogsVarName, value);
   }
@@ -817,7 +841,6 @@ class Prefs {
     Prefs().sharedPreferences.remove(_durationVarName);
     Prefs().sharedPreferences.remove(_lapNumberVarName);
     Prefs().sharedPreferences.remove(_timerLapVarName);
-    Prefs().sharedPreferences.remove(_syncedMinutesVarName);
-    Prefs().sharedPreferences.remove(_activeLogPageIdVarName);
+    clearSessionSyncState();
   }
 }

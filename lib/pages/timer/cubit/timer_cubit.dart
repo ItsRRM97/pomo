@@ -66,6 +66,7 @@ class TimerCubit extends Cubit<TimerState> {
       _isCreatingRecord = false;
       if (pageId != null && state.activeTask?.id == taskToSync.id) {
         Prefs.activeLogPageId = pageId;
+        Prefs.syncedMinutes = 0;
         emit(state.copyWith(activeLogPageId: () => pageId));
         Logger().i('TimerCubit: Session record created: $pageId');
       }
@@ -122,6 +123,8 @@ class TimerCubit extends Cubit<TimerState> {
     final logPageId = state.activeLogPageId;
     if (logPageId == null || logPageId.isEmpty) return;
 
+    // Capture before callers clear Prefs session fields.
+    final alreadySynced = Prefs.syncedMinutes;
     final totalMinutes = state.duration.inMinutes;
     if (totalMinutes < 1) {
       // The session has no valid tracked focus time; delete it to avoid clutter
@@ -134,6 +137,7 @@ class TimerCubit extends Cubit<TimerState> {
         totalElapsed: state.duration,
         existingLogPageId: logPageId,
         endedAt: DateTime.now(),
+        previouslySyncedMinutes: alreadySynced,
       );
     }
   }
@@ -179,11 +183,13 @@ class TimerCubit extends Cubit<TimerState> {
 
   void selectTask(NotionTask? task) {
     if (state.activeTask?.id != task?.id) {
+      final wasRunning = state.status == TimerStatus.running;
+
       // Finalize or delete any existing session before switching
       _finalizeSession();
 
       Prefs.duration = Duration.zero;
-      Prefs.activeLogPageId = null;
+      Prefs.clearSessionSyncState();
       Prefs.activeTask = task;
       emit(
         state.copyWith(
@@ -194,6 +200,10 @@ class TimerCubit extends Cubit<TimerState> {
       );
       if (task != null && state.lap == TimerLap.work) {
         _checkAndMoveActiveTaskToInProgress();
+        // D2-A: keep timer running and open a new session for the new task
+        if (wasRunning) {
+          _createNotionRecord();
+        }
       }
     }
   }
@@ -203,7 +213,7 @@ class TimerCubit extends Cubit<TimerState> {
     _finalizeSession();
 
     Prefs.duration = Duration.zero;
-    Prefs.activeLogPageId = null;
+    Prefs.clearSessionSyncState();
     Prefs.activeTask = null;
     emit(
       state.copyWith(
@@ -238,7 +248,7 @@ class TimerCubit extends Cubit<TimerState> {
 
     Prefs.timerLap = nextLap;
     Prefs.duration = Duration.zero;
-    Prefs.activeLogPageId = null;
+    Prefs.clearSessionSyncState();
     Prefs.lapNumber = nextLapNumber;
     Prefs.timerStatus = !autoAdvance ? TimerStatus.stopped : state.status;
 

@@ -616,11 +616,15 @@ class NotionService {
     };
   }
 
-  /// Logs a completed or partial session to the PARA dashboard `Time Logs` DB
-  /// and increments the task's `Time (hours)` and `Time (minutes)`.
+  /// Logs a completed or partial session to the PARA dashboard `Time Logs` DB.
+  ///
+  /// [totalDurationMinutes] is SET on the Time Log row (absolute session
+  /// elapsed). [creditMinutes] is the delta ADD to the parent task's cumulative
+  /// `Time (hours)` / `Time (minutes)`. Pass `creditMinutes: 0` to create or
+  /// update the row without touching task cumulative time.
   Future<({bool success, String? pageId})> logSession({
     required NotionTask task,
-    required int durationMinutes,
+    required int creditMinutes,
     required DateTime endedAt,
     String? customExternalId,
     String? existingLogPageId,
@@ -631,7 +635,7 @@ class NotionService {
       throw Exception('Focus access code not set.');
     }
 
-    final totalDuration = totalDurationMinutes ?? durationMinutes;
+    final totalDuration = totalDurationMinutes ?? creditMinutes;
     var pageId = existingLogPageId;
 
     if (pageId != null && pageId.isNotEmpty) {
@@ -742,7 +746,11 @@ class NotionService {
       }
     }
 
-    // 3. Fetch latest task page properties to avoid concurrent overwrites
+    // 3-4. Credit task cumulative time only when there is a positive delta.
+    if (creditMinutes <= 0) {
+      return (success: true, pageId: pageId);
+    }
+
     var currentHours = task.timeHours;
     var currentMinutes = task.timeMinutes;
 
@@ -775,11 +783,10 @@ class NotionService {
       );
     }
 
-    // 4. Calculate normalized time increment and issue PATCH request
     final newTime = addDuration(
       currentHours: currentHours,
       currentMinutes: currentMinutes,
-      addMin: durationMinutes,
+      addMin: creditMinutes,
     );
 
     final taskPatchUrl = '${_getBaseUrl()}pages/${task.id}';
@@ -800,7 +807,8 @@ class NotionService {
       _lastTaskFetchTime = DateTime.now();
       Logger().i(
         'Updated Task ${task.id} cumulative time: '
-        '${newTime.hours}h ${newTime.minutes}m',
+        '${newTime.hours}h ${newTime.minutes}m '
+        '(+${creditMinutes}m credit)',
       );
       return (success: true, pageId: pageId);
     } on DioException catch (e) {

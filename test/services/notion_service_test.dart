@@ -176,6 +176,99 @@ void main() {
       final flushed = await NotionSyncService().flushPendingHourlyLogs();
       expect(flushed, equals(0));
     });
+
+    test('sessionCreditMinutes credits only the unsynced delta', () {
+      // Pause at 10m then again at 15m: +10 then +5, not +10 then +15.
+      expect(
+        NotionSyncService.sessionCreditMinutes(
+          totalMinutes: 10,
+          alreadySynced: 0,
+        ),
+        equals(10),
+      );
+      expect(
+        NotionSyncService.sessionCreditMinutes(
+          totalMinutes: 15,
+          alreadySynced: 10,
+        ),
+        equals(5),
+      );
+      expect(
+        NotionSyncService.sessionCreditMinutes(
+          totalMinutes: 15,
+          alreadySynced: 15,
+        ),
+        equals(0),
+      );
+      expect(
+        NotionSyncService.sessionCreditMinutes(
+          totalMinutes: 0,
+          alreadySynced: 0,
+        ),
+        equals(0),
+      );
+    });
+
+    test('createSessionRecord returns null when sync disabled', () async {
+      Prefs.enableNotionSync = false;
+      Prefs.notionApiKey = 'secret_token';
+
+      final pageId = await NotionSyncService().createSessionRecord(
+        task: const NotionTask(id: 'task-1', title: 'Test'),
+        startedAt: DateTime(2026, 7, 18, 12),
+      );
+      expect(pageId, isNull);
+      expect(Prefs.activeSessionExternalId, isNull);
+      expect(Prefs.syncedMinutes, equals(0));
+    });
+
+    test('updateSessionRecord skips when total elapsed under 1 minute',
+        () async {
+      Prefs.enableNotionSync = true;
+      Prefs.notionApiKey = 'secret_token';
+      Prefs.syncedMinutes = 0;
+
+      final result = await NotionSyncService().updateSessionRecord(
+        task: const NotionTask(id: 'task-1', title: 'Test'),
+        totalElapsed: const Duration(seconds: 45),
+        existingLogPageId: 'page-1',
+      );
+      expect(result.success, isFalse);
+      expect(Prefs.syncedMinutes, equals(0));
+    });
+  });
+
+  group('Prefs session sync state', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await Prefs().init();
+    });
+
+    test('clearSessionSyncState clears page id, synced minutes, external id',
+        () {
+      Prefs.activeLogPageId = 'page-1';
+      Prefs.syncedMinutes = 12;
+      Prefs.activeSessionExternalId = 'sess_task_1';
+
+      Prefs.clearSessionSyncState();
+
+      expect(Prefs.activeLogPageId, isNull);
+      expect(Prefs.syncedMinutes, equals(0));
+      expect(Prefs.activeSessionExternalId, isNull);
+    });
+
+    test('resetTimer clears session sync state', () {
+      Prefs.activeLogPageId = 'page-1';
+      Prefs.syncedMinutes = 8;
+      Prefs.activeSessionExternalId = 'sess_x';
+      Prefs.duration = const Duration(minutes: 5);
+
+      Prefs.resetTimer();
+
+      expect(Prefs.activeLogPageId, isNull);
+      expect(Prefs.syncedMinutes, equals(0));
+      expect(Prefs.activeSessionExternalId, isNull);
+    });
   });
 
   group('NotionService cache guard and idempotency checks', () {

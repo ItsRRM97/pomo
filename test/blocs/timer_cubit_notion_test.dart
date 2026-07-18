@@ -35,6 +35,8 @@ void main() {
       build: () {
         Prefs.activeTask = testTask;
         Prefs.activeLogPageId = 'page-123';
+        Prefs.syncedMinutes = 7;
+        Prefs.activeSessionExternalId = 'sess_clear';
         return TimerCubit();
       },
       act: (cubit) => cubit.clearTask(),
@@ -44,6 +46,8 @@ void main() {
       verify: (_) {
         expect(Prefs.activeTask, isNull);
         expect(Prefs.activeLogPageId, isNull);
+        expect(Prefs.syncedMinutes, equals(0));
+        expect(Prefs.activeSessionExternalId, isNull);
       },
     );
 
@@ -52,6 +56,8 @@ void main() {
       build: () {
         Prefs.activeTask = testTask;
         Prefs.activeLogPageId = 'page-abc';
+        Prefs.syncedMinutes = 5;
+        Prefs.activeSessionExternalId = 'sess_old';
         return TimerCubit();
       },
       act: (cubit) => cubit.selectTask(
@@ -64,6 +70,37 @@ void main() {
       ],
       verify: (_) {
         expect(Prefs.activeLogPageId, isNull);
+        expect(Prefs.syncedMinutes, equals(0));
+        expect(Prefs.activeSessionExternalId, isNull);
+      },
+    );
+
+    blocTest<TimerCubit, TimerState>(
+      'selectTask while running keeps running and clears prior session state',
+      build: () {
+        Prefs.enableTimeTracker = true;
+        Prefs.enableNotionSync = false;
+        Prefs.activeTask = testTask;
+        Prefs.activeLogPageId = 'page-abc';
+        Prefs.syncedMinutes = 10;
+        Prefs.activeSessionExternalId = 'sess_old';
+        Prefs.timerStatus = TimerStatus.running;
+        Prefs.duration = const Duration(minutes: 12);
+        return TimerCubit();
+      },
+      act: (cubit) => cubit.selectTask(
+        const NotionTask(id: 'task-102', title: 'New Task'),
+      ),
+      verify: (cubit) {
+        expect(cubit.state.status, equals(TimerStatus.running));
+        expect(cubit.state.duration, equals(Duration.zero));
+        expect(
+          cubit.state.activeTask,
+          equals(const NotionTask(id: 'task-102', title: 'New Task')),
+        );
+        expect(Prefs.activeLogPageId, isNull);
+        expect(Prefs.syncedMinutes, equals(0));
+        expect(Prefs.activeSessionExternalId, isNull);
       },
     );
 

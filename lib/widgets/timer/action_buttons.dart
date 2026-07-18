@@ -29,7 +29,6 @@ class _ActionButtonsState extends State<ActionButtons>
   late AnimationController _skipController;
   late Animation<double> _animation;
 
-
   @override
   void initState() {
     super.initState();
@@ -159,7 +158,6 @@ class _ActionButtonsState extends State<ActionButtons>
                   );
                 },
               ),
-
             ],
           );
         },

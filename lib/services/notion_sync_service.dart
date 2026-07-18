@@ -13,6 +13,16 @@ class NotionSyncService {
 
   static final NotionSyncService _instance = NotionSyncService._internal();
 
+  /// Minutes to ADD to the parent task for a session update.
+  /// [totalMinutes] is absolute elapsed; [alreadySynced] is prior credit.
+  static int sessionCreditMinutes({
+    required int totalMinutes,
+    required int alreadySynced,
+  }) {
+    if (totalMinutes < 1) return 0;
+    return totalMinutes > alreadySynced ? totalMinutes - alreadySynced : 0;
+  }
+
   /// Synchronizes a completed or partial focus session to Notion if sync is
   /// enabled and the duration is at least 1 minute.
   Future<({bool success, String? logPageId})> syncSession({
@@ -58,7 +68,7 @@ class NotionSyncService {
 
       final result = await NotionService().logSession(
         task: task,
-        durationMinutes: minutes,
+        creditMinutes: minutes,
         totalDurationMinutes: totalMinutes,
         endedAt: timestamp,
         existingLogPageId: existingLogPageId,
@@ -104,6 +114,9 @@ class NotionSyncService {
   /// Creates a brand-new Time Log row in Notion for a freshly started session.
   /// Returns the Notion page ID of the created row, or null on failure.
   /// Fires-and-forgets the move-to-in-progress call.
+  ///
+  /// Persists a stable [Prefs.activeSessionExternalId] so retries do not create
+  /// duplicate rows. Does not credit task cumulative time (credit = 0).
   Future<String?> createSessionRecord({
     required NotionTask task,
     required DateTime startedAt,
@@ -113,9 +126,14 @@ class NotionSyncService {
     final apiKey = Prefs.notionApiKey;
     if (!kIsWeb && apiKey.isEmpty) return null;
 
+    final externalId = Prefs.activeSessionExternalId ??
+        'sess_${task.id}_${startedAt.millisecondsSinceEpoch}';
+    Prefs.activeSessionExternalId = externalId;
+    Prefs.syncedMinutes = 0;
+
     Logger().i(
       'NotionSyncService: Creating session record for '
-      '"${task.title}" (${task.id})...',
+      '"${task.title}" (${task.id}) externalId=$externalId...',
     );
 
     try {
@@ -123,9 +141,10 @@ class NotionSyncService {
 
       final result = await NotionService().logSession(
         task: task,
-        durationMinutes: 0,
+        creditMinutes: 0,
         totalDurationMinutes: 0,
         endedAt: startedAt,
+        customExternalId: externalId,
       );
 
       if (result.success && result.pageId != null) {
@@ -146,11 +165,17 @@ class NotionSyncService {
 
   /// Updates an existing Time Log row with the latest elapsed time.
   /// If [existingLogPageId] is null, falls back to creating a new record.
+  ///
+  /// Task cumulative time receives only the delta
+  /// (`totalElapsed.inMinutes - previouslySyncedMinutes`).
+  /// Pass [previouslySyncedMinutes] when clearing Prefs before the async call
+  /// completes (e.g. task switch).
   Future<({bool success, String? logPageId})> updateSessionRecord({
     required NotionTask task,
     required Duration totalElapsed,
     required String? existingLogPageId,
     DateTime? endedAt,
+    int? previouslySyncedMinutes,
   }) async {
     if (task.id.isEmpty) {
       return (success: false, logPageId: null);
@@ -164,27 +189,52 @@ class NotionSyncService {
     }
 
     final totalMinutes = totalElapsed.inMinutes;
+    if (totalMinutes < 1) {
+      return (success: false, logPageId: existingLogPageId);
+    }
+
+    final alreadySynced = previouslySyncedMinutes ?? Prefs.syncedMinutes;
+    final creditMinutes = sessionCreditMinutes(
+      totalMinutes: totalMinutes,
+      alreadySynced: alreadySynced,
+    );
     final timestamp = endedAt ?? DateTime.now();
 
     Logger().i(
       'NotionSyncService: Updating session record '
-      '(${totalMinutes}m) for "${task.title}"...',
+      '(${totalMinutes}m total, +${creditMinutes}m credit) '
+      'for "${task.title}"...',
     );
 
     try {
       final result = await NotionService().logSession(
         task: task,
-        durationMinutes: totalMinutes,
+        creditMinutes: creditMinutes,
         totalDurationMinutes: totalMinutes,
         endedAt: timestamp,
         existingLogPageId: existingLogPageId,
+        customExternalId: Prefs.activeSessionExternalId,
       );
 
       if (result.success) {
-        // Update active task local state
+        // Only advance the baseline when this is still the same open session.
+        if (Prefs.activeLogPageId == existingLogPageId ||
+            existingLogPageId == null) {
+          Prefs.syncedMinutes = totalMinutes;
+        }
         final currentActive = Prefs.activeTask;
-        if (currentActive != null && currentActive.id == task.id) {
-          Prefs.activeTask = currentActive;
+        if (currentActive != null &&
+            currentActive.id == task.id &&
+            creditMinutes > 0) {
+          final newMath = NotionService.addDuration(
+            currentHours: currentActive.timeHours,
+            currentMinutes: currentActive.timeMinutes,
+            addMin: creditMinutes,
+          );
+          Prefs.activeTask = currentActive.copyWith(
+            timeHours: () => newMath.hours,
+            timeMinutes: () => newMath.minutes,
+          );
         }
         if (Prefs.pendingTimeLogs.isNotEmpty) {
           unawaited(flushPendingLogs());
@@ -200,7 +250,7 @@ class NotionSyncService {
       );
       _enqueuePendingLog(
         task: task,
-        durationMinutes: totalMinutes,
+        durationMinutes: creditMinutes,
         totalDurationMinutes: totalMinutes,
         endedAt: timestamp,
         existingLogPageId: existingLogPageId,
@@ -390,7 +440,7 @@ class NotionSyncService {
 
         final result = await NotionService().logSession(
           task: task,
-          durationMinutes: durationMin,
+          creditMinutes: durationMin,
           totalDurationMinutes: totalMin,
           endedAt: endedAt,
           existingLogPageId: existingPageId,
