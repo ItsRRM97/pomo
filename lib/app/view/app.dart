@@ -97,8 +97,6 @@ class App extends StatelessWidget {
                 '/deniz': (context) => const DenizPage(),
               },
               onGenerateInitialRoutes: (initialRoute) {
-                // ignore: avoid_print
-                print('[App Routing] initialRoute: $initialRoute');
                 final uri = Uri.tryParse(initialRoute);
                 final path = uri?.path ?? initialRoute;
                 if (path == '/tracker') {
