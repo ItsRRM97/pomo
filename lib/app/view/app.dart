@@ -97,7 +97,9 @@ class App extends StatelessWidget {
                 '/deniz': (context) => const DenizPage(),
               },
               onGenerateInitialRoutes: (initialRoute) {
-                if (initialRoute == '/tracker') {
+                final uri = Uri.tryParse(initialRoute);
+                final path = uri?.path ?? initialRoute;
+                if (path == '/tracker') {
                   return [
                     MaterialPageRoute<dynamic>(
                       builder: (context) => const HomeShell(initialIndex: 1),
@@ -105,7 +107,7 @@ class App extends StatelessWidget {
                     ),
                   ];
                 }
-                if (initialRoute == '/settings') {
+                if (path == '/settings') {
                   return [
                     MaterialPageRoute<dynamic>(
                       builder: (context) => const HomeShell(initialIndex: 2),

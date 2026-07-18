@@ -119,3 +119,4 @@ app.*.map.json
 dist/*
 .vercel
 .gstack/
+.env*
