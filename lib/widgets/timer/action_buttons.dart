@@ -1,7 +1,5 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
@@ -31,7 +29,6 @@ class _ActionButtonsState extends State<ActionButtons>
   late AnimationController _skipController;
   late Animation<double> _animation;
 
-  final player = AudioPlayer();
 
   @override
   void initState() {
@@ -162,81 +159,7 @@ class _ActionButtonsState extends State<ActionButtons>
                   );
                 },
               ),
-              if (state.activeTask != null) ...[
-                const SizedBox(width: 16),
-                IconButton.filledTonal(
-                  color: Theme.of(context).colorScheme.onTertiaryContainer,
-                  style: IconButton.styleFrom(
-                    backgroundColor:
-                        Theme.of(context).colorScheme.tertiaryContainer,
-                    foregroundColor:
-                        Theme.of(context).colorScheme.onTertiaryContainer,
-                  ),
-                  tooltip: 'Sync to Notion ('
-                      '${state.duration.inMinutes - state.syncedMinutes}m '
-                      'available)',
-                  onPressed: state.duration.inMinutes - state.syncedMinutes < 1
-                      ? () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'At least 1 unsynced minute must elapse '
-                                'to sync to Notion.',
-                              ),
-                              duration: Duration(seconds: 3),
-                            ),
-                          );
-                        }
-                      : () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final minutesToSync =
-                              state.duration.inMinutes - state.syncedMinutes;
-                          final taskTitle = state.activeTask?.title ?? 'Task';
 
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Syncing ${minutesToSync}m to Notion...',
-                              ),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-
-                          final success =
-                              await context.read<TimerCubit>().syncNow();
-
-                          if (success) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Successfully synced ${minutesToSync}m '
-                                  'for "$taskTitle"!',
-                                ),
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          } else {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Failed to sync to Notion. Check API key '
-                                  'or connection.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                  icon: SvgPicture.asset(
-                    'assets/images/notion_logo.svg',
-                    width: 20,
-                    height: 20,
-                    colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.onTertiaryContainer,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                ),
-              ],
             ],
           );
         },

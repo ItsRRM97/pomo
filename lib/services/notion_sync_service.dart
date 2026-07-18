@@ -101,6 +101,114 @@ class NotionSyncService {
     }
   }
 
+  /// Creates a brand-new Time Log row in Notion for a freshly started session.
+  /// Returns the Notion page ID of the created row, or null on failure.
+  /// Fires-and-forgets the move-to-in-progress call.
+  Future<String?> createSessionRecord({
+    required NotionTask task,
+    required DateTime startedAt,
+  }) async {
+    if (task.id.isEmpty) return null;
+    if (!Prefs.enableNotionSync) return null;
+    final apiKey = Prefs.notionApiKey;
+    if (!kIsWeb && apiKey.isEmpty) return null;
+
+    Logger().i(
+      'NotionSyncService: Creating session record for '
+      '"${task.title}" (${task.id})...',
+    );
+
+    try {
+      unawaited(moveToInProgressIfNeeded(task));
+
+      final result = await NotionService().logSession(
+        task: task,
+        durationMinutes: 0,
+        totalDurationMinutes: 0,
+        endedAt: startedAt,
+      );
+
+      if (result.success && result.pageId != null) {
+        Logger().i(
+          'NotionSyncService: Created session record ${result.pageId}',
+        );
+        return result.pageId;
+      }
+    } catch (e, st) {
+      Logger().e(
+        'NotionSyncService: Failed to create session record ($e)',
+        error: e,
+        stackTrace: st,
+      );
+    }
+    return null;
+  }
+
+  /// Updates an existing Time Log row with the latest elapsed time.
+  /// If [existingLogPageId] is null, falls back to creating a new record.
+  Future<({bool success, String? logPageId})> updateSessionRecord({
+    required NotionTask task,
+    required Duration totalElapsed,
+    required String? existingLogPageId,
+    DateTime? endedAt,
+  }) async {
+    if (task.id.isEmpty) {
+      return (success: false, logPageId: null);
+    }
+    if (!Prefs.enableNotionSync) {
+      return (success: false, logPageId: null);
+    }
+    final apiKey = Prefs.notionApiKey;
+    if (!kIsWeb && apiKey.isEmpty) {
+      return (success: false, logPageId: null);
+    }
+
+    final totalMinutes = totalElapsed.inMinutes;
+    final timestamp = endedAt ?? DateTime.now();
+
+    Logger().i(
+      'NotionSyncService: Updating session record '
+      '(${totalMinutes}m) for "${task.title}"...',
+    );
+
+    try {
+      final result = await NotionService().logSession(
+        task: task,
+        durationMinutes: totalMinutes,
+        totalDurationMinutes: totalMinutes,
+        endedAt: timestamp,
+        existingLogPageId: existingLogPageId,
+      );
+
+      if (result.success) {
+        // Update active task local state
+        final currentActive = Prefs.activeTask;
+        if (currentActive != null && currentActive.id == task.id) {
+          Prefs.activeTask = currentActive;
+        }
+        if (Prefs.pendingTimeLogs.isNotEmpty) {
+          unawaited(flushPendingLogs());
+        }
+      }
+
+      return (success: result.success, logPageId: result.pageId);
+    } catch (e, st) {
+      Logger().e(
+        'NotionSyncService: Update session failed ($e)',
+        error: e,
+        stackTrace: st,
+      );
+      _enqueuePendingLog(
+        task: task,
+        durationMinutes: totalMinutes,
+        totalDurationMinutes: totalMinutes,
+        endedAt: timestamp,
+        existingLogPageId: existingLogPageId,
+      );
+      return (success: false, logPageId: null);
+    }
+  }
+
   /// Synchronizes a single [HourlyLog] to the separate Hourly Timeline Notion
   /// DB. Respects [Prefs.enableNotionSync], the API key guard, and enqueues to
   /// a pending queue on failure.

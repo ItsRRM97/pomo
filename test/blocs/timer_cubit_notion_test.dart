@@ -34,7 +34,6 @@ void main() {
       'clearTask clears activeTask and session sync state from state and Prefs',
       build: () {
         Prefs.activeTask = testTask;
-        Prefs.syncedMinutes = 15;
         Prefs.activeLogPageId = 'page-123';
         return TimerCubit();
       },
@@ -44,7 +43,6 @@ void main() {
       ],
       verify: (_) {
         expect(Prefs.activeTask, isNull);
-        expect(Prefs.syncedMinutes, equals(0));
         expect(Prefs.activeLogPageId, isNull);
       },
     );
@@ -53,7 +51,6 @@ void main() {
       'selectTask resets session sync state when switching tasks',
       build: () {
         Prefs.activeTask = testTask;
-        Prefs.syncedMinutes = 10;
         Prefs.activeLogPageId = 'page-abc';
         return TimerCubit();
       },
@@ -66,7 +63,6 @@ void main() {
         ),
       ],
       verify: (_) {
-        expect(Prefs.syncedMinutes, equals(0));
         expect(Prefs.activeLogPageId, isNull);
       },
     );

@@ -178,15 +178,6 @@ void main() {
       );
     });
 
-    test(
-      'syncNow returns false without calling Notion when '
-      'enableTimeTracker is false',
-      () async {
-        final cubit = TimerCubit();
-        Prefs.enableTimeTracker = false;
-        final result = await cubit.syncNow();
-        expect(result, isFalse);
-      },
-    );
+
   });
 }

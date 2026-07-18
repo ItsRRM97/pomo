@@ -1,5 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:logger/logger.dart';
 import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/lap_helper.dart';
 import 'package:pomo/helpers/sound_helper.dart';
@@ -19,11 +20,11 @@ class TimerCubit extends Cubit<TimerState> {
             lap: Prefs.timerLap,
             lapNumber: Prefs.lapNumber,
             activeTask: Prefs.activeTask,
-            syncedMinutes: Prefs.syncedMinutes,
             activeLogPageId: Prefs.activeLogPageId,
           ),
         );
   bool _isMovingToInProgress = false;
+  bool _isCreatingRecord = false;
 
   void _checkAndMoveActiveTaskToInProgress() {
     final currentTask = state.activeTask;
@@ -46,65 +47,68 @@ class TimerCubit extends Cubit<TimerState> {
     }
   }
 
-  void _syncActiveTaskIfEligible() {
+  /// Creates a new Notion Time Log record for the current session.
+  /// Called when the timer starts for the first time in a work lap with a task.
+  void _createNotionRecord() {
     if (!Prefs.enableTimeTracker) return;
-    final totalMinutes = state.duration.inMinutes;
-    final minutesToSync = totalMinutes - state.syncedMinutes;
-    if (state.lap == TimerLap.work &&
-        minutesToSync >= 1 &&
-        state.activeTask != null) {
-      final taskToSync = state.activeTask!;
-      final logPageId = state.activeLogPageId;
-      NotionSyncService()
-          .syncSession(
-        task: taskToSync,
-        duration: Duration(minutes: minutesToSync),
-        totalDuration: Duration(minutes: totalMinutes),
-        existingLogPageId: logPageId,
-        endedAt: DateTime.now(),
-      )
-          .then((result) {
-        if (result.success && state.activeTask?.id == taskToSync.id) {
-          final updated = Prefs.activeTask;
-          if (updated != null) {
-            emit(state.copyWith(activeTask: () => updated));
-          }
-        }
-      });
-    }
+    if (state.activeTask == null) return;
+    if (state.lap != TimerLap.work) return;
+    if (state.activeLogPageId != null) return; // Already has a record
+    if (_isCreatingRecord) return;
+
+    _isCreatingRecord = true;
+    final taskToSync = state.activeTask!;
+    final startedAt = DateTime.now();
+
+    NotionSyncService()
+        .createSessionRecord(task: taskToSync, startedAt: startedAt)
+        .then((pageId) {
+      _isCreatingRecord = false;
+      if (pageId != null && state.activeTask?.id == taskToSync.id) {
+        Prefs.activeLogPageId = pageId;
+        emit(state.copyWith(activeLogPageId: () => pageId));
+        Logger().i('TimerCubit: Session record created: $pageId');
+      }
+    }).catchError((Object e) {
+      _isCreatingRecord = false;
+      Logger().w('TimerCubit: Failed to create session record: $e');
+    });
   }
 
-  Future<bool> syncNow() async {
-    if (!Prefs.enableTimeTracker) return false;
-    if (state.activeTask == null) return false;
+  /// Updates the existing Notion Time Log record with current elapsed time.
+  /// Called on pause, lap transition, and reset.
+  void _updateNotionRecord() {
+    if (!Prefs.enableTimeTracker) return;
+    if (state.activeTask == null) return;
+    if (state.lap != TimerLap.work) return;
+
     final totalMinutes = state.duration.inMinutes;
-    final minutesToSync = totalMinutes - state.syncedMinutes;
-    if (minutesToSync < 1) return false;
+    if (totalMinutes < 1) return; // Skip update if less than 1 minute
 
     final taskToSync = state.activeTask!;
-    final result = await NotionSyncService().syncSession(
-      task: taskToSync,
-      duration: Duration(minutes: minutesToSync),
-      totalDuration: Duration(minutes: totalMinutes),
-      existingLogPageId: state.activeLogPageId,
-      endedAt: DateTime.now(),
-    );
+    final logPageId = state.activeLogPageId;
 
-    if (result.success) {
-      final newSyncedMinutes = state.syncedMinutes + minutesToSync;
-      final updatedTask = Prefs.activeTask;
-      final newPageId = result.logPageId ?? state.activeLogPageId;
-      Prefs.syncedMinutes = newSyncedMinutes;
-      Prefs.activeLogPageId = newPageId;
-      emit(
-        state.copyWith(
-          syncedMinutes: () => newSyncedMinutes,
-          activeTask: () => updatedTask ?? taskToSync,
-          activeLogPageId: () => newPageId,
-        ),
-      );
-    }
-    return result.success;
+    NotionSyncService()
+        .updateSessionRecord(
+      task: taskToSync,
+      totalElapsed: state.duration,
+      existingLogPageId: logPageId,
+      endedAt: DateTime.now(),
+    )
+        .then((result) {
+      if (result.success && state.activeTask?.id == taskToSync.id) {
+        // Update page ID if it was created as a fallback
+        if (result.logPageId != null &&
+            result.logPageId != state.activeLogPageId) {
+          Prefs.activeLogPageId = result.logPageId;
+          emit(state.copyWith(activeLogPageId: () => result.logPageId));
+        }
+        final updated = Prefs.activeTask;
+        if (updated != null) {
+          emit(state.copyWith(activeTask: () => updated));
+        }
+      }
+    });
   }
 
   void start() {
@@ -118,11 +122,15 @@ class TimerCubit extends Cubit<TimerState> {
 
     if (state.lap == TimerLap.work && state.activeTask != null) {
       _checkAndMoveActiveTaskToInProgress();
+      // Create a Notion record on first start of this session
+      _createNotionRecord();
     }
   }
 
   void stop() {
-    _syncActiveTaskIfEligible();
+    // Update the Notion record with current elapsed time
+    _updateNotionRecord();
+
     emit(
       state.copyWith(
         status: () => TimerStatus.stopped,
@@ -133,7 +141,9 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void reset() {
-    _syncActiveTaskIfEligible();
+    // Finalize the current Notion record before resetting
+    _updateNotionRecord();
+
     final currentTask = state.activeTask;
     emit(TimerState(activeTask: currentTask));
 
@@ -142,16 +152,16 @@ class TimerCubit extends Cubit<TimerState> {
 
   void selectTask(NotionTask? task) {
     if (state.activeTask?.id != task?.id) {
-      _syncActiveTaskIfEligible();
+      // Finalize any existing session before switching
+      _updateNotionRecord();
+
       Prefs.duration = Duration.zero;
-      Prefs.syncedMinutes = 0;
       Prefs.activeLogPageId = null;
       Prefs.activeTask = task;
       emit(
         state.copyWith(
           activeTask: () => task,
           duration: () => Duration.zero,
-          syncedMinutes: () => 0,
           activeLogPageId: () => null,
         ),
       );
@@ -162,23 +172,25 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void clearTask() {
-    _syncActiveTaskIfEligible();
+    // Finalize any existing session before clearing
+    _updateNotionRecord();
+
     Prefs.duration = Duration.zero;
-    Prefs.syncedMinutes = 0;
     Prefs.activeLogPageId = null;
     Prefs.activeTask = null;
     emit(
       state.copyWith(
         activeTask: () => null,
         duration: () => Duration.zero,
-        syncedMinutes: () => 0,
         activeLogPageId: () => null,
       ),
     );
   }
 
   void lap({required SettingsState settingsState, bool autoAdvance = true}) {
-    _syncActiveTaskIfEligible();
+    // Finalize the current Notion record before transitioning laps
+    _updateNotionRecord();
+
     final nextLap = LapHelper.getNextLap(
       state.lap,
       state.lapNumber,
@@ -190,7 +202,6 @@ class TimerCubit extends Cubit<TimerState> {
     emit(
       state.copyWith(
         duration: () => Duration.zero,
-        syncedMinutes: () => 0,
         activeLogPageId: () => null,
         lapNumber: () => nextLapNumber,
         lap: () => nextLap,
@@ -200,10 +211,17 @@ class TimerCubit extends Cubit<TimerState> {
 
     Prefs.timerLap = nextLap;
     Prefs.duration = Duration.zero;
-    Prefs.syncedMinutes = 0;
     Prefs.activeLogPageId = null;
     Prefs.lapNumber = nextLapNumber;
     Prefs.timerStatus = !autoAdvance ? TimerStatus.stopped : state.status;
+
+    // If auto-advancing into a new work lap with a task, create a new record
+    if (autoAdvance &&
+        nextLap == TimerLap.work &&
+        state.activeTask != null &&
+        state.status == TimerStatus.running) {
+      _createNotionRecord();
+    }
   }
 
   /// Adds the given [duration] to the current [TimerState.duration].

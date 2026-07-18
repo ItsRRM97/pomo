@@ -4,9 +4,11 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:logger/web.dart';
 import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/helpers/notion_url_helper.dart';
 import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
@@ -14,10 +16,12 @@ import 'package:pomo/pages/tasks/view/manual_log_dialog.dart';
 import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/services/android_notification_service.dart';
+import 'package:pomo/singletons/prefs.dart';
 import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:pomo/services/web_pwa_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum NotificationType {
   workStart,
@@ -589,6 +593,24 @@ class _TimerViewState extends State<TimerView> {
           },
         ),
         actions: [
+          if (Prefs.enableNotionSync) ...[
+            IconButton(
+              tooltip: 'Open Notion Time Logs',
+              icon: SvgPicture.asset(
+                'assets/images/notion_logo.svg',
+                width: 20,
+                height: 20,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(context).colorScheme.onSurface,
+                  BlendMode.srcIn,
+                ),
+              ),
+              onPressed: () {
+                final url = NotionUrlHelper.timeLogsDatabaseUrl;
+                launchUrl(Uri.parse(url));
+              },
+            ),
+          ],
           if (kIsWeb && WebPwaService().isDocumentPipSupported()) ...[
             IconButton(
               tooltip: 'Picture in Picture',
