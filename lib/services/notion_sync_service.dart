@@ -477,9 +477,12 @@ class NotionSyncService {
         }
       }
 
-      if (local != Prefs.trackerTags) {
-        Prefs.trackerTags = local;
-      }
+      changed += await _recoverTagsFromHourlyLogs(
+        local: local,
+        registry: latestRemote.values.toList(),
+      );
+
+      Prefs.trackerTags = local;
       Logger().i(
         'NotionSyncService: Reconciled activity tags '
         '(${latestRemote.length} remote, $changed changes).',
@@ -493,6 +496,90 @@ class NotionSyncService {
       );
       return 0;
     }
+  }
+
+  static const List<String> _recoveredTagPalette = [
+    '#4285F4',
+    '#EA4335',
+    '#FBBC05',
+    '#34A853',
+    '#AB47BC',
+    '#26A69A',
+    '#FF7043',
+    '#5C6BC0',
+  ];
+
+  /// Recovers custom tags that predate the registry.
+  ///
+  /// Tags created before tag sync shipped (e.g. in the PWA) exist only inside
+  /// hourly-log rows, so a fresh install pulls an empty registry and loses
+  /// them. Any tag name used by a local hourly log that has no local tag and
+  /// no newer deletion tombstone is re-created with a deterministic id and
+  /// republished to the registry so every device converges.
+  Future<int> _recoverTagsFromHourlyLogs({
+    required List<TrackerTag> local,
+    required List<({TrackerTag tag, bool deleted, DateTime updatedAt})>
+        registry,
+  }) async {
+    final tombstonedAt = <String, DateTime>{};
+    for (final record in registry) {
+      if (!record.deleted) continue;
+      final key = record.tag.name.trim().toLowerCase();
+      final existing = tombstonedAt[key];
+      if (existing == null || record.updatedAt.isAfter(existing)) {
+        tombstonedAt[key] = record.updatedAt;
+      }
+    }
+
+    final knownNames = local.map((t) => t.name.trim().toLowerCase()).toSet();
+    final candidates = <String, ({String name, String icon, DateTime used})>{};
+    for (final log in Prefs.hourlyLogs) {
+      final name = log.tagName.trim();
+      if (name.isEmpty || name.toLowerCase() == 'activity') continue;
+      final key = name.toLowerCase();
+      final existing = candidates[key];
+      if (existing == null || log.loggedAt.isAfter(existing.used)) {
+        candidates[key] = (name: name, icon: log.tagIcon, used: log.loggedAt);
+      }
+    }
+
+    var recovered = 0;
+    for (final entry in candidates.entries) {
+      if (knownNames.contains(entry.key)) continue;
+      final deletedAt = tombstonedAt[entry.key];
+      // A deletion newer than the tag's last use wins; the user removed it
+      // on purpose and we must not resurrect it on every sync.
+      if (deletedAt != null && deletedAt.isAfter(entry.value.used)) {
+        continue;
+      }
+
+      final slug = entry.key.replaceAll(RegExp('[^a-z0-9]'), '_');
+      final colorIndex = slug.codeUnits.fold<int>(0, (sum, c) => sum + c) %
+          _recoveredTagPalette.length;
+      final tag = TrackerTag(
+        id: 'tag_custom_recovered_$slug',
+        name: entry.value.name,
+        icon: entry.value.icon.isNotEmpty ? entry.value.icon : '⏱️',
+        colorHex: _recoveredTagPalette[colorIndex],
+      );
+
+      local.add(tag);
+      knownNames.add(entry.key);
+      recovered++;
+      Logger().i(
+        'NotionSyncService: Recovered legacy activity tag '
+        '"${tag.icon} ${tag.name}" from hourly logs.',
+      );
+      try {
+        await NotionService().syncActivityTag(tag);
+      } catch (e) {
+        Logger().w(
+          'NotionSyncService: Failed to publish recovered tag '
+          '"${tag.name}" ($e)',
+        );
+      }
+    }
+    return recovered;
   }
 
   /// Saves a custom tag locally and publishes it to the shared registry.

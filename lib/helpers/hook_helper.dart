@@ -75,87 +75,100 @@ mixin HookHelper {
   }
 
   static Timer? _hourlyCheckTimer;
-  static int _lastTriggeredHour = -1;
+  static DateTime? _lastHandledHour;
   static final AudioPlayer _audioPlayer = AudioPlayer();
 
   static void startHourlyTrackerLoop() {
     _hourlyCheckTimer?.cancel();
+    // Anchor to the launch hour so starting the app does not immediately fire
+    // a reminder; the first crossing into a new hour does.
+    _lastHandledHour = DateTime.now();
     _hourlyCheckTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _checkAndTriggerHourlyReminder();
     });
-    // Run initial check right now
-    _checkAndTriggerHourlyReminder();
   }
 
   static Future<void> _checkAndTriggerHourlyReminder() async {
     if (!Prefs.enableTimeTracker) return;
 
     final now = DateTime.now();
-    // Trigger at the top of every new hour (minute 0 or 1) once per hour
-    if (now.minute <= 1 && now.hour != _lastTriggeredHour) {
-      if (Prefs.enableQuietHours &&
-          SoundHelper.isQuietHours(
-            start: Prefs.quietHoursStart,
-            end: Prefs.quietHoursEnd,
-            now: now,
-          )) {
-        return;
-      }
+    // Catch-up trigger: fires on the first tick of a new hour no matter how
+    // late that tick lands (App Nap or sleep can delay it past minute 0-1).
+    if (!NotificationHelper.crossedHourBoundary(
+      now: now,
+      lastHandled: _lastHandledHour,
+    )) {
+      return;
+    }
+    // Mark handled before any awaits so slow audio/notification calls cannot
+    // double-fire the same hour.
+    _lastHandledHour = now;
 
-      _lastTriggeredHour = now.hour;
-      Logger().d(
-        'HookHelper: Triggering hourly time check beep and '
-        'notification for hour ${now.hour}',
-      );
+    if (Prefs.enableQuietHours &&
+        SoundHelper.isQuietHours(
+          start: Prefs.quietHoursStart,
+          end: Prefs.quietHoursEnd,
+          now: now,
+        )) {
+      return;
+    }
 
-      // 1. Play chime/beep audio
+    // Remind the user to log the block that just finished, not the one that
+    // just started (at 15:0x that is 14:00-15:00).
+    final block = NotificationHelper.completedHourBlock(now);
+    Logger().d(
+      'HookHelper: Triggering hourly check-in for completed hour '
+      '${block.hour} (${block.date})',
+    );
+
+    // 1. Show macOS local notification first (tap opens hourly log dialog);
+    // the banner must never depend on the audio player finishing.
+    if (!kIsWeb &&
+        Platform.isMacOS &&
+        NotificationHelper.shouldShowDesktopHourlyNotification(
+          enableDesktopNotifications: Prefs.enableDesktopNotifications,
+          enableTimeTracker: Prefs.enableTimeTracker,
+          enableQuietHours: Prefs.enableQuietHours,
+          quietHoursStart: Prefs.quietHoursStart,
+          quietHoursEnd: Prefs.quietHoursEnd,
+          now: now,
+        )) {
       try {
-        await _audioPlayer.stop();
-        await _audioPlayer.play(AssetSource('sounds/digital_beep.wav'));
+        await LocalNotificationService.instance.showHourlyReminder(
+          hour: block.hour,
+          date: block.date,
+        );
       } catch (e) {
-        Logger().w('HookHelper audio chime failed: $e');
+        Logger().w('HookHelper macOS notification failed: $e');
       }
+    }
 
-      // 2. Show native foreground notification on Android
+    // 2. Show native foreground notification on Android
+    try {
+      await AndroidNotificationService()
+          .showHourlyReminderNotification(block.hour);
+    } catch (e) {
+      Logger().w('HookHelper android notification failed: $e');
+    }
+
+    // 3. Show browser notification on Web PWA
+    if (kIsWeb) {
       try {
-        await AndroidNotificationService()
-            .showHourlyReminderNotification(now.hour);
+        WebPwaService().showNotification(
+          NotificationHelper.hourlyNotificationTitle(),
+          NotificationHelper.hourlyNotificationBody(block.hour),
+        );
       } catch (e) {
-        Logger().w('HookHelper android notification failed: $e');
+        Logger().w('HookHelper web notification failed: $e');
       }
+    }
 
-      // 3. Show browser notification on Web PWA
-      if (kIsWeb) {
-        try {
-          WebPwaService().showNotification(
-            NotificationHelper.hourlyNotificationTitle(),
-            NotificationHelper.hourlyNotificationBody(now.hour),
-          );
-        } catch (e) {
-          Logger().w('HookHelper web notification failed: $e');
-        }
-      }
-
-      // 4. Show macOS local notification (tap opens hourly log dialog)
-      if (!kIsWeb &&
-          Platform.isMacOS &&
-          NotificationHelper.shouldShowDesktopHourlyNotification(
-            enableDesktopNotifications: Prefs.enableDesktopNotifications,
-            enableTimeTracker: Prefs.enableTimeTracker,
-            enableQuietHours: Prefs.enableQuietHours,
-            quietHoursStart: Prefs.quietHoursStart,
-            quietHoursEnd: Prefs.quietHoursEnd,
-            now: now,
-          )) {
-        try {
-          await LocalNotificationService.instance.showHourlyReminder(
-            hour: now.hour,
-            date: DateTime(now.year, now.month, now.day),
-          );
-        } catch (e) {
-          Logger().w('HookHelper macOS notification failed: $e');
-        }
-      }
+    // 4. Play chime/beep audio
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(AssetSource('sounds/digital_beep.wav'));
+    } catch (e) {
+      Logger().w('HookHelper audio chime failed: $e');
     }
   }
 }

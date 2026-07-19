@@ -92,6 +92,38 @@ mixin NotificationHelper {
     }
   }
 
+  /// True when [now] sits in a different clock hour than [lastHandled].
+  ///
+  /// Used by the hourly reminder loop as a catch-up trigger: even if App Nap
+  /// delays the periodic tick well past the top of the hour, the first tick
+  /// that lands in a new hour still fires exactly one reminder.
+  static bool crossedHourBoundary({
+    required DateTime now,
+    required DateTime? lastHandled,
+  }) {
+    if (lastHandled == null) {
+      return false;
+    }
+    return now.year != lastHandled.year ||
+        now.month != lastHandled.month ||
+        now.day != lastHandled.day ||
+        now.hour != lastHandled.hour;
+  }
+
+  /// The 1-hour block that just finished before [now].
+  ///
+  /// At 15:05 this is hour 14 of the same day; at 00:10 it is hour 23 of the
+  /// previous day. The hourly reminder asks the user to log this block, not
+  /// the hour that just started.
+  static ({int hour, DateTime date}) completedHourBlock(DateTime now) {
+    final blockStart = DateTime(now.year, now.month, now.day, now.hour)
+        .subtract(const Duration(hours: 1));
+    return (
+      hour: blockStart.hour,
+      date: DateTime(blockStart.year, blockStart.month, blockStart.day),
+    );
+  }
+
   static String hourlyNotificationTitle() => 'Time Tracker: Check-in Required';
 
   static String hourlyNotificationBody(int hour) {

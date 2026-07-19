@@ -109,6 +109,64 @@ void main() {
     });
   });
 
+  group('NotificationHelper.crossedHourBoundary', () {
+    test('false within the same hour', () {
+      expect(
+        NotificationHelper.crossedHourBoundary(
+          now: DateTime(2026, 7, 19, 15, 59),
+          lastHandled: DateTime(2026, 7, 19, 15),
+        ),
+        isFalse,
+      );
+    });
+
+    test('true on the first tick of a new hour, even a late one', () {
+      expect(
+        NotificationHelper.crossedHourBoundary(
+          now: DateTime(2026, 7, 19, 15, 37),
+          lastHandled: DateTime(2026, 7, 19, 14, 52),
+        ),
+        isTrue,
+      );
+    });
+
+    test('true across midnight even with equal hour values', () {
+      expect(
+        NotificationHelper.crossedHourBoundary(
+          now: DateTime(2026, 7, 20, 14, 5),
+          lastHandled: DateTime(2026, 7, 19, 14, 30),
+        ),
+        isTrue,
+      );
+    });
+
+    test('false when nothing was handled yet', () {
+      expect(
+        NotificationHelper.crossedHourBoundary(
+          now: DateTime(2026, 7, 19, 15),
+          lastHandled: null,
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('NotificationHelper.completedHourBlock', () {
+    test('returns the previous hour of the same day mid-day', () {
+      final block =
+          NotificationHelper.completedHourBlock(DateTime(2026, 7, 19, 15, 4));
+      expect(block.hour, 14);
+      expect(block.date, DateTime(2026, 7, 19));
+    });
+
+    test('wraps to hour 23 of the previous day just after midnight', () {
+      final block =
+          NotificationHelper.completedHourBlock(DateTime(2026, 7, 20, 0, 10));
+      expect(block.hour, 23);
+      expect(block.date, DateTime(2026, 7, 19));
+    });
+  });
+
   group('NotificationHelper payloads', () {
     test('round-trips hourly payload', () {
       final payload = NotificationHelper.hourlyPayload(

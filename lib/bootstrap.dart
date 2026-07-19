@@ -42,10 +42,14 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   await Prefs().init();
   HookHelper.startHourlyTrackerLoop();
   unawaited(NotionSyncService().flushPendingHourlyLogs());
-  // Pull logs created on other devices (e.g. the PWA) into this install.
-  unawaited(NotionSyncService().pullHourlyLogs());
-  // Reconcile custom Activity Tags across PWA and desktop installs.
-  unawaited(NotionSyncService().syncActivityTags());
+  // Pull logs created on other devices (e.g. the PWA) first, then reconcile
+  // custom Activity Tags: tag recovery reads the pulled logs to restore tags
+  // that predate the registry.
+  unawaited(
+    NotionSyncService()
+        .pullHourlyLogs()
+        .then((_) => NotionSyncService().syncActivityTags()),
+  );
 
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     await windowManager.ensureInitialized();
