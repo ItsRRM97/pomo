@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dio/dio.dart';
-import 'package:logger/web.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:logger/web.dart';
+import 'package:pomo/helpers/notification_helper.dart';
 import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/services/android_notification_service.dart';
+import 'package:pomo/services/local_notification_service.dart';
 import 'package:pomo/services/web_pwa_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -89,17 +93,20 @@ mixin HookHelper {
     final now = DateTime.now();
     // Trigger at the top of every new hour (minute 0 or 1) once per hour
     if (now.minute <= 1 && now.hour != _lastTriggeredHour) {
-      if (SoundHelper.isQuietHours(
-        start: Prefs.quietHoursStart,
-        end: Prefs.quietHoursEnd,
-        now: now,
-      )) {
+      if (Prefs.enableQuietHours &&
+          SoundHelper.isQuietHours(
+            start: Prefs.quietHoursStart,
+            end: Prefs.quietHoursEnd,
+            now: now,
+          )) {
         return;
       }
 
       _lastTriggeredHour = now.hour;
       Logger().d(
-          'HookHelper: Triggering hourly time check beep and notification for hour ${now.hour}');
+        'HookHelper: Triggering hourly time check beep and '
+        'notification for hour ${now.hour}',
+      );
 
       // 1. Play chime/beep audio
       try {
@@ -120,14 +127,33 @@ mixin HookHelper {
       // 3. Show browser notification on Web PWA
       if (kIsWeb) {
         try {
-          final start = now.hour.toString().padLeft(2, '0');
-          final end = ((now.hour + 1) % 24).toString().padLeft(2, '0');
           WebPwaService().showNotification(
-            'Time Tracker: Check-in Required',
-            'Log what you did between $start:00 and $end:00.',
+            NotificationHelper.hourlyNotificationTitle(),
+            NotificationHelper.hourlyNotificationBody(now.hour),
           );
         } catch (e) {
           Logger().w('HookHelper web notification failed: $e');
+        }
+      }
+
+      // 4. Show macOS local notification (tap opens hourly log dialog)
+      if (!kIsWeb &&
+          Platform.isMacOS &&
+          NotificationHelper.shouldShowDesktopHourlyNotification(
+            enableDesktopNotifications: Prefs.enableDesktopNotifications,
+            enableTimeTracker: Prefs.enableTimeTracker,
+            enableQuietHours: Prefs.enableQuietHours,
+            quietHoursStart: Prefs.quietHoursStart,
+            quietHoursEnd: Prefs.quietHoursEnd,
+            now: now,
+          )) {
+        try {
+          await LocalNotificationService.instance.showHourlyReminder(
+            hour: now.hour,
+            date: DateTime(now.year, now.month, now.day),
+          );
+        } catch (e) {
+          Logger().w('HookHelper macOS notification failed: $e');
         }
       }
     }

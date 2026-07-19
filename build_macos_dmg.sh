@@ -54,6 +54,29 @@ else
 fi
 echo "--> Found compiled app at: $APP_PATH"
 
+# Re-sign with a stable local identity. Ad-hoc signed apps are refused by
+# UNUserNotificationCenter ("Notifications are not allowed for this
+# application"), so banners never appear. Create the identity once with:
+#   ./scripts/setup-macos-signing.sh
+SIGN_IDENTITY="${POMO_SIGN_IDENTITY:-Pomo Dev Signing}"
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGN_IDENTITY"; then
+  echo "--> Signing app with identity: $SIGN_IDENTITY"
+  find "$APP_PATH/Contents/Frameworks" -maxdepth 1 \
+    \( -name "*.framework" -o -name "*.dylib" \) -print0 2>/dev/null \
+    | while IFS= read -r -d '' nested; do
+        codesign --force -s "$SIGN_IDENTITY" --timestamp=none "$nested"
+      done
+  codesign --force -s "$SIGN_IDENTITY" --timestamp=none \
+    --entitlements "$PROJECT_ROOT/macos/Runner/Release.entitlements" \
+    "$APP_PATH"
+  codesign --verify --deep --strict "$APP_PATH"
+  echo "--> Signature OK ($SIGN_IDENTITY)"
+else
+  echo "WARNING: signing identity '$SIGN_IDENTITY' not found; app stays ad-hoc signed."
+  echo "         macOS will refuse notification banners for ad-hoc signed apps."
+  echo "         Run ./scripts/setup-macos-signing.sh once to fix this."
+fi
+
 echo "--> Removing old .dmg if present..."
 rm -f "$DMG_PATH"
 

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:pomo/singletons/prefs.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// Handles main-window lifecycle on macOS: hide to menu bar instead of quit.
@@ -10,6 +11,7 @@ class DesktopWindowService with WindowListener {
 
   static final DesktopWindowService instance = DesktopWindowService._();
   static bool _initialized = false;
+  static const MethodChannel _overlayChannel = MethodChannel('pomo/overlay');
 
   static Future<void> init() async {
     if (kIsWeb || !Platform.isMacOS || _initialized) {
@@ -21,16 +23,39 @@ class DesktopWindowService with WindowListener {
     windowManager.addListener(instance);
   }
 
+  /// Whether AppDelegate decided this launch should stay menu-bar only.
+  static Future<bool> shouldStartHidden() async {
+    if (kIsWeb || !Platform.isMacOS) {
+      return false;
+    }
+
+    try {
+      final result =
+          await _overlayChannel.invokeMethod<bool>('shouldStartHidden');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<void> setAccessoryActivation() async {
+    if (kIsWeb || !Platform.isMacOS) {
+      return;
+    }
+
+    try {
+      await _overlayChannel.invokeMethod<void>('setAccessoryActivation');
+    } catch (_) {}
+  }
+
   static Future<void> showMainWindow() async {
     if (kIsWeb || !Platform.isMacOS) {
       return;
     }
 
     try {
-      await const MethodChannel('pomo/overlay')
-          .invokeMethod<void>('ensureRegularActivation');
-      await const MethodChannel('pomo/overlay')
-          .invokeMethod<void>('showMainWindow');
+      await _overlayChannel.invokeMethod<void>('ensureRegularActivation');
+      await _overlayChannel.invokeMethod<void>('showMainWindow');
     } catch (_) {}
 
     await windowManager.show();
@@ -57,5 +82,11 @@ class DesktopWindowService with WindowListener {
   @override
   void onWindowClose() {
     hideMainWindow();
+  }
+
+  @override
+  void onWindowResized() {
+    // Remember the size the user chose so the next launch restores it.
+    windowManager.getSize().then((size) => Prefs.windowSize = size);
   }
 }

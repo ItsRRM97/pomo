@@ -88,21 +88,36 @@ The native macOS app (`Pomo.app`) includes desktop-only features not available i
 - **Menu bar icon**: start/pause, reset, open the main window, settings, and quit from the menu bar
 - **Background mode**: closing the main window hides it; the app keeps running in the menu bar
 - **Floating timer**: a small countdown pill appears over other apps (including fullscreen Spaces) while a session is running or paused
+- **Desktop notifications**: hourly time-tracker check-ins and work/break lap alerts (Settings toggle)
+- **Launch at login**: start hidden in the menu bar when you log in (Settings toggle)
+
+Hourly logs and custom Activity Tags sync between the PWA and macOS app
+through the configured Notion Hourly Timeline database. Open or reload each
+client once after an update to migrate its existing local custom tags.
 
 ### Build and run on macOS
 
 ```sh
-flutter build macos --release -t lib/main_production.dart
-open build/macos/Build/Products/Release/Pomo.app
+# Development
+flutter run --flavor development -d macos --target lib/main_development.dart
+
+# Production .app
+flutter build macos --release --flavor production -t lib/main_production.dart
+open build/macos/Build/Products/Release-production/Pomo.app
+
+# One-time: create a local signing identity (required for notification banners;
+# macOS refuses UNUserNotificationCenter authorization for ad-hoc signed apps)
+./scripts/setup-macos-signing.sh
+
+# Production DMG (self-signed; for personal use)
+./build_macos_dmg.sh
+open ./Pomo.dmg
 ```
 
-For local development:
+The first launch of a newly signed build asks for notification permission.
+Click **Allow** on the system prompt; banners will not appear until you do.
 
-```sh
-flutter run -d macos --target lib/main_production.dart
-```
-
-Configure the floating widget under **Settings** (macOS only): toggle visibility and pick a default screen corner.
+Configure the floating widget, notifications, and launch-at-login under **Settings** (macOS only).
 
 ## Installing
 

@@ -40,54 +40,77 @@ class TimeTrackerExpansion extends StatelessWidget {
           shape: const Border(),
           childrenPadding: const EdgeInsets.all(16),
           children: [
-            Text(
-              l10n.quietHoursStart,
-              style: Theme.of(context).textTheme.labelLarge,
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.enableQuietHours),
+              subtitle: Text(l10n.enableQuietHoursDescription),
+              value: state.enableQuietHours,
+              onChanged: context.read<SettingsCubit>().setEnableQuietHours,
             ),
             const SizedBox(height: 8),
-            TextFormField(
-              key: ValueKey('quietHoursStart_${state.quietHoursStart}'),
-              decoration: InputDecoration(
-                hintText: '23:00',
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.access_time),
-                  onPressed: () => _pickTime(
-                    context,
-                    state.quietHoursStart,
-                    (val) =>
-                        context.read<SettingsCubit>().setQuietHoursStart(val),
-                  ),
+            IgnorePointer(
+              ignoring: !state.enableQuietHours,
+              child: AnimatedOpacity(
+                opacity: state.enableQuietHours ? 1 : 0.45,
+                duration: Durations.short3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      l10n.quietHoursStart,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      key: ValueKey('quietHoursStart_${state.quietHoursStart}'),
+                      decoration: InputDecoration(
+                        hintText: '23:00',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.access_time),
+                          onPressed: () => _pickTime(
+                            context,
+                            state.quietHoursStart,
+                            (val) => context
+                                .read<SettingsCubit>()
+                                .setQuietHoursStart(val),
+                          ),
+                        ),
+                      ),
+                      initialValue: state.quietHoursStart,
+                      onChanged: (value) => context
+                          .read<SettingsCubit>()
+                          .setQuietHoursStart(value),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.quietHoursEnd,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      key: ValueKey('quietHoursEnd_${state.quietHoursEnd}'),
+                      decoration: InputDecoration(
+                        hintText: '07:00',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.access_time),
+                          onPressed: () => _pickTime(
+                            context,
+                            state.quietHoursEnd,
+                            (val) => context
+                                .read<SettingsCubit>()
+                                .setQuietHoursEnd(val),
+                          ),
+                        ),
+                      ),
+                      initialValue: state.quietHoursEnd,
+                      onChanged: (value) =>
+                          context.read<SettingsCubit>().setQuietHoursEnd(value),
+                    ),
+                  ],
                 ),
               ),
-              initialValue: state.quietHoursStart,
-              onChanged: (value) =>
-                  context.read<SettingsCubit>().setQuietHoursStart(value),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.quietHoursEnd,
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              key: ValueKey('quietHoursEnd_${state.quietHoursEnd}'),
-              decoration: InputDecoration(
-                hintText: '07:00',
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.access_time),
-                  onPressed: () => _pickTime(
-                    context,
-                    state.quietHoursEnd,
-                    (val) =>
-                        context.read<SettingsCubit>().setQuietHoursEnd(val),
-                  ),
-                ),
-              ),
-              initialValue: state.quietHoursEnd,
-              onChanged: (value) =>
-                  context.read<SettingsCubit>().setQuietHoursEnd(value),
             ),
           ],
         );

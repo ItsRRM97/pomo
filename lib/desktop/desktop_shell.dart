@@ -10,6 +10,7 @@ import 'package:pomo/desktop/floating_overlay_controller.dart';
 import 'package:pomo/desktop/macos_menu_bar_service.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
+import 'package:pomo/services/local_notification_service.dart';
 import 'package:pomo/services/timer_tick_service.dart';
 
 /// Hosts macOS-only desktop integrations around the main app.
@@ -62,6 +63,7 @@ class _DesktopShellState extends State<DesktopShell> {
     developer.log('MacosMenuBarService.init completed', name: 'DesktopShell');
 
     await DesktopWindowService.init();
+    await LocalNotificationService.instance.init();
     FloatingOverlayController.initMainWindowHandler();
 
     if (!mounted) {

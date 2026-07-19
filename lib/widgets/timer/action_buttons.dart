@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pomo/helpers/notification_type.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
-import 'package:pomo/pages/timer/view/timer_page.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 class ActionButtons extends StatefulWidget {

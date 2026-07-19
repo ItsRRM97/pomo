@@ -43,9 +43,12 @@ class SettingsState extends Equatable {
     this.notionAreasDatabaseId = '',
     this.notionHourlyTimelineDatabaseId = '',
     this.enableTimeTracker = true,
+    this.enableQuietHours = true,
     this.quietHoursStart = '23:00',
     this.quietHoursEnd = '07:00',
     this.requestNotificationPermission = false,
+    this.enableDesktopNotifications = true,
+    this.launchAtLogin = false,
   });
 
   final ThemeMode themeMode;
@@ -65,10 +68,13 @@ class SettingsState extends Equatable {
   final String notionHourlyTimelineDatabaseId;
 
   final bool enableTimeTracker;
+  final bool enableQuietHours;
   final String quietHoursStart;
   final String quietHoursEnd;
 
   final bool requestNotificationPermission;
+  final bool enableDesktopNotifications;
+  final bool launchAtLogin;
 
   final int workMinutes;
   final int shortBreakMinutes;
@@ -148,9 +154,12 @@ class SettingsState extends Equatable {
     String Function()? notionAreasDatabaseId,
     String Function()? notionHourlyTimelineDatabaseId,
     bool Function()? enableTimeTracker,
+    bool Function()? enableQuietHours,
     String Function()? quietHoursStart,
     String Function()? quietHoursEnd,
     bool Function()? requestNotificationPermission,
+    bool Function()? enableDesktopNotifications,
+    bool Function()? launchAtLogin,
   }) {
     return SettingsState(
       themeMode: themeMode != null ? themeMode() : this.themeMode,
@@ -243,6 +252,8 @@ class SettingsState extends Equatable {
       enableTimeTracker: enableTimeTracker != null
           ? enableTimeTracker()
           : this.enableTimeTracker,
+      enableQuietHours:
+          enableQuietHours != null ? enableQuietHours() : this.enableQuietHours,
       quietHoursStart:
           quietHoursStart != null ? quietHoursStart() : this.quietHoursStart,
       quietHoursEnd:
@@ -250,6 +261,11 @@ class SettingsState extends Equatable {
       requestNotificationPermission: requestNotificationPermission != null
           ? requestNotificationPermission()
           : this.requestNotificationPermission,
+      enableDesktopNotifications: enableDesktopNotifications != null
+          ? enableDesktopNotifications()
+          : this.enableDesktopNotifications,
+      launchAtLogin:
+          launchAtLogin != null ? launchAtLogin() : this.launchAtLogin,
     );
   }
 
@@ -296,9 +312,12 @@ class SettingsState extends Equatable {
         notionAreasDatabaseId,
         notionHourlyTimelineDatabaseId,
         enableTimeTracker,
+        enableQuietHours,
         quietHoursStart,
         quietHoursEnd,
         requestNotificationPermission,
+        enableDesktopNotifications,
+        launchAtLogin,
       ];
 }
 

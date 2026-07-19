@@ -513,6 +513,30 @@ abstract class S {
   /// **'Default corner for the floating timer widget'**
   String get overlayCornerDescription;
 
+  /// No description provided for @enableDesktopNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop notifications'**
+  String get enableDesktopNotifications;
+
+  /// No description provided for @enableDesktopNotificationsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify on hourly check-ins and when work or break laps end'**
+  String get enableDesktopNotificationsDescription;
+
+  /// No description provided for @launchAtLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch at login'**
+  String get launchAtLogin;
+
+  /// No description provided for @launchAtLoginDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Pomo in the menu bar when you log in (window stays hidden)'**
+  String get launchAtLoginDescription;
+
   /// No description provided for @notionIntegration.
   ///
   /// In en, this message translates to:
@@ -620,6 +644,18 @@ abstract class S {
   /// In en, this message translates to:
   /// **'Automatically track elapsed time and send webhooks or Notion logs'**
   String get enableTimeTrackerDescription;
+
+  /// No description provided for @enableQuietHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable quiet hours'**
+  String get enableQuietHours;
+
+  /// No description provided for @enableQuietHoursDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Silence unattended hourly reminders during the selected time range'**
+  String get enableQuietHoursDescription;
 
   /// No description provided for @quietHoursStart.
   ///

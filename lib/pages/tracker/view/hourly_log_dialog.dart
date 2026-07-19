@@ -70,6 +70,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     } else if (_tags.isNotEmpty) {
       _selectedTags.add(_tags.first);
     }
+    _syncTags();
     _fetchProjects();
   }
 
@@ -104,7 +105,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       ),
     );
     if (confirm == true && mounted) {
-      await Prefs.deleteTrackerTag(tag.id);
+      await NotionSyncService().deleteActivityTag(tag);
       setState(() {
         _tags = Prefs.trackerTags;
         _selectedTags.removeWhere((t) => t.id == tag.id);
@@ -146,6 +147,15 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       if (mounted) {
         setState(() => _isLoadingProjects = false);
       }
+    }
+  }
+
+  Future<void> _syncTags() async {
+    final changed = await NotionSyncService().syncActivityTags();
+    if (mounted && changed > 0) {
+      setState(() {
+        _tags = Prefs.trackerTags;
+      });
     }
   }
 

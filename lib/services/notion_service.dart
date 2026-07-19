@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
+import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 class NotionService {
@@ -450,6 +453,313 @@ class NotionService {
       Logger().w('Hourly idempotency check failed: $e');
       return null;
     }
+  }
+
+  /// Reads the cross-device activity-tag registry stored in the Hourly
+  /// Timeline database. Registry rows have no Date, so they never appear in
+  /// normal hourly-log pulls.
+  Future<List<({TrackerTag tag, bool deleted, DateTime updatedAt})>>
+      fetchActivityTagRecords() async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty || hourlyTimelineDbId.trim().isEmpty) {
+      return [];
+    }
+
+    final url = '${_getBaseUrl()}databases/$hourlyTimelineDbId/query';
+    final records = <({TrackerTag tag, bool deleted, DateTime updatedAt})>[];
+    String? cursor;
+
+    do {
+      final payload = <String, dynamic>{
+        'filter': {
+          'property': 'Source',
+          'rich_text': {'equals': 'pomo-activity-tag'},
+        },
+        'page_size': 100,
+        if (cursor != null) 'start_cursor': cursor,
+      };
+      final response = await _dio.post<Map<String, dynamic>>(
+        url,
+        data: payload,
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+      final results = response.data?['results'] as List? ?? [];
+      for (final row in results.whereType<Map<String, dynamic>>()) {
+        final record = _activityTagRecordFromNotionRow(row);
+        if (record != null) {
+          records.add(record);
+        }
+      }
+      final hasMore = response.data?['has_more'] as bool? ?? false;
+      cursor = hasMore ? (response.data?['next_cursor'] as String?) : null;
+    } while (cursor != null);
+
+    return records;
+  }
+
+  /// Creates or updates one activity-tag registry row. A deleted tag remains
+  /// as a tombstone so deletion propagates to every device.
+  Future<bool> syncActivityTag(
+    TrackerTag tag, {
+    bool deleted = false,
+  }) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty || hourlyTimelineDbId.trim().isEmpty) {
+      return false;
+    }
+
+    final externalId = 'activity_tag:${tag.id}';
+    final existingPageId = await checkHourlyIdempotency(externalId);
+    final properties = _activityTagProperties(
+      tag,
+      externalId: externalId,
+      deleted: deleted,
+    );
+
+    if (existingPageId != null && existingPageId.isNotEmpty) {
+      await _dio.patch<Map<String, dynamic>>(
+        '${_getBaseUrl()}pages/$existingPageId',
+        data: {'properties': properties},
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+      return true;
+    }
+
+    await _dio.post<Map<String, dynamic>>(
+      '${_getBaseUrl()}pages',
+      data: {
+        'parent': {'database_id': hourlyTimelineDbId},
+        'properties': properties,
+      },
+      options: Options(headers: _getHeaders(apiKey)),
+    );
+    return true;
+  }
+
+  ({
+    TrackerTag tag,
+    bool deleted,
+    DateTime updatedAt,
+  })? _activityTagRecordFromNotionRow(Map<String, dynamic> row) {
+    final props = row['properties'] as Map<String, dynamic>? ?? {};
+
+    String richText(String name) {
+      final prop = props[name] as Map<String, dynamic>?;
+      final list = prop?['rich_text'] as List? ?? [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map((e) => e['plain_text'] as String? ?? '')
+          .join();
+    }
+
+    String? dateStart(String name) {
+      final prop = props[name] as Map<String, dynamic>?;
+      final date = prop?['date'] as Map<String, dynamic>?;
+      return date?['start'] as String?;
+    }
+
+    final externalId = richText('External ID');
+    if (!externalId.startsWith('activity_tag:')) {
+      return null;
+    }
+    final id = externalId.substring('activity_tag:'.length);
+    final name = richText('Tag');
+    if (id.isEmpty || name.isEmpty) {
+      return null;
+    }
+
+    var colorHex = '#4285F4';
+    var deleted = false;
+    try {
+      final metadata = jsonDecode(richText('Notes')) as Map<String, dynamic>;
+      colorHex = metadata['colorHex'] as String? ?? colorHex;
+      deleted = metadata['deleted'] as bool? ?? false;
+    } catch (_) {}
+
+    final updatedAtStr = dateStart('Logged At');
+    return (
+      tag: TrackerTag(
+        id: id,
+        name: name,
+        icon: richText('Tag Icon').isNotEmpty ? richText('Tag Icon') : '⏱️',
+        colorHex: colorHex,
+      ),
+      deleted: deleted,
+      updatedAt: updatedAtStr != null
+          ? DateTime.tryParse(updatedAtStr) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> _activityTagProperties(
+    TrackerTag tag, {
+    required String externalId,
+    required bool deleted,
+  }) {
+    final now = DateTime.now().toUtc().toIso8601String();
+    return {
+      'Name': {
+        'title': [
+          {
+            'text': {'content': '${tag.icon} ${tag.name}'},
+          },
+        ],
+      },
+      'Tag': {
+        'rich_text': [
+          {
+            'text': {'content': tag.name},
+          },
+        ],
+      },
+      'Tag Icon': {
+        'rich_text': [
+          {
+            'text': {'content': tag.icon},
+          },
+        ],
+      },
+      'Notes': {
+        'rich_text': [
+          {
+            'text': {
+              'content': jsonEncode({
+                'colorHex': tag.colorHex,
+                'deleted': deleted,
+              }),
+            },
+          },
+        ],
+      },
+      'Source': {
+        'rich_text': [
+          {
+            'text': {'content': 'pomo-activity-tag'},
+          },
+        ],
+      },
+      'External ID': {
+        'rich_text': [
+          {
+            'text': {'content': externalId},
+          },
+        ],
+      },
+      'Logged At': {
+        'date': {'start': now},
+      },
+    };
+  }
+
+  /// Fetches hourly logs from the Hourly Timeline Notion DB going back
+  /// [daysBack] days (default 90). Used to pull logs created on other
+  /// devices (e.g. the PWA) into this install's local storage.
+  Future<List<HourlyLog>> fetchHourlyLogs({int daysBack = 90}) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty || hourlyTimelineDbId.trim().isEmpty) {
+      return [];
+    }
+
+    final sinceStr = _formatDate(
+      DateTime.now().subtract(Duration(days: daysBack)),
+    );
+    final url = '${_getBaseUrl()}databases/$hourlyTimelineDbId/query';
+    final logs = <HourlyLog>[];
+    String? cursor;
+
+    do {
+      final payload = <String, dynamic>{
+        'filter': {
+          'property': 'Date',
+          'date': {'on_or_after': sinceStr},
+        },
+        'page_size': 100,
+        if (cursor != null) 'start_cursor': cursor,
+      };
+
+      final response = await _dio.post<Map<String, dynamic>>(
+        url,
+        data: payload,
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+
+      final results = response.data?['results'] as List? ?? [];
+      for (final row in results.whereType<Map<String, dynamic>>()) {
+        final log = _hourlyLogFromNotionRow(row);
+        if (log != null) {
+          logs.add(log);
+        }
+      }
+
+      final hasMore = response.data?['has_more'] as bool? ?? false;
+      cursor = hasMore ? (response.data?['next_cursor'] as String?) : null;
+    } while (cursor != null);
+
+    Logger().i('Fetched ${logs.length} hourly logs from Notion.');
+    return logs;
+  }
+
+  /// Reconstructs an [HourlyLog] from a Hourly Timeline Notion row created
+  /// by [_hourlyProperties]. Returns null for rows missing an External ID.
+  HourlyLog? _hourlyLogFromNotionRow(Map<String, dynamic> row) {
+    final props = row['properties'] as Map<String, dynamic>? ?? {};
+
+    String richText(String name) {
+      final prop = props[name] as Map<String, dynamic>?;
+      final list = prop?['rich_text'] as List? ?? [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map((e) => e['plain_text'] as String? ?? '')
+          .join();
+    }
+
+    int? number(String name) {
+      final prop = props[name] as Map<String, dynamic>?;
+      return (prop?['number'] as num?)?.toInt();
+    }
+
+    String? dateStart(String name) {
+      final prop = props[name] as Map<String, dynamic>?;
+      final date = prop?['date'] as Map<String, dynamic>?;
+      return date?['start'] as String?;
+    }
+
+    final externalId = richText('External ID');
+    final dateStr = dateStart('Date');
+    final hour = number('Hour');
+    if (externalId.isEmpty || dateStr == null || hour == null) {
+      return null;
+    }
+
+    final tagName = richText('Tag');
+    final tagIcon = richText('Tag Icon');
+    final projectTitle = richText('Project');
+    final loggedAtStr = dateStart('Logged At');
+
+    // Tag ID and color are not stored in Notion; recover them by matching
+    // the tag name against local tracker tags (defaults + custom).
+    final tags = Prefs.trackerTags;
+    final match = tags.where(
+      (t) => t.name.toLowerCase() == tagName.toLowerCase(),
+    );
+    final tag = match.isNotEmpty ? match.first : null;
+
+    return HourlyLog(
+      id: externalId,
+      dateStr: dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr,
+      hour: hour,
+      tagId: tag?.id ?? 'tag_imported',
+      tagName: tagName.isNotEmpty ? tagName : 'Activity',
+      tagIcon: tagIcon.isNotEmpty ? tagIcon : (tag?.icon ?? '⏱️'),
+      tagColorHex: tag?.colorHex ?? '#4285F4',
+      projectTitle: projectTitle.isNotEmpty ? projectTitle : null,
+      notes: richText('Notes'),
+      notionPageId: row['id'] as String?,
+      durationMinutes: number('Duration (min)') ?? 60,
+      loggedAt: loggedAtStr != null
+          ? DateTime.tryParse(loggedAtStr) ?? DateTime.now()
+          : DateTime.now(),
+    );
   }
 
   /// Syncs a single [HourlyLog] to the separate Hourly Timeline Notion DB.

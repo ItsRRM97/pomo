@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +10,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:logger/web.dart';
 import 'package:pomo/helpers/duration_helper.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/helpers/notification_helper.dart';
 import 'package:pomo/helpers/notion_url_helper.dart';
 import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/l10n/l10n.dart';
@@ -16,24 +19,12 @@ import 'package:pomo/pages/tasks/view/manual_log_dialog.dart';
 import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/services/android_notification_service.dart';
+import 'package:pomo/services/local_notification_service.dart';
+import 'package:pomo/services/web_pwa_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 import 'package:pomo/widgets/timer/timer_progress.dart';
 import 'package:pomo/widgets/timer/timer_text.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:pomo/services/web_pwa_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-enum NotificationType {
-  workStart,
-  workEnd,
-  shortBreakStart,
-  shortBreakEnd,
-  longBreakStart,
-  longBreakEnd,
-  startStop,
-  nextLap,
-  tick,
-}
 
 class TimerPage extends StatelessWidget {
   const TimerPage({super.key});
@@ -43,47 +34,28 @@ class TimerPage extends StatelessWidget {
     SettingsState settingsState,
     TimerStatus status,
   ) async {
-    if (kIsWeb) {
-      String title = '';
-      String body = '';
-      switch (type) {
-        case NotificationType.workStart:
-          title = 'Work Session Started';
-          body = 'Time to focus!';
-        case NotificationType.workEnd:
-          title = 'Work Session Finished';
-          body = 'Take a break!';
-        case NotificationType.shortBreakStart:
-          title = 'Short Break Started';
-          body = 'Rest and recharge!';
-        case NotificationType.shortBreakEnd:
-          title = 'Short Break Finished';
-          body = 'Back to work!';
-        case NotificationType.longBreakStart:
-          title = 'Long Break Started';
-          body = 'Relax for a bit!';
-        case NotificationType.longBreakEnd:
-          title = 'Long Break Finished';
-          body = 'Back to work!';
-        case NotificationType.nextLap:
-          title = 'Next Lap';
-          body = 'Moving to next lap.';
-        default:
-          break;
-      }
-      if (title.isNotEmpty) {
-        WebPwaService().showNotification(title, body);
+    final copy = NotificationHelper.lapNotificationCopy(type);
+    if (copy != null) {
+      if (kIsWeb) {
+        WebPwaService().showNotification(copy.title, copy.body);
+      } else if (!kIsWeb &&
+          Platform.isMacOS &&
+          NotificationHelper.shouldShowDesktopLapNotification(
+            type: type,
+            enableDesktopNotifications:
+                settingsState.enableDesktopNotifications,
+          )) {
+        await LocalNotificationService.instance.show(
+          title: copy.title,
+          body: copy.body,
+          payload: NotificationHelper.lapPayload(type),
+        );
       }
     }
 
+    // Timer sounds are direct feedback for user actions; only the master
+    // sound toggle gates them. Quiet hours apply to the hourly reminder.
     if (!settingsState.enableSound) {
-      return;
-    }
-
-    if (SoundHelper.isQuietHours(
-      start: settingsState.quietHoursStart,
-      end: settingsState.quietHoursEnd,
-    )) {
       return;
     }
 

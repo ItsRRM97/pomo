@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
+import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/services/notion_service.dart';
 import 'package:pomo/services/notion_sync_service.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -104,6 +105,45 @@ void main() {
       Prefs.pendingTimeLogs = ['{"taskId":"1","durationMinutes":25}'];
       final flushed = await NotionSyncService().flushPendingLogs();
       expect(flushed, equals(0));
+    });
+
+    test('syncActivityTags returns 0 when sync is disabled', () async {
+      Prefs.enableNotionSync = false;
+
+      final changed = await NotionSyncService().syncActivityTags();
+
+      expect(changed, 0);
+    });
+
+    test('saveActivityTag persists locally when cloud sync is disabled',
+        () async {
+      Prefs.enableNotionSync = false;
+      const tag = TrackerTag(
+        id: 'tag_custom_test',
+        name: 'Test Tag',
+        icon: '🧪',
+        colorHex: '#34A853',
+      );
+
+      await NotionSyncService().saveActivityTag(tag);
+
+      expect(Prefs.trackerTags, contains(tag));
+    });
+
+    test('deleteActivityTag removes locally when cloud sync is disabled',
+        () async {
+      Prefs.enableNotionSync = false;
+      const tag = TrackerTag(
+        id: 'tag_custom_delete',
+        name: 'Delete Me',
+        icon: '🗑️',
+        colorHex: '#EA4335',
+      );
+      await Prefs.saveTrackerTag(tag);
+
+      await NotionSyncService().deleteActivityTag(tag);
+
+      expect(Prefs.trackerTags.any((item) => item.id == tag.id), isFalse);
     });
 
     test('flushPendingLogs returns 0 when queue is empty', () async {

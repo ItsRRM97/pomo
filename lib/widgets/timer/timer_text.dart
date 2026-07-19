@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pomo/helpers/duration_helper.dart';
+import 'package:pomo/helpers/notification_type.dart';
 import 'package:pomo/helpers/timer_helper.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
-import 'package:pomo/pages/timer/view/timer_page.dart';
 import 'package:pomo/widgets/timer/action_buttons.dart';
 
 class TimerText extends StatelessWidget {

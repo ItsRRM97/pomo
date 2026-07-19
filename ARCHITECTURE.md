@@ -6,7 +6,7 @@ This document explains the technical design, architectural patterns, and subsyst
 
 ## 1. High-Level Architectural Overview
 
-`pomo` follows a clean, modular architecture separating presentation (`lib/pages/`, `lib/widgets/`), state management (`flutter_bloc` / `Cubit`), pure domain logic (`lib/helpers/`), persistence (`lib/singletons/prefs.dart`), and platform-specific shell integration (`lib/desktop/`). Hourly time tracking lives under `lib/pages/tracker/` (Activity Grid, Missed Hours, Notion Hourly Timeline sync via `Prefs` + `NotionSyncService`).
+`pomo` follows a clean, modular architecture separating presentation (`lib/pages/`, `lib/widgets/`), state management (`flutter_bloc` / `Cubit`), pure domain logic (`lib/helpers/`), persistence (`lib/singletons/prefs.dart`), and platform-specific shell integration (`lib/desktop/`). Hourly time tracking lives under `lib/pages/tracker/` (Activity Grid, Missed Hours, Notion Hourly Timeline sync via `Prefs` + `NotionSyncService`). Custom Activity Tags use registry rows in the same Notion database (`Source = pomo-activity-tag`); deletion tombstones propagate removals across PWA and desktop clients.
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -76,16 +76,21 @@ To ensure maximum testability and clean separation from UI context, business log
 
 ## 4. Desktop Multi-Window Overlay & macOS Shell Architecture
 
-When built for desktop (`macos`, `windows`, `linux`), `pomo` integrates with native OS windowing services (`window_manager`, `tray_manager`, and `desktop_multi_window`):
+When built for desktop (`macos`, `windows`, `linux`), `pomo` integrates with native OS windowing services (`window_manager`, `desktop_multi_window`, and custom Swift plugins):
 
 ### A. Main Window vs. Overlay Window
 - **Main Window (`App`)**: The standard windowed interface containing the full Pomodoro timer and settings pages.
 - **Floating Overlay (`OverlayApp` in `lib/desktop/overlay_app.dart`)**: Spawns when launched with `args.firstOrNull == 'multi_window'` in `main_development.dart` or `main_production.dart`. Displays a minimal, always-on-top countdown pill floating over fullscreen applications.
 - **IPC Communication**: The main window and floating overlay synchronize state across process boundaries using `desktop_multi_window` message channels (`FloatingOverlayController` / `DesktopWindowService`). When the main timer ticks or pauses, updates are broadcast instantly to the overlay window.
 
-### B. macOS Menu Bar (`MacOSMenuBarService` in `lib/desktop/macos_menu_bar_service.dart`)
+### B. macOS Menu Bar (`MacosMenuBarService` in `lib/desktop/macos_menu_bar_service.dart`)
 - On macOS, `Pomo.app` runs in background mode when the main window is closed.
-- `tray_manager` renders a status bar icon displaying quick actions (`Start/Pause`, `Reset`, `Settings`, `Show Main Window`, `Quit`).
+- A custom native `NSStatusItem` (`macos/Runner/MenuBarPlugin.swift`) renders the status bar icon with quick actions (`Start/Pause`, `Reset`, `Settings`, `Show Main Window`, `Quit`).
+
+### C. Desktop Notifications & Launch at Login
+- **Notifications**: `LocalNotificationService` (`flutter_local_notifications`) shows hourly check-in and lap-complete alerts. Gating lives in `NotificationHelper`; taps route through `AppNavigationController`.
+- **Launch at login**: `LaunchAtLoginService` (`package:launch_at_startup`) talks to a `launch_at_startup` MethodChannel in `MainFlutterWindow.swift`, which uses `SMAppService.mainApp` (macOS 13+). Login launches start as `.accessory` (menu bar only); opening the window restores `.regular` activation.
+- **DMG**: `./build_macos_dmg.sh` builds the production flavor and packages an unsigned `Pomo.dmg`.
 
 ---
 

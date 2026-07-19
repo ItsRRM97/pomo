@@ -43,6 +43,8 @@ class SettingsView extends StatelessWidget {
               AlwaysOnTopToggle(),
               ShowFloatingTimerToggle(),
               OverlayCornerDropdown(),
+              DesktopNotificationsToggle(),
+              LaunchAtLoginToggle(),
               AutoAdvanceToggle(),
               SizedBox(height: 16),
               WorkDurationSlider(),

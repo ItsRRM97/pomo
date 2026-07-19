@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/pages/tracker/view/hourly_log_dialog.dart';
 import 'package:pomo/services/notion_service.dart';
+import 'package:pomo/services/notion_sync_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 /// Main 24-Hour Timeline Grid and Multi-timeframe Analytics Dashboard.
@@ -27,6 +28,14 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
   void _loadLogs() {
     setState(() {
       _allLogs = Prefs.hourlyLogs;
+    });
+    // Merge in logs created on other devices (e.g. the PWA) via Notion.
+    NotionSyncService().pullHourlyLogs().then((changed) {
+      if (mounted && changed > 0) {
+        setState(() {
+          _allLogs = Prefs.hourlyLogs;
+        });
+      }
     });
     NotionService().resolveLogTitles(Prefs.hourlyLogs).then((updated) {
       if (mounted &&

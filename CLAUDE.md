@@ -67,9 +67,13 @@ flutter run --flavor development -d chrome --target lib/main_development.dart
 # Web PWA Release Build (produces deploy/focus output)
 ./scripts/build-web.sh
 
-# macOS Desktop Release Build
-flutter build macos --release -t lib/main_production.dart
-open build/macos/Build/Products/Release/Pomo.app
+# macOS Desktop Release Build (.app)
+flutter build macos --release --flavor production -t lib/main_production.dart
+open build/macos/Build/Products/Release-production/Pomo.app
+
+# macOS DMG (unsigned / ad-hoc)
+./build_macos_dmg.sh
+open ./Pomo.dmg
 ```
 
 ## 5. Verification & Testing
@@ -93,6 +97,8 @@ flutter test --flavor development
 - **Pure Mixins**: Timer logic and lap calculation must stay isolated inside `lib/helpers/` (`DurationHelper`, `LapHelper`) to keep them 100% unit-testable without Flutter widget contexts.
 - **Audio & Sound**: Sound playback is routed through `SoundHelper` using `audioplayers` (`^6.0.0`). When adding custom tones, run `scripts/generate-sounds.py`.
 - **WebHooks**: Webhook execution happens via `HookHelper` (`lib/helpers/hook_helper.dart`). Always respect `SettingsState.enableWebHooks` before making HTTP calls (`dio`).
+- **Desktop notifications**: macOS uses `LocalNotificationService` (`flutter_local_notifications`). Gate with `Prefs.enableDesktopNotifications` and quiet hours via `NotificationHelper`. Hourly reminders live in `HookHelper`; lap events route through `TimerPage._notify`.
+- **Launch at login**: `LaunchAtLoginService` + Settings toggle. Login launches start hidden (`.accessory`); opening the window switches to `.regular`.
 
 ## 7. No Em Dash Policy
 

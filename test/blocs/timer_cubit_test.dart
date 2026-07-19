@@ -168,6 +168,19 @@ void main() {
         isFalse,
       );
 
+      const quietHoursDisabled = SettingsState(
+        enableQuietHours: false,
+        quietHoursStart: '22:00',
+        quietHoursEnd: '06:00',
+      );
+      expect(
+        cubit.checkAndPlaySound(
+          settingsState: quietHoursDisabled,
+          now: nightTime,
+        ),
+        isTrue,
+      );
+
       final dayTime = DateTime(2026, 7, 13, 14);
       expect(
         cubit.checkAndPlaySound(

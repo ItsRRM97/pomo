@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pomo/models/tracker_tag.dart';
-import 'package:pomo/singletons/prefs.dart';
+import 'package:pomo/services/notion_sync_service.dart';
 
 /// Modal dialog allowing users to create new custom activity tags.
 class TagCreateDialog extends StatefulWidget {
@@ -91,7 +91,7 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
       colorHex: _selectedColorHex,
     );
 
-    await Prefs.saveTrackerTag(newTag);
+    await NotionSyncService().saveActivityTag(newTag);
     if (!mounted) return;
     Navigator.of(context).pop(newTag);
   }

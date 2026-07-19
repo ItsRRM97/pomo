@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
+import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/services/notion_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -323,6 +324,212 @@ class NotionSyncService {
       );
       _enqueuePendingHourlyLog(log);
       return (success: false, pageId: null, log: log);
+    }
+  }
+
+  /// Pulls hourly logs from the Notion Hourly Timeline DB and merges them
+  /// into local storage. This is how logs created on other devices (e.g. the
+  /// PWA) appear on this install. Local entries win when they are newer or
+  /// still pending upload. Returns the number of logs added or updated.
+  Future<int> pullHourlyLogs({int daysBack = 90}) async {
+    if (!Prefs.enableNotionSync) {
+      return 0;
+    }
+    if (Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty) {
+      return 0;
+    }
+    final apiKey = Prefs.notionApiKey;
+    if (!kIsWeb && apiKey.isEmpty) {
+      return 0;
+    }
+
+    try {
+      final remote = await NotionService().fetchHourlyLogs(daysBack: daysBack);
+      if (remote.isEmpty) {
+        return 0;
+      }
+
+      final pendingIds = Prefs.pendingHourlyLogs
+          .map((e) {
+            try {
+              final data = jsonDecode(e) as Map<String, dynamic>;
+              return data['id'] as String? ?? '';
+            } catch (_) {
+              return '';
+            }
+          })
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
+      final local = List<HourlyLog>.from(Prefs.hourlyLogs);
+      final localById = {for (final l in local) l.id: l};
+      var changed = 0;
+
+      for (final remoteLog in remote) {
+        final existing = localById[remoteLog.id];
+        if (existing == null) {
+          local.add(remoteLog);
+          localById[remoteLog.id] = remoteLog;
+          changed++;
+          continue;
+        }
+
+        // Never clobber a local edit that has not been uploaded yet.
+        if (pendingIds.contains(existing.id)) {
+          continue;
+        }
+
+        if (remoteLog.loggedAt.isAfter(existing.loggedAt)) {
+          final merged = remoteLog.copyWith(
+            // Keep richer local tag identity when names match.
+            tagId: existing.tagName.toLowerCase() ==
+                    remoteLog.tagName.toLowerCase()
+                ? existing.tagId
+                : null,
+            tagColorHex: existing.tagName.toLowerCase() ==
+                    remoteLog.tagName.toLowerCase()
+                ? existing.tagColorHex
+                : null,
+          );
+          local[local.indexWhere((l) => l.id == existing.id)] = merged;
+          localById[existing.id] = merged;
+          changed++;
+        } else if (existing.notionPageId == null &&
+            remoteLog.notionPageId != null) {
+          // Same content; just link the local copy to its Notion row.
+          final linked =
+              existing.copyWith(notionPageId: remoteLog.notionPageId);
+          local[local.indexWhere((l) => l.id == existing.id)] = linked;
+          localById[existing.id] = linked;
+          changed++;
+        }
+      }
+
+      if (changed > 0) {
+        Prefs.hourlyLogs = local;
+      }
+      Logger().i(
+        'NotionSyncService: Pulled ${remote.length} hourly logs from Notion '
+        '($changed added/updated locally).',
+      );
+      return changed;
+    } catch (e, st) {
+      Logger().w(
+        'NotionSyncService: Hourly pull failed ($e)',
+        error: e,
+        stackTrace: st,
+      );
+      return 0;
+    }
+  }
+
+  /// Reconciles custom activity tags with the Notion-backed registry.
+  ///
+  /// Existing local tags that predate tag sync are uploaded as a migration.
+  /// Remote tags and deletion tombstones are then applied locally.
+  Future<int> syncActivityTags() async {
+    if (!Prefs.enableNotionSync ||
+        Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty ||
+        Prefs.notionApiKey.isEmpty) {
+      return 0;
+    }
+
+    try {
+      final remote = await NotionService().fetchActivityTagRecords();
+      final latestRemote =
+          <String, ({TrackerTag tag, bool deleted, DateTime updatedAt})>{};
+      for (final record in remote) {
+        final existing = latestRemote[record.tag.id];
+        if (existing == null || record.updatedAt.isAfter(existing.updatedAt)) {
+          latestRemote[record.tag.id] = record;
+        }
+      }
+
+      final local = List<TrackerTag>.from(Prefs.trackerTags);
+      final localCustom = local.where((tag) => !tag.isDefault).toList();
+      var changed = 0;
+
+      // Upload legacy local-only custom tags before applying remote state.
+      for (final tag in localCustom) {
+        if (!latestRemote.containsKey(tag.id)) {
+          if (await NotionService().syncActivityTag(tag)) {
+            changed++;
+          }
+        }
+      }
+
+      for (final record in latestRemote.values) {
+        final index = local.indexWhere((tag) => tag.id == record.tag.id);
+        if (record.deleted) {
+          if (index != -1 && !local[index].isDefault) {
+            local.removeAt(index);
+            changed++;
+          }
+          continue;
+        }
+
+        if (index == -1) {
+          local.add(record.tag);
+          changed++;
+        } else if (!local[index].isDefault && local[index] != record.tag) {
+          local[index] = record.tag;
+          changed++;
+        }
+      }
+
+      if (local != Prefs.trackerTags) {
+        Prefs.trackerTags = local;
+      }
+      Logger().i(
+        'NotionSyncService: Reconciled activity tags '
+        '(${latestRemote.length} remote, $changed changes).',
+      );
+      return changed;
+    } catch (e, st) {
+      Logger().w(
+        'NotionSyncService: Activity tag sync failed ($e)',
+        error: e,
+        stackTrace: st,
+      );
+      return 0;
+    }
+  }
+
+  /// Saves a custom tag locally and publishes it to the shared registry.
+  Future<void> saveActivityTag(TrackerTag tag) async {
+    await Prefs.saveTrackerTag(tag);
+    if (!Prefs.enableNotionSync ||
+        Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty ||
+        Prefs.notionApiKey.isEmpty) {
+      return;
+    }
+    try {
+      await NotionService().syncActivityTag(tag);
+    } catch (e, st) {
+      Logger().w(
+        'NotionSyncService: Failed to publish activity tag ($e)',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  /// Deletes a custom tag locally and publishes a tombstone to all devices.
+  Future<void> deleteActivityTag(TrackerTag tag) async {
+    await Prefs.deleteTrackerTag(tag.id);
+    if (!Prefs.enableNotionSync ||
+        Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty ||
+        Prefs.notionApiKey.isEmpty) {
+      return;
+    }
+    try {
+      await NotionService().syncActivityTag(tag, deleted: true);
+    } catch (e, st) {
+      Logger().w(
+        'NotionSyncService: Failed to publish activity tag deletion ($e)',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 

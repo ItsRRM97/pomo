@@ -110,6 +110,11 @@ class OverlayPlugin: NSObject, FlutterPlugin {
     case "ensureRegularActivation":
       OverlayPlugin.ensureRegularActivationPolicy()
       result(nil)
+    case "setAccessoryActivation":
+      OverlayPlugin.setAccessoryActivationPolicy()
+      result(nil)
+    case "shouldStartHidden":
+      result(OverlayPlugin.shouldStartHidden)
     case "showMainWindow":
       OverlayPlugin.showMainWindow()
       result(nil)
@@ -171,9 +176,18 @@ class OverlayPlugin: NSObject, FlutterPlugin {
     return NSScreen.main
   }
 
+  /// Set by AppDelegate when launched as a login item with launch-at-login on.
+  static var shouldStartHidden = false
+
   static func ensureRegularActivationPolicy() {
     if NSApp.activationPolicy() != .regular {
       NSApp.setActivationPolicy(.regular)
+    }
+  }
+
+  static func setAccessoryActivationPolicy() {
+    if NSApp.activationPolicy() != .accessory {
+      NSApp.setActivationPolicy(.accessory)
     }
   }
 

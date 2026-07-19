@@ -156,6 +156,7 @@ class Prefs {
       'pomo_active_session_external_id';
   static const String _pendingTimeLogsVarName = 'pomo_pending_time_logs';
   static const String _enableTimeTrackerVarName = 'pomo_enable_time_tracker';
+  static const String _enableQuietHoursVarName = 'pomo_enable_quiet_hours';
   static const String _quietHoursStartVarName = 'pomo_quiet_hours_start';
   static const String _quietHoursEndVarName = 'pomo_quiet_hours_end';
   static const String _trackerTagsVarName = 'pomo_tracker_tags';
@@ -163,6 +164,11 @@ class Prefs {
   static const String _pendingHourlyLogsVarName = 'pomo_pending_hourly_logs';
   static const String _requestNotificationPermissionVarName =
       'pomo_request_notification_permission';
+  static const String _enableDesktopNotificationsVarName =
+      'pomo_enable_desktop_notifications';
+  static const String _launchAtLoginVarName = 'pomo_launch_at_login';
+  static const String _windowWidthVarName = 'pomo_window_width';
+  static const String _windowHeightVarName = 'pomo_window_height';
 
   //* Getters
 
@@ -212,6 +218,10 @@ class Prefs {
 
   static bool get enableTimeTracker {
     return Prefs().sharedPreferences.getBool(_enableTimeTrackerVarName) ?? true;
+  }
+
+  static bool get enableQuietHours {
+    return Prefs().sharedPreferences.getBool(_enableQuietHoursVarName) ?? true;
   }
 
   static String get quietHoursStart {
@@ -381,6 +391,19 @@ class Prefs {
             .sharedPreferences
             .getBool(_requestNotificationPermissionVarName) ??
         false;
+  }
+
+  /// Master switch for macOS local notifications (hourly + timer laps).
+  static bool get enableDesktopNotifications {
+    return Prefs()
+            .sharedPreferences
+            .getBool(_enableDesktopNotificationsVarName) ??
+        true;
+  }
+
+  /// Open Pomo automatically when the user logs in (menu-bar agent style).
+  static bool get launchAtLogin {
+    return Prefs().sharedPreferences.getBool(_launchAtLoginVarName) ?? false;
   }
 
   static bool get enableSound {
@@ -588,6 +611,36 @@ class Prefs {
         .setBool(_requestNotificationPermissionVarName, value);
   }
 
+  static set enableDesktopNotifications(bool value) {
+    Prefs()
+        .sharedPreferences
+        .setBool(_enableDesktopNotificationsVarName, value);
+  }
+
+  static set launchAtLogin(bool value) {
+    Prefs().sharedPreferences.setBool(_launchAtLoginVarName, value);
+  }
+
+  /// Last main-window size chosen by the user (desktop only).
+  static Size? get windowSize {
+    final width = Prefs().sharedPreferences.getDouble(_windowWidthVarName);
+    final height = Prefs().sharedPreferences.getDouble(_windowHeightVarName);
+    if (width == null || height == null || width < 500 || height < 500) {
+      return null;
+    }
+    return Size(width, height);
+  }
+
+  static set windowSize(Size? value) {
+    if (value == null) {
+      Prefs().sharedPreferences.remove(_windowWidthVarName);
+      Prefs().sharedPreferences.remove(_windowHeightVarName);
+      return;
+    }
+    Prefs().sharedPreferences.setDouble(_windowWidthVarName, value.width);
+    Prefs().sharedPreferences.setDouble(_windowHeightVarName, value.height);
+  }
+
   static set enableSound(bool value) {
     Prefs().sharedPreferences.setBool(_enableSoundVarName, value);
   }
@@ -679,6 +732,10 @@ class Prefs {
 
   static set enableTimeTracker(bool value) {
     Prefs().sharedPreferences.setBool(_enableTimeTrackerVarName, value);
+  }
+
+  static set enableQuietHours(bool value) {
+    Prefs().sharedPreferences.setBool(_enableQuietHoursVarName, value);
   }
 
   static set quietHoursStart(String value) {

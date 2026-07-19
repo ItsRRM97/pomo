@@ -237,6 +237,20 @@ class SEn extends S {
       'Default corner for the floating timer widget';
 
   @override
+  String get enableDesktopNotifications => 'Desktop notifications';
+
+  @override
+  String get enableDesktopNotificationsDescription =>
+      'Notify on hourly check-ins and when work or break laps end';
+
+  @override
+  String get launchAtLogin => 'Launch at login';
+
+  @override
+  String get launchAtLoginDescription =>
+      'Start Pomo in the menu bar when you log in (window stays hidden)';
+
+  @override
   String get notionIntegration => 'Notion Integration';
 
   @override
@@ -292,6 +306,13 @@ class SEn extends S {
   @override
   String get enableTimeTrackerDescription =>
       'Automatically track elapsed time and send webhooks or Notion logs';
+
+  @override
+  String get enableQuietHours => 'Enable quiet hours';
+
+  @override
+  String get enableQuietHoursDescription =>
+      'Silence unattended hourly reminders during the selected time range';
 
   @override
   String get quietHoursStart => 'Quiet hours start';

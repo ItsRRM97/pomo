@@ -2,6 +2,8 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/services/launch_at_login_service.dart';
+import 'package:pomo/services/local_notification_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 part 'settings_state.dart';
@@ -51,8 +53,11 @@ class SettingsCubit extends Cubit<SettingsState> {
         notionAreasDatabaseId: Prefs.notionAreasDatabaseId,
         notionHourlyTimelineDatabaseId: Prefs.notionHourlyTimelineDatabaseId,
         enableTimeTracker: Prefs.enableTimeTracker,
+        enableQuietHours: Prefs.enableQuietHours,
         quietHoursStart: Prefs.quietHoursStart,
         quietHoursEnd: Prefs.quietHoursEnd,
+        enableDesktopNotifications: Prefs.enableDesktopNotifications,
+        launchAtLogin: Prefs.launchAtLogin,
       ),
     );
   }
@@ -263,6 +268,12 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(enableTimeTracker: () => value));
   }
 
+  // ignore: avoid_positional_boolean_parameters
+  void setEnableQuietHours(bool value) {
+    Prefs.enableQuietHours = value;
+    emit(state.copyWith(enableQuietHours: () => value));
+  }
+
   void setQuietHoursStart(String value) {
     Prefs.quietHoursStart = value;
     emit(state.copyWith(quietHoursStart: () => value));
@@ -273,8 +284,25 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(state.copyWith(quietHoursEnd: () => value));
   }
 
+  // ignore: avoid_positional_boolean_parameters
   void setRequestNotificationPermission(bool value) {
     Prefs.requestNotificationPermission = value;
     emit(state.copyWith(requestNotificationPermission: () => value));
+  }
+
+  // ignore: avoid_positional_boolean_parameters
+  Future<void> setEnableDesktopNotifications(bool value) async {
+    Prefs.enableDesktopNotifications = value;
+    emit(state.copyWith(enableDesktopNotifications: () => value));
+    if (value) {
+      await LocalNotificationService.instance.requestPermission();
+    }
+  }
+
+  // ignore: avoid_positional_boolean_parameters
+  Future<void> setLaunchAtLogin(bool value) async {
+    Prefs.launchAtLogin = value;
+    emit(state.copyWith(launchAtLogin: () => value));
+    await LaunchAtLoginService.instance.setEnabled(enabled: value);
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pomo/pages/settings/settings.dart';
 import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/pages/tracker/tracker.dart';
+import 'package:pomo/services/app_navigation_controller.dart';
 
 /// Top-level application shell with tab switcher encapsulating Pomodoro,
 /// Hourly Time Tracker & Analytics, and Settings without losing state.
@@ -27,6 +28,27 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    AppNavigationController.instance.tabIndex.addListener(_onNavRequest);
+  }
+
+  @override
+  void dispose() {
+    AppNavigationController.instance.tabIndex.removeListener(_onNavRequest);
+    super.dispose();
+  }
+
+  void _onNavRequest() {
+    final index = AppNavigationController.instance.tabIndex.value;
+    if (index == null || !mounted) {
+      return;
+    }
+    if (index != _selectedIndex) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+    // Clear so the same tab can be requested again later.
+    AppNavigationController.instance.tabIndex.value = null;
   }
 
   void _onDestinationSelected(int index) {

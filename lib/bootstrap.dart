@@ -5,7 +5,9 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pomo/desktop/desktop_window_service.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/services/local_notification_service.dart';
 import 'package:pomo/services/notion_sync_service.dart';
 import 'package:pomo/singletons/prefs.dart';
 import 'package:window_manager/window_manager.dart';
@@ -40,26 +42,47 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   await Prefs().init();
   HookHelper.startHourlyTrackerLoop();
   unawaited(NotionSyncService().flushPendingHourlyLogs());
+  // Pull logs created on other devices (e.g. the PWA) into this install.
+  unawaited(NotionSyncService().pullHourlyLogs());
+  // Reconcile custom Activity Tags across PWA and desktop installs.
+  unawaited(NotionSyncService().syncActivityTags());
 
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     await windowManager.ensureInitialized();
 
+    if (Platform.isMacOS) {
+      await LocalNotificationService.instance.init();
+      if (Prefs.enableDesktopNotifications) {
+        // Non-blocking; user can also grant later via Settings toggle.
+        unawaited(LocalNotificationService.instance.requestPermission());
+      }
+    }
+
+    final startHidden =
+        Platform.isMacOS && await DesktopWindowService.shouldStartHidden();
+
+    // Restore the last window size the user chose; fall back to the native
+    // window's preloaded 800x600 frame. An opaque background keeps the
+    // titlebar (traffic-light) area rendering normally.
     final windowOptions = WindowOptions(
-      size: const Size(500, 500),
-      // center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
+      size: Prefs.windowSize ?? const Size(800, 600),
+      skipTaskbar: startHidden,
       minimumSize: const Size(500, 500),
       title: 'Pomo',
       alwaysOnTop: Prefs.alwaysOnTop,
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
+      if (startHidden) {
+        await DesktopWindowService.setAccessoryActivation();
+        await windowManager.hide();
+      } else {
+        await windowManager.show();
+        await windowManager.focus();
+      }
     });
 
-    if (Platform.isMacOS) {
+    if (Platform.isMacOS && !startHidden) {
       await windowManager.setSkipTaskbar(false);
     }
   }

@@ -4,7 +4,7 @@ This file provides universal operating rules for all AI coding agents (Claude Co
 
 ## 1. Fast Orientation
 
-- **Product Overview**: `pomo` is an open-source, cross-platform Pomodoro timer built with Flutter. It supports adjustable work/break durations, custom sound alerts, RGB Webhook triggers (for HomeAssistant light synchronization), and multi-window desktop floating timers (`desktop_multi_window` / `tray_manager`).
+- **Product Overview**: `pomo` is an open-source, cross-platform Pomodoro timer built with Flutter. It supports adjustable work/break durations, custom sound alerts, RGB Webhook triggers (for HomeAssistant light synchronization), and multi-window desktop floating timers (`desktop_multi_window` / native macOS menu bar).
 - **Full Guidance**: Read `CLAUDE.md` and `ARCHITECTURE.md` before making architectural or state management modifications.
 
 ## 2. Command Prefixing with RTK

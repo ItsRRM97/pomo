@@ -307,11 +307,12 @@ class TimerCubit extends Cubit<TimerState> {
     DateTime? now,
   }) {
     if (!settingsState.enableSound) return false;
-    if (SoundHelper.isQuietHours(
-      start: settingsState.quietHoursStart,
-      end: settingsState.quietHoursEnd,
-      now: now,
-    )) {
+    if (settingsState.enableQuietHours &&
+        SoundHelper.isQuietHours(
+          start: settingsState.quietHoursStart,
+          end: settingsState.quietHoursEnd,
+          now: now,
+        )) {
       return false;
     }
     return true;
