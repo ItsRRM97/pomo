@@ -24,7 +24,8 @@ class NotionUrlHelper {
   static bool get hasHourlyTimelineDatabaseId =>
       Prefs.notionHourlyTimelineDatabaseId.trim().isNotEmpty;
 
-  /// Returns the Notion URL for the Hourly Timeline database configured in Prefs.
+  /// Returns the Notion URL for the Hourly Timeline database configured in
+  /// Prefs.
   ///
   /// Returns an empty string when no database ID is set.
   static String get hourlyTimelineDatabaseUrl {

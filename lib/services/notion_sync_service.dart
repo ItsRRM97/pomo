@@ -327,10 +327,142 @@ class NotionSyncService {
     }
   }
 
+  /// Returns the latest complete revision of a date-hour slot.
+  ///
+  /// Multi-tag saves total at most 60 minutes. Reading newest-first until the
+  /// hour is allocated recovers older clients that timestamped each tag
+  /// separately, while preventing two device writes from turning one hour
+  /// into 120 minutes.
+  static List<HourlyLog> currentHourlySlotRevision(List<HourlyLog> logs) {
+    if (logs.isEmpty) return [];
+    final sorted = List<HourlyLog>.from(logs)
+      ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+    final result = <HourlyLog>[];
+    final selectedTags = <String>{};
+    var allocatedMinutes = 0;
+
+    for (final log in sorted) {
+      final minutes = log.durationMinutes.clamp(0, 60);
+      final tagKey = log.tagId.isEmpty || log.tagId == 'tag_imported'
+          ? log.tagName.trim().toLowerCase()
+          : log.tagId;
+      if (minutes == 0 ||
+          selectedTags.contains(tagKey) ||
+          allocatedMinutes + minutes > 60) {
+        continue;
+      }
+      result.add(log);
+      selectedTags.add(tagKey);
+      allocatedMinutes += minutes;
+    }
+    return result;
+  }
+
+  /// Replaces one date-hour slot locally and in Notion.
+  ///
+  /// New rows are written before superseded rows are archived. This prevents
+  /// edits from briefly deleting the only remote copy and makes a save an
+  /// authoritative replacement instead of an append.
+  Future<({bool success, List<HourlyLog> logs})> replaceHourlyLogsForHour({
+    required String dateStr,
+    required int hour,
+    required List<HourlyLog> logs,
+  }) async {
+    _removePendingHourlyLogsForHour(dateStr, hour);
+
+    if (!Prefs.enableNotionSync ||
+        Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty ||
+        Prefs.notionApiKey.isEmpty) {
+      await Prefs.replaceHourlyLogsForHour(dateStr, hour, logs);
+      return (success: true, logs: logs);
+    }
+
+    List<HourlyLog> remoteBefore;
+    try {
+      remoteBefore =
+          await NotionService().fetchHourlyLogsForHour(dateStr, hour);
+    } catch (e, st) {
+      Logger().w(
+        'NotionSyncService: Failed to read slot before replacement ($e)',
+        error: e,
+        stackTrace: st,
+      );
+      for (final log in logs) {
+        _enqueuePendingHourlyLog(log);
+      }
+      await Prefs.replaceHourlyLogsForHour(dateStr, hour, logs);
+      return (success: false, logs: logs);
+    }
+
+    final synced = <HourlyLog>[];
+    var allWritesSucceeded = true;
+    for (final log in logs) {
+      final result = await syncHourlyLog(log);
+      synced.add(result.success ? result.log : log);
+      allWritesSucceeded = allWritesSucceeded && result.success;
+    }
+
+    if (!allWritesSucceeded) {
+      await Prefs.replaceHourlyLogsForHour(dateStr, hour, synced);
+      return (success: false, logs: synced);
+    }
+
+    final retainedPageIds = synced
+        .map((log) => log.notionPageId)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    var allDeletesSucceeded = true;
+    for (final oldLog in remoteBefore) {
+      final pageId = oldLog.notionPageId;
+      if (pageId == null ||
+          pageId.isEmpty ||
+          retainedPageIds.contains(pageId)) {
+        continue;
+      }
+      final deleted = await NotionService().deletePage(pageId);
+      allDeletesSucceeded = allDeletesSucceeded && deleted;
+    }
+
+    await Prefs.replaceHourlyLogsForHour(dateStr, hour, synced);
+    return (success: allDeletesSucceeded, logs: synced);
+  }
+
+  /// Refreshes one slot from Notion, treating the remote slot as authoritative.
+  Future<List<HourlyLog>> refreshHourlyLogsForHour(
+    String dateStr,
+    int hour,
+  ) async {
+    if (!Prefs.enableNotionSync ||
+        Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty ||
+        Prefs.notionApiKey.isEmpty) {
+      return Prefs.hourlyLogs
+          .where((log) => log.dateStr == dateStr && log.hour == hour)
+          .toList();
+    }
+
+    final remote = await NotionService().fetchHourlyLogsForHour(dateStr, hour);
+    final local = Prefs.hourlyLogs
+        .where((log) => log.dateStr == dateStr && log.hour == hour)
+        .toList();
+    if (remote.isEmpty && local.any((log) => log.notionPageId == null)) {
+      final result = await replaceHourlyLogsForHour(
+        dateStr: dateStr,
+        hour: hour,
+        logs: local,
+      );
+      return result.logs;
+    }
+    final current = currentHourlySlotRevision(remote);
+    await Prefs.replaceHourlyLogsForHour(dateStr, hour, current);
+    return current;
+  }
+
   /// Pulls hourly logs from the Notion Hourly Timeline DB and merges them
   /// into local storage. This is how logs created on other devices (e.g. the
-  /// PWA) appear on this install. Local entries win when they are newer or
-  /// still pending upload. Returns the number of logs added or updated.
+  /// PWA) appear on this install. A remote slot revision replaces the local
+  /// slot unless that slot still has a pending upload. Returns the number of
+  /// slots added or updated.
   Future<int> pullHourlyLogs({int daysBack = 90}) async {
     if (!Prefs.enableNotionSync) {
       return 0;
@@ -349,58 +481,67 @@ class NotionSyncService {
         return 0;
       }
 
-      final pendingIds = Prefs.pendingHourlyLogs
-          .map((e) {
-            try {
-              final data = jsonDecode(e) as Map<String, dynamic>;
-              return data['id'] as String? ?? '';
-            } catch (_) {
-              return '';
-            }
-          })
-          .where((id) => id.isNotEmpty)
-          .toSet();
-
       final local = List<HourlyLog>.from(Prefs.hourlyLogs);
-      final localById = {for (final l in local) l.id: l};
+      final pendingSlots = <String>{};
+      for (final item in Prefs.pendingHourlyLogs) {
+        try {
+          final data = jsonDecode(item) as Map<String, dynamic>;
+          final dateStr = data['dateStr'] as String? ?? '';
+          final hour = data['hour'] as int?;
+          if (dateStr.isNotEmpty && hour != null) {
+            pendingSlots.add('$dateStr:$hour');
+          }
+        } catch (_) {}
+      }
+
+      final remoteBySlot = <String, List<HourlyLog>>{};
+      for (final log in remote) {
+        remoteBySlot
+            .putIfAbsent('${log.dateStr}:${log.hour}', () => [])
+            .add(log);
+      }
       var changed = 0;
 
-      for (final remoteLog in remote) {
-        final existing = localById[remoteLog.id];
-        if (existing == null) {
-          local.add(remoteLog);
-          localById[remoteLog.id] = remoteLog;
-          changed++;
+      for (final entry in remoteBySlot.entries) {
+        if (pendingSlots.contains(entry.key)) {
           continue;
         }
 
-        // Never clobber a local edit that has not been uploaded yet.
-        if (pendingIds.contains(existing.id)) {
+        final remoteRevision = currentHourlySlotRevision(entry.value);
+        final first = remoteRevision.firstOrNull;
+        if (first == null) {
           continue;
         }
-
-        if (remoteLog.loggedAt.isAfter(existing.loggedAt)) {
-          final merged = remoteLog.copyWith(
-            // Keep richer local tag identity when names match.
-            tagId: existing.tagName.toLowerCase() ==
-                    remoteLog.tagName.toLowerCase()
-                ? existing.tagId
-                : null,
-            tagColorHex: existing.tagName.toLowerCase() ==
-                    remoteLog.tagName.toLowerCase()
-                ? existing.tagColorHex
-                : null,
+        final existing = local
+            .where(
+              (log) => log.dateStr == first.dateStr && log.hour == first.hour,
+            )
+            .toList();
+        final existingById = {for (final log in existing) log.id: log};
+        final mergedRevision = remoteRevision.map((remoteLog) {
+          final previous = existingById[remoteLog.id];
+          if (previous == null ||
+              previous.tagName.toLowerCase() !=
+                  remoteLog.tagName.toLowerCase()) {
+            return remoteLog;
+          }
+          return remoteLog.copyWith(
+            tagId: previous.tagId,
+            tagColorHex: previous.tagColorHex,
+            projectId: previous.projectId,
           );
-          local[local.indexWhere((l) => l.id == existing.id)] = merged;
-          localById[existing.id] = merged;
-          changed++;
-        } else if (existing.notionPageId == null &&
-            remoteLog.notionPageId != null) {
-          // Same content; just link the local copy to its Notion row.
-          final linked =
-              existing.copyWith(notionPageId: remoteLog.notionPageId);
-          local[local.indexWhere((l) => l.id == existing.id)] = linked;
-          localById[existing.id] = linked;
+        }).toList();
+
+        final existingSorted = List<HourlyLog>.from(existing)
+          ..sort((a, b) => a.id.compareTo(b.id));
+        final mergedSorted = List<HourlyLog>.from(mergedRevision)
+          ..sort((a, b) => a.id.compareTo(b.id));
+        if (!listEquals(existingSorted, mergedSorted)) {
+          local
+            ..removeWhere(
+              (log) => log.dateStr == first.dateStr && log.hour == first.hour,
+            )
+            ..addAll(mergedRevision);
           changed++;
         }
       }
@@ -618,6 +759,22 @@ class NotionSyncService {
         stackTrace: st,
       );
     }
+  }
+
+  void _removePendingHourlyLogsForHour(String dateStr, int hour) {
+    final remaining = <String>[];
+    for (final item in Prefs.pendingHourlyLogs) {
+      try {
+        final data = jsonDecode(item) as Map<String, dynamic>;
+        if (data['dateStr'] == dateStr && data['hour'] == hour) {
+          continue;
+        }
+      } catch (_) {
+        // Preserve malformed entries so the normal flush path can report them.
+      }
+      remaining.add(item);
+    }
+    Prefs.pendingHourlyLogs = remaining;
   }
 
   void _enqueuePendingHourlyLog(HourlyLog log) {

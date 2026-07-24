@@ -88,42 +88,34 @@ class TimerPage extends StatelessWidget {
           Logger().d('NotificationType.workStart');
           source =
               SoundHelper.resolveSource(settingsState.customWorkStartSound);
-          break;
         case NotificationType.workEnd:
           Logger().d('NotificationType.workEnd');
           source = SoundHelper.resolveSource(settingsState.customWorkEndSound);
-          break;
         case NotificationType.shortBreakStart:
           Logger().d('NotificationType.shortBreakStart');
           source = SoundHelper.resolveSource(
             settingsState.customShortBreakStartSound,
           );
-          break;
         case NotificationType.shortBreakEnd:
           Logger().d('NotificationType.shortBreakEnd');
           source = SoundHelper.resolveSource(
             settingsState.customShortBreakEndSound,
           );
-          break;
         case NotificationType.longBreakStart:
           Logger().d('NotificationType.longBreakStart');
           source = SoundHelper.resolveSource(
             settingsState.customLongBreakStartSound,
           );
-          break;
         case NotificationType.longBreakEnd:
           Logger().d('NotificationType.longBreakEnd');
           source = SoundHelper.resolveSource(
             settingsState.customLongBreakEndSound,
           );
-          break;
         case NotificationType.startStop:
           await SoundHelper.play(AssetSource('sounds/pop.aac'));
-          break;
         case NotificationType.nextLap:
           Logger().d('NotificationType.nextLap');
           await SoundHelper.play(AssetSource('sounds/ding_dong.aac'));
-          break;
         case NotificationType.tick:
           break;
       }
@@ -598,9 +590,7 @@ class _TimerViewState extends State<TimerView> {
                 WebPwaService().openPip(
                   initialTime: durationStr,
                   isRunning: cubit.state.status == TimerStatus.running,
-                  onPauseToggle: () {
-                    cubit.toggle();
-                  },
+                  onPauseToggle: cubit.toggle,
                   onSkip: () {
                     cubit.lap(
                       autoAdvance: cubit.state.status == TimerStatus.running,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pomo/app/view/home_shell.dart';
 import 'package:pomo/desktop/desktop_shell_stub.dart'
     if (dart.library.io) 'package:pomo/desktop/desktop_shell.dart';
-import 'package:pomo/app/view/home_shell.dart';
 import 'package:pomo/l10n/l10n.dart';
 import 'package:pomo/pages/about/view/about_page.dart';
 import 'package:pomo/pages/deniz/deniz.dart';

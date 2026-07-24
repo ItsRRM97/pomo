@@ -49,7 +49,7 @@ class AppNavigationController {
         .where((log) => log.dateStr == dateStr && log.hour == hour)
         .toList();
 
-    await showDialog<void>(
+    await showDialog<bool>(
       context: context,
       builder: (dialogContext) => HourlyLogDialog(
         selectedDate: date,

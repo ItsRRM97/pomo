@@ -853,8 +853,8 @@ class Prefs {
   }
 
   static Future<void> deleteTrackerTag(String tagId) async {
-    final current = List<TrackerTag>.from(trackerTags);
-    current.removeWhere((e) => e.id == tagId);
+    final current = List<TrackerTag>.from(trackerTags)
+      ..removeWhere((e) => e.id == tagId);
     trackerTags = current;
   }
 

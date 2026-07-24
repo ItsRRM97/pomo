@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/pages/tracker/view/hourly_log_dialog.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -94,14 +93,14 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
   }
 
   Future<void> _logMissedBlock(DateTime date, int hour) async {
-    final newLog = await showDialog<HourlyLog>(
+    final saved = await showDialog<bool>(
       context: context,
       builder: (context) => HourlyLogDialog(
         selectedDate: date,
         hour: hour,
       ),
     );
-    if (newLog != null && mounted) {
+    if ((saved ?? false) && mounted) {
       _scanMissedBlocks();
     }
   }

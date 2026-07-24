@@ -191,8 +191,9 @@ class NotionService {
 
   /// Queries Notion for PARA Projects, Areas, and Resources while skipping
   /// archived (`Archive == true` or `Status == Done`) items and tasks.
-  Future<List<NotionTask>> queryProjectsAndAreas(
-      {String? searchKeyword}) async {
+  Future<List<NotionTask>> queryProjectsAndAreas({
+    String? searchKeyword,
+  }) async {
     final apiKey = Prefs.notionApiKey;
     if (apiKey.isEmpty) {
       return [];
@@ -699,6 +700,64 @@ class NotionService {
     return logs;
   }
 
+  /// Fetches every active hourly-log row for one date and hour.
+  ///
+  /// Unlike [fetchHourlyLogs], this intentionally returns superseded and
+  /// duplicate rows so slot reconciliation can archive them.
+  Future<List<HourlyLog>> fetchHourlyLogsForHour(
+    String dateStr,
+    int hour,
+  ) async {
+    final apiKey = Prefs.notionApiKey;
+    if (apiKey.isEmpty || hourlyTimelineDbId.trim().isEmpty) {
+      return [];
+    }
+
+    final url = '${_getBaseUrl()}databases/$hourlyTimelineDbId/query';
+    final logs = <HourlyLog>[];
+    String? cursor;
+
+    do {
+      final payload = <String, dynamic>{
+        'filter': {
+          'and': [
+            {
+              'property': 'Date',
+              'date': {'equals': dateStr},
+            },
+            {
+              'property': 'Hour',
+              'number': {'equals': hour},
+            },
+            {
+              'property': 'Source',
+              'rich_text': {'equals': 'pomo-hourly'},
+            },
+          ],
+        },
+        'page_size': 100,
+        if (cursor != null) 'start_cursor': cursor,
+      };
+
+      final response = await _dio.post<Map<String, dynamic>>(
+        url,
+        data: payload,
+        options: Options(headers: _getHeaders(apiKey)),
+      );
+      final results = response.data?['results'] as List? ?? [];
+      for (final row in results.whereType<Map<String, dynamic>>()) {
+        final log = _hourlyLogFromNotionRow(row);
+        if (log != null) {
+          logs.add(log);
+        }
+      }
+      final hasMore = response.data?['has_more'] as bool? ?? false;
+      cursor = hasMore ? (response.data?['next_cursor'] as String?) : null;
+    } while (cursor != null);
+
+    return logs;
+  }
+
   /// Reconstructs an [HourlyLog] from a Hourly Timeline Notion row created
   /// by [_hourlyProperties]. Returns null for rows missing an External ID.
   HourlyLog? _hourlyLogFromNotionRow(Map<String, dynamic> row) {
@@ -764,7 +823,7 @@ class NotionService {
 
   /// Syncs a single [HourlyLog] to the separate Hourly Timeline Notion DB.
   /// Performs an idempotency check on `External ID` = `log.id`, creates a row
-  /// if absent, or patches it if present. Sets [log.notionPageId] on success.
+  /// if absent, or patches it if present. Sets `log.notionPageId` on success.
   Future<({bool success, String? pageId, HourlyLog log})> syncHourlyLog(
     HourlyLog log,
   ) async {
@@ -773,8 +832,8 @@ class NotionService {
       throw Exception('Focus access code not set.');
     }
 
-    final name =
-        '${log.hour.toString().padLeft(2, '0')}:00 - ${log.tagIcon} ${log.tagName}';
+    final hourLabel = log.hour.toString().padLeft(2, '0');
+    final name = '$hourLabel:00 - ${log.tagIcon} ${log.tagName}';
     var pageId = log.notionPageId;
 
     if (pageId != null && pageId.isNotEmpty) {
@@ -813,7 +872,8 @@ class NotionService {
             options: Options(headers: _getHeaders(apiKey)),
           );
           Logger().i(
-              'Updated existing Hourly Timeline row $pageId via idempotency');
+            'Updated existing Hourly Timeline row $pageId via idempotency',
+          );
           return (
             success: true,
             pageId: pageId,
@@ -869,7 +929,7 @@ class NotionService {
       'Name': {
         'title': [
           {
-            'text': {'content': name}
+            'text': {'content': name},
           },
         ],
       },
@@ -880,28 +940,28 @@ class NotionService {
       'Tag': {
         'rich_text': [
           {
-            'text': {'content': log.tagName}
+            'text': {'content': log.tagName},
           },
         ],
       },
       'Tag Icon': {
         'rich_text': [
           {
-            'text': {'content': log.tagIcon}
+            'text': {'content': log.tagIcon},
           },
         ],
       },
       'Project': {
         'rich_text': [
           {
-            'text': {'content': log.projectTitle ?? ''}
+            'text': {'content': log.projectTitle ?? ''},
           },
         ],
       },
       'Notes': {
         'rich_text': [
           {
-            'text': {'content': log.notes}
+            'text': {'content': log.notes},
           },
         ],
       },
@@ -909,14 +969,14 @@ class NotionService {
       'Source': {
         'rich_text': [
           {
-            'text': {'content': 'pomo-hourly'}
+            'text': {'content': 'pomo-hourly'},
           },
         ],
       },
       'External ID': {
         'rich_text': [
           {
-            'text': {'content': log.id}
+            'text': {'content': log.id},
           },
         ],
       },

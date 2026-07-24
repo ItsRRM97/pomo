@@ -39,6 +39,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   List<NotionTask> _selectedProjects = [];
   bool _isLoadingProjects = true;
   bool _isSaving = false;
+  bool _hasEditedTags = false;
 
   @override
   void initState() {
@@ -47,25 +48,13 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     _endHour = (widget.hour + 1).clamp(1, 24);
     _tags = Prefs.trackerTags;
 
-    if (widget.existingLogsForHour != null &&
-        widget.existingLogsForHour!.isNotEmpty) {
-      for (final l in widget.existingLogsForHour!) {
-        final tag = _tags.cast<TrackerTag?>().firstWhere(
-              (t) => t?.id == l.tagId,
-              orElse: () => null,
-            );
-        if (tag != null && !_selectedTags.any((t) => t.id == tag.id)) {
-          _selectedTags.add(tag);
-        }
+    if (widget.existingLogsForHour != null) {
+      _selectExistingTags(widget.existingLogsForHour!);
+      if (widget.existingLogsForHour!.isNotEmpty) {
+        _notesController.text = widget.existingLogsForHour!.first.notes;
       }
-      _notesController.text = widget.existingLogsForHour!.first.notes;
     } else if (widget.existingLog != null) {
-      final existingId = widget.existingLog!.tagId;
-      final tag = _tags.cast<TrackerTag?>().firstWhere(
-            (t) => t?.id == existingId,
-            orElse: () => null,
-          );
-      if (tag != null) _selectedTags.add(tag);
+      _selectExistingTags([widget.existingLog!]);
       _notesController.text = widget.existingLog!.notes;
     } else if (_tags.isNotEmpty) {
       _selectedTags.add(_tags.first);
@@ -74,8 +63,24 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     _fetchProjects();
   }
 
+  void _selectExistingTags(List<HourlyLog> logs) {
+    for (final log in logs) {
+      final normalizedName = log.tagName.trim().toLowerCase();
+      final tag = _tags.cast<TrackerTag?>().firstWhere(
+            (candidate) =>
+                candidate?.id == log.tagId ||
+                candidate?.name.trim().toLowerCase() == normalizedName,
+            orElse: () => null,
+          );
+      if (tag != null && !_selectedTags.any((item) => item.id == tag.id)) {
+        _selectedTags.add(tag);
+      }
+    }
+  }
+
   void _toggleTag(TrackerTag tag) {
     setState(() {
+      _hasEditedTags = true;
       if (_selectedTags.any((t) => t.id == tag.id)) {
         _selectedTags.removeWhere((t) => t.id == tag.id);
       } else {
@@ -90,7 +95,8 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Tag?'),
         content: Text(
-          'Are you sure you want to remove "${tag.icon} ${tag.name}" from your tags list?',
+          'Are you sure you want to remove '
+          '"${tag.icon} ${tag.name}" from your tags list?',
         ),
         actions: [
           TextButton(
@@ -104,7 +110,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
         ],
       ),
     );
-    if (confirm == true && mounted) {
+    if ((confirm ?? false) && mounted) {
       await NotionSyncService().deleteActivityTag(tag);
       setState(() {
         _tags = Prefs.trackerTags;
@@ -119,7 +125,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       if (mounted) {
         setState(() {
           _projects = items;
-          final List<String> existingIds = [];
+          final existingIds = <String>[];
           if (widget.existingLog?.projectId != null) {
             existingIds.addAll(
               widget.existingLog!.projectId!
@@ -155,6 +161,13 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     if (mounted && changed > 0) {
       setState(() {
         _tags = Prefs.trackerTags;
+        if (!_hasEditedTags) {
+          final existing = widget.existingLogsForHour ??
+              (widget.existingLog == null
+                  ? <HourlyLog>[]
+                  : [widget.existingLog!]);
+          _selectExistingTags(existing);
+        }
       });
     }
   }
@@ -205,21 +218,29 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   }
 
   Future<void> _saveLog() async {
-    if (_selectedTags.isEmpty && _notesController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one tag or enter notes.'),
-        ),
-      );
-      return;
-    }
-
     setState(() => _isSaving = true);
 
     final y = widget.selectedDate.year;
     final m = widget.selectedDate.month.toString().padLeft(2, '0');
     final d = widget.selectedDate.day.toString().padLeft(2, '0');
     final dateStr = '$y-$m-$d';
+    final notes = _notesController.text.trim();
+
+    // An empty save is an explicit slot clear. This works for both one-hour
+    // edits and bulk ranges and archives the corresponding Notion rows.
+    if (_selectedTags.isEmpty && notes.isEmpty) {
+      for (var h = _startHour; h < _endHour; h++) {
+        await NotionSyncService().replaceHourlyLogsForHour(
+          dateStr: dateStr,
+          hour: h,
+          logs: const [],
+        );
+      }
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      Navigator.of(context).pop(true);
+      return;
+    }
 
     final tagsToSave = _selectedTags.isNotEmpty
         ? _selectedTags
@@ -239,28 +260,28 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     HourlyLog? firstOrExisting;
     for (var h = _startHour; h < _endHour; h++) {
       final newLogsForHour = <HourlyLog>[];
+      final revisionTime = DateTime.now();
       for (var i = 0; i < k; i++) {
         final tag = tagsToSave[i];
         final mins = (i == 0) ? firstMins : baseMins;
-        final logId = (k == 1 && h == widget.hour && widget.existingLog != null)
-            ? widget.existingLog!.id
-            : (k == 1)
-                ? 'hlog_${dateStr}_$h'
-                : 'hlog_${dateStr}_${h}_${tag.id}';
+        final logId = 'hlog_${dateStr}_${h}_${tag.id}';
+        final existingCandidates = widget.existingLogsForHour ??
+            (widget.existingLog == null
+                ? <HourlyLog>[]
+                : [widget.existingLog!]);
+        final existing = existingCandidates.cast<HourlyLog?>().firstWhere(
+              (log) => log?.id == logId,
+              orElse: () => null,
+            );
 
-        final existingNotionPageId =
-            (widget.existingLog != null && widget.existingLog!.id == logId)
-                ? widget.existingLog!.notionPageId
-                : null;
-
-        final String? projectIds = _selectedProjects.isNotEmpty
+        final projectIds = _selectedProjects.isNotEmpty
             ? _selectedProjects.map((p) => p.id).join(',')
             : null;
-        final String? projectTitles = _selectedProjects.isNotEmpty
+        final projectTitles = _selectedProjects.isNotEmpty
             ? _selectedProjects.map((p) => p.title).join(', ')
             : null;
 
-        var newLog = HourlyLog(
+        final newLog = HourlyLog(
           id: logId,
           dateStr: dateStr,
           hour: h,
@@ -270,35 +291,28 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
           tagColorHex: tag.colorHex,
           projectId: projectIds,
           projectTitle: projectTitles,
-          notes: _notesController.text.trim(),
-          notionPageId: existingNotionPageId,
+          notes: notes,
+          notionPageId: existing?.notionPageId,
           durationMinutes: mins,
-          loggedAt: DateTime.now(),
+          loggedAt: revisionTime,
         );
-
-        try {
-          final syncResult = await NotionSyncService().syncHourlyLog(newLog);
-          if (syncResult.success) {
-            newLog = syncResult.log;
-          }
-        } catch (e) {
-          Logger().w(
-            'HourlyLogDialog: Failed to sync hourly log to Notion: $e',
-          );
-        }
 
         newLogsForHour.add(newLog);
       }
 
-      await Prefs.replaceHourlyLogsForHour(dateStr, h, newLogsForHour);
+      final result = await NotionSyncService().replaceHourlyLogsForHour(
+        dateStr: dateStr,
+        hour: h,
+        logs: newLogsForHour,
+      );
       if (h == _startHour) {
-        firstOrExisting = newLogsForHour.first;
+        firstOrExisting = result.logs.first;
       }
     }
 
     if (!mounted) return;
     setState(() => _isSaving = false);
-    Navigator.of(context).pop(firstOrExisting);
+    Navigator.of(context).pop(firstOrExisting != null);
   }
 
   @override
@@ -311,8 +325,9 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final rangeText =
-        '${_startHour.toString().padLeft(2, '0')}:00 - ${_endHour.toString().padLeft(2, '0')}:00';
+    final startLabel = _startHour.toString().padLeft(2, '0');
+    final endLabel = _endHour.toString().padLeft(2, '0');
+    final rangeText = '$startLabel:00 - $endLabel:00';
 
     return AlertDialog(
       title: Row(
@@ -429,7 +444,9 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Logging ${_endHour - _startHour} hour block${(_endHour - _startHour) > 1 ? 's' : ''} ($rangeText)',
+                    'Logging ${_endHour - _startHour} hour '
+                    'block${(_endHour - _startHour) > 1 ? 's' : ''} '
+                    '($rangeText)',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w600,
@@ -617,17 +634,16 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                                 spacing: 8,
                                 runSpacing: 6,
                                 children: _selectedProjects.map((proj) {
-                                  final Color badgeBg = proj.priority == 'Area'
+                                  final badgeBg = proj.priority == 'Area'
                                       ? Colors.orange.withValues(alpha: 0.2)
                                       : proj.priority == 'Resource'
                                           ? Colors.purple.withValues(alpha: 0.2)
                                           : Colors.blue.withValues(alpha: 0.2);
-                                  final String badgeText =
-                                      proj.priority == 'Area'
-                                          ? '🏔️ Area'
-                                          : proj.priority == 'Resource'
-                                              ? '🟣 Resource'
-                                              : '📽️ Project';
+                                  final badgeText = proj.priority == 'Area'
+                                      ? '🏔️ Area'
+                                      : proj.priority == 'Resource'
+                                          ? '🟣 Resource'
+                                          : '📽️ Project';
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -803,9 +819,7 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
             const SizedBox(height: 12),
             InkWell(
               onTap: () {
-                setState(() {
-                  _selectedTasks.clear();
-                });
+                setState(_selectedTasks.clear);
               },
               borderRadius: BorderRadius.circular(8),
               child: Container(
@@ -923,7 +937,7 @@ class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
                             value: isSelected,
                             onChanged: (bool? val) {
                               setState(() {
-                                if (val == true) {
+                                if (val ?? false) {
                                   if (!isSelected) _selectedTasks.add(item);
                                 } else {
                                   _selectedTasks

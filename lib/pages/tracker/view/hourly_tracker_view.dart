@@ -29,8 +29,11 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
     setState(() {
       _allLogs = Prefs.hourlyLogs;
     });
-    // Merge in logs created on other devices (e.g. the PWA) via Notion.
-    NotionSyncService().pullHourlyLogs().then((changed) {
+    // Sync the tag registry before pulling logs so cross-device tag IDs can be
+    // recovered by name while the remote rows are decoded.
+    NotionSyncService().syncActivityTags().then((_) {
+      return NotionSyncService().pullHourlyLogs();
+    }).then((changed) {
       if (mounted && changed > 0) {
         setState(() {
           _allLogs = Prefs.hourlyLogs;
@@ -94,15 +97,36 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
   }
 
   Future<void> _openLogDialog(int hour, HourlyLog? existing) async {
-    final updated = await showDialog<HourlyLog>(
+    List<HourlyLog>? existingLogs;
+    if (existing != null) {
+      final dateStr = _formatDateStr(_selectedDate);
+      try {
+        await NotionSyncService().syncActivityTags();
+        existingLogs =
+            await NotionSyncService().refreshHourlyLogsForHour(dateStr, hour);
+        if (mounted) {
+          setState(() => _allLogs = Prefs.hourlyLogs);
+        }
+      } catch (_) {
+        existingLogs = Prefs.hourlyLogs
+            .where((log) => log.dateStr == dateStr && log.hour == hour)
+            .toList();
+      }
+    }
+    if (!mounted) return;
+
+    final updated = await showDialog<bool>(
       context: context,
       builder: (context) => HourlyLogDialog(
         selectedDate: _selectedDate,
         hour: hour,
-        existingLog: existing,
+        existingLog: existingLogs == null || existingLogs.isEmpty
+            ? null
+            : existingLogs.first,
+        existingLogsForHour: existingLogs,
       ),
     );
-    if (updated != null && mounted) {
+    if ((updated ?? false) && mounted) {
       _loadLogs();
     }
   }
@@ -700,7 +724,8 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          '${log.tagName} (${log.durationMinutes}m)',
+                                          '${log.tagName} '
+                                          '(${log.durationMinutes}m)',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                             fontSize: 13,

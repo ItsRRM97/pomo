@@ -223,10 +223,12 @@ void main() {
       Prefs.notionApiKey = 'secret_token';
       Prefs.notionHourlyTimelineDatabaseId = '';
       Prefs.pendingHourlyLogs = [
-        '{"id":"1","dateStr":"2026-07-18","hour":10,'
-            '"tagId":"work","tagName":"Work","tagIcon":"💼",'
-            '"tagColor":"#000000","durationMinutes":60,'
-            '"loggedAt":"2026-07-18T10:00:00.000"}',
+        [
+          '{"id":"1","dateStr":"2026-07-18","hour":10,',
+          '"tagId":"work","tagName":"Work","tagIcon":"💼",',
+          '"tagColor":"#000000","durationMinutes":60,',
+          '"loggedAt":"2026-07-18T10:00:00.000"}',
+        ].join(),
       ];
       final flushed = await NotionSyncService().flushPendingHourlyLogs();
       expect(flushed, equals(0));
@@ -339,14 +341,12 @@ void main() {
   });
 
   group('NotionService.resolveLogTitles with multiple projects', () {
-    setUp(() {
-      NotionService.clearTaskFetchCache();
-    });
+    setUp(NotionService.clearTaskFetchCache);
 
     test('splits, resolves, and joins multiple project titles', () async {
-      final service = NotionService();
-      service.cachePageTitle('proj-1', '📽️ Project Alpha');
-      service.cachePageTitle('proj-2', '🏔️ Area Beta');
+      final service = NotionService()
+        ..cachePageTitle('proj-1', '📽️ Project Alpha')
+        ..cachePageTitle('proj-2', '🏔️ Area Beta');
 
       final log = HourlyLog(
         id: 'hlog-1',
@@ -362,8 +362,10 @@ void main() {
       );
 
       final resolved = await service.resolveLogTitles([log]);
-      expect(resolved.first.projectTitle,
-          equals('📽️ Project Alpha, 🏔️ Area Beta'));
+      expect(
+        resolved.first.projectTitle,
+        equals('📽️ Project Alpha, 🏔️ Area Beta'),
+      );
     });
   });
 }

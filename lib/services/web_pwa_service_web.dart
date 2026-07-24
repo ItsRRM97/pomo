@@ -40,7 +40,9 @@ external set jsOnPipClosedExternally(JSFunction? val);
 
 @JS('window.pwaManager.showCustomNotification')
 external JSPromise<JSBoolean> showCustomNotification(
-    JSString title, JSString body);
+  JSString title,
+  JSString body,
+);
 
 class WebPwaServiceWeb implements WebPwaService {
   factory WebPwaServiceWeb() => _instance;
@@ -59,7 +61,7 @@ class WebPwaServiceWeb implements WebPwaService {
   Future<bool> requestNotificationPermission() async {
     try {
       if (pwaManager != null) {
-        final result = await (pwaManager as PwaManager)
+        final result = await (pwaManager! as PwaManager)
             .requestNotificationPermission()
             .toDart;
         return result.toDart;
@@ -85,17 +87,19 @@ class WebPwaServiceWeb implements WebPwaService {
 
   @override
   Future<bool> triggerServiceWorkerNotification(
-      String title, String body) async {
+    String title,
+    String body,
+  ) async {
     try {
       if (pwaManager == null) {
         _jsConsoleLog(
-            '[Focus] triggerServiceWorkerNotification: pwaManager is null'
-                .toJS);
+          '[Focus] triggerServiceWorkerNotification: pwaManager is null'.toJS,
+        );
         return false;
       }
       _jsConsoleLog(
-          '[Focus] triggerServiceWorkerNotification: calling JS -> $title'
-              .toJS);
+        '[Focus] triggerServiceWorkerNotification: calling JS -> $title'.toJS,
+      );
       final result = await showCustomNotification(title.toJS, body.toJS).toDart;
       return result.toDart;
     } catch (e) {
@@ -170,7 +174,7 @@ class WebPwaServiceWeb implements WebPwaService {
         (manager as PwaManager).closePip();
       }
       jsOnPipClosedExternally = null;
-      this._isPipActive = false;
+      _isPipActive = false;
     } catch (_) {}
   }
 }

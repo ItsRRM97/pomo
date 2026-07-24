@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
-/// Represents a logged 1-hour activity session inside the 24-hour daily timeline.
+/// Represents a logged 1-hour activity session inside the 24-hour daily
+/// timeline.
 class HourlyLog extends Equatable {
   const HourlyLog({
     required this.id,
@@ -10,12 +11,12 @@ class HourlyLog extends Equatable {
     required this.tagName,
     required this.tagIcon,
     required this.tagColorHex,
+    required this.loggedAt,
     this.projectId,
     this.projectTitle,
     this.notes = '',
     this.notionPageId,
     this.durationMinutes = 60,
-    required this.loggedAt,
   });
 
   /// Creates an [HourlyLog] from JSON map.
@@ -45,7 +46,9 @@ class HourlyLog extends Equatable {
   /// ISO date string (`e.g., 2026-07-13`).
   final String dateStr;
 
-  /// Hour index of the 24-hour day (`0` for 00:00-01:00 up to `23` for 23:00-24:00`).
+  /// Hour index of the 24-hour day.
+  ///
+  /// `0` represents 00:00-01:00 and `23` represents 23:00-24:00.
   final int hour;
 
   /// Selected tag ID (`e.g., tag_coding` or custom tag ID).
@@ -72,7 +75,9 @@ class HourlyLog extends Equatable {
   /// Notion Hourly Timeline database page ID if synced successfully.
   final String? notionPageId;
 
-  /// Duration allocated to this log in minutes within its hour block (default 60).
+  /// Duration allocated to this log in minutes within its hour block.
+  ///
+  /// Defaults to 60 minutes.
   final int durationMinutes;
 
   /// Exact timestamp when this log was created or last modified.
