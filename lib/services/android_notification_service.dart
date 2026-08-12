@@ -3,10 +3,12 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:pomo/helpers/duration_helper.dart';
+import 'package:pomo/helpers/hourly_alarm_schedule.dart';
 import 'package:pomo/helpers/notification_helper.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:pomo/services/app_navigation_controller.dart';
+import 'package:pomo/singletons/prefs.dart';
 
 class AndroidNotificationService {
   factory AndroidNotificationService() => _instance;
@@ -180,6 +182,62 @@ class AndroidNotificationService {
         hourlyStartForegroundArgs(hour: hour, date: date),
       );
     } catch (e) {
+      // Ignore channel exceptions
+    }
+  }
+
+  /// Channel args for scheduling the next exact hourly alarm.
+  @visibleForTesting
+  static Map<String, Object?> scheduleNextHourlyAlarmArgs(
+    DateTime now, {
+    required bool enableTimeTracker,
+    required bool enableQuietHours,
+    required String quietHoursStart,
+    required String quietHoursEnd,
+  }) {
+    final triggerAt = nextHourBoundary(now);
+    return {
+      'triggerAtMillis': triggerAt.millisecondsSinceEpoch,
+      'enableTimeTracker': enableTimeTracker,
+      'enableQuietHours': enableQuietHours,
+      'quietHoursStart': quietHoursStart,
+      'quietHoursEnd': quietHoursEnd,
+    };
+  }
+
+  /// Schedules AlarmManager exact alarm for the upcoming hour boundary.
+  ///
+  /// No-op when time tracker is off (cancels instead). Dart
+  /// [Timer.periodic] remains an in-process backup; this is the source of
+  /// truth when the process is killed / Dozing.
+  Future<void> scheduleNextHourlyAlarm({DateTime? now}) async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    if (!Prefs.enableTimeTracker) {
+      await cancelHourlyAlarms();
+      return;
+    }
+    try {
+      await _channel.invokeMethod<bool>(
+        'scheduleNextHourlyAlarm',
+        scheduleNextHourlyAlarmArgs(
+          now ?? DateTime.now(),
+          enableTimeTracker: Prefs.enableTimeTracker,
+          enableQuietHours: Prefs.enableQuietHours,
+          quietHoursStart: Prefs.quietHoursStart,
+          quietHoursEnd: Prefs.quietHoursEnd,
+        ),
+      );
+    } catch (_) {
+      // Ignore channel exceptions
+    }
+  }
+
+  /// Cancels pending exact hourly alarms.
+  Future<void> cancelHourlyAlarms() async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<bool>('cancelHourlyAlarms');
+    } catch (_) {
       // Ignore channel exceptions
     }
   }

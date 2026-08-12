@@ -114,4 +114,23 @@ void main() {
       );
     });
   });
+
+  group('AndroidNotificationService scheduleNextHourlyAlarm args', () {
+    test('passes epoch millis for next hour boundary', () {
+      final args = AndroidNotificationService.scheduleNextHourlyAlarmArgs(
+        DateTime(2026, 8, 12, 14, 37),
+        enableTimeTracker: true,
+        enableQuietHours: true,
+        quietHoursStart: '23:00',
+        quietHoursEnd: '07:00',
+      );
+      expect(
+        args['triggerAtMillis'],
+        DateTime(2026, 8, 12, 15).millisecondsSinceEpoch,
+      );
+      expect(args['enableTimeTracker'], isTrue);
+      expect(args['quietHoursStart'], '23:00');
+      expect(args['quietHoursEnd'], '07:00');
+    });
+  });
 }

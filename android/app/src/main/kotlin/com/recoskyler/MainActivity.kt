@@ -128,6 +128,36 @@ class MainActivity : FlutterActivity() {
                     TimerForegroundService.stopService(this)
                     result.success(true)
                 }
+                "scheduleNextHourlyAlarm" -> {
+                    val enableTracker = call.argument<Boolean>("enableTimeTracker") ?: true
+                    val enableQuiet = call.argument<Boolean>("enableQuietHours") ?: true
+                    val quietStart = call.argument<String>("quietHoursStart") ?: "23:00"
+                    val quietEnd = call.argument<String>("quietHoursEnd") ?: "07:00"
+                    HourlyAlarmScheduler.syncTrackerPrefs(
+                        this,
+                        enableTracker,
+                        enableQuiet,
+                        quietStart,
+                        quietEnd,
+                    )
+                    if (!enableTracker) {
+                        HourlyAlarmScheduler.cancel(this)
+                        result.success(true)
+                        return@setMethodCallHandler
+                    }
+                    val triggerAt = call.argument<Number>("triggerAtMillis")?.toLong()
+                    if (triggerAt != null) {
+                        HourlyAlarmScheduler.schedule(this, triggerAt)
+                    } else {
+                        HourlyAlarmScheduler.scheduleNextHour(this)
+                    }
+                    result.success(true)
+                }
+                "cancelHourlyAlarms" -> {
+                    HourlyAlarmScheduler.setTimeTrackerEnabled(this, false)
+                    HourlyAlarmScheduler.cancel(this)
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         }

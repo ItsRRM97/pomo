@@ -86,6 +86,9 @@ mixin HookHelper {
     _hourlyCheckTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _checkAndTriggerHourlyReminder();
     });
+    // Exact AlarmManager is the source of truth when the process is killed;
+    // Timer.periodic above is only an in-process backup while alive.
+    unawaited(AndroidNotificationService().scheduleNextHourlyAlarm());
   }
 
   static Future<void> _checkAndTriggerHourlyReminder() async {
@@ -172,5 +175,9 @@ mixin HookHelper {
     } catch (e) {
       Logger().w('HookHelper audio chime failed: $e');
     }
+
+    // 5. Keep exact alarm pointed at the next hour (native also reschedules
+    // on fire; this covers the in-process path and settings flips).
+    unawaited(AndroidNotificationService().scheduleNextHourlyAlarm(now: now));
   }
 }

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:pomo/helpers/hook_helper.dart';
+import 'package:pomo/services/android_notification_service.dart';
 import 'package:pomo/services/launch_at_login_service.dart';
 import 'package:pomo/services/local_notification_service.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -266,22 +269,30 @@ class SettingsCubit extends Cubit<SettingsState> {
   void setEnableTimeTracker(bool value) {
     Prefs.enableTimeTracker = value;
     emit(state.copyWith(enableTimeTracker: () => value));
+    if (value) {
+      unawaited(AndroidNotificationService().scheduleNextHourlyAlarm());
+    } else {
+      unawaited(AndroidNotificationService().cancelHourlyAlarms());
+    }
   }
 
   // ignore: avoid_positional_boolean_parameters
   void setEnableQuietHours(bool value) {
     Prefs.enableQuietHours = value;
     emit(state.copyWith(enableQuietHours: () => value));
+    unawaited(AndroidNotificationService().scheduleNextHourlyAlarm());
   }
 
   void setQuietHoursStart(String value) {
     Prefs.quietHoursStart = value;
     emit(state.copyWith(quietHoursStart: () => value));
+    unawaited(AndroidNotificationService().scheduleNextHourlyAlarm());
   }
 
   void setQuietHoursEnd(String value) {
     Prefs.quietHoursEnd = value;
     emit(state.copyWith(quietHoursEnd: () => value));
+    unawaited(AndroidNotificationService().scheduleNextHourlyAlarm());
   }
 
   // ignore: avoid_positional_boolean_parameters
