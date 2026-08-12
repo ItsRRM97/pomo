@@ -1,6 +1,7 @@
 package com.recoskyler.pomo
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -50,14 +51,23 @@ class MainActivity : FlutterActivity() {
     private fun captureNotificationPayload(intent: Intent?) {
         val payload = intent?.getStringExtra("pomo_notification_payload") ?: return
         pendingNotificationPayload = payload
+        cancelHourlyNotificationIfNeeded(payload)
     }
 
     private fun forwardNotificationPayload(intent: Intent?) {
         val payload = intent?.getStringExtra("pomo_notification_payload") ?: return
         pendingNotificationPayload = payload
+        cancelHourlyNotificationIfNeeded(payload)
         Handler(Looper.getMainLooper()).post {
             methodChannel?.invokeMethod("onNotificationTap", payload)
         }
+    }
+
+    /** Dismiss the hourly shade tile once the user acts (content tap or action). */
+    private fun cancelHourlyNotificationIfNeeded(payload: String) {
+        if (!payload.startsWith("hourly:")) return
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        manager?.cancel(TimerForegroundService.HOURLY_NOTIFICATION_ID)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

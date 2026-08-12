@@ -29,7 +29,7 @@ void main() {
     );
   }
 
-  /// Child pages can overflow at 390px; this test locks NavigationBar tabs only.
+  /// Child pages can overflow at 390px; locks NavigationBar tabs only.
   Future<void> settleIgnoringChildOverflow(WidgetTester tester) async {
     for (var i = 0; i < 100; i++) {
       await tester.pump(const Duration(milliseconds: 100));

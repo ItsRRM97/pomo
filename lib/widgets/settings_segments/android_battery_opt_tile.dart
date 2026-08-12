@@ -58,9 +58,10 @@ class _AndroidBatteryOptTileState extends State<AndroidBatteryOptTile> {
   }
 
   String _subtitleFor(bool? ignoring) {
-    if (ignoring == null) return '';
-    if (ignoring) return 'Allowed';
-    return 'Not optimized';
+    if (ignoring == null) return 'Checking...';
+    // ignoring == true means OS is not applying battery optimization.
+    if (ignoring) return 'Allowed (unrestricted)';
+    return 'Optimized (may delay reminders)';
   }
 
   @override

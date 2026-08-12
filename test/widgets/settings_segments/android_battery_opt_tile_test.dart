@@ -58,7 +58,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('battery'), findsOneWidget);
-    expect(find.textContaining('Not optimized'), findsOneWidget);
+    expect(find.textContaining('Optimized'), findsOneWidget);
     expect(
       channelCalls.where((call) => call == 'isIgnoringBatteryOptimizations'),
       hasLength(1),
@@ -74,6 +74,6 @@ void main() {
       hasLength(2),
     );
     expect(find.textContaining('Allowed'), findsOneWidget);
-    expect(find.textContaining('Not optimized'), findsNothing);
+    expect(find.textContaining('Optimized'), findsNothing);
   });
 }

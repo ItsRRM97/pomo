@@ -8,9 +8,10 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
-import android.graphics.Color
 import androidx.core.app.NotificationCompat
 
 /**
@@ -81,6 +82,11 @@ class TimerForegroundService : Service() {
         /**
          * Posts the hourly check-in shade notification (ID 1002).
          * Safe from [HourlyAlarmReceiver] with no Dart isolate.
+         *
+         * Content [PendingIntent] uses request code 13 + a unique action/data URI so
+         * it never aliases the timer FGS content intent (request code 0; extras are
+         * ignored by Intent.filterEquals). Same-hour re-posts from the Dart backup
+         * loop are skipped via [HourlyAlarmScheduler] last-posted block ledger.
          */
         fun postHourlyNotification(
             context: Context,
@@ -89,15 +95,28 @@ class TimerForegroundService : Service() {
             payload: String?,
         ) {
             ensureChannels(context)
+            val blockKey = HourlyAlarmScheduler.blockKeyFromPayload(payload)
+                ?: run {
+                    val (hour, date) = HourlyAlarmScheduler.completedHourBlock(
+                        System.currentTimeMillis(),
+                    )
+                    "$hour:$date"
+                }
+            if (!HourlyAlarmScheduler.shouldPostHourlyBlock(context, blockKey)) {
+                return
+            }
             val openAppIntent = Intent(context, MainActivity::class.java).apply {
+                action = "com.recoskyler.pomo.ACTION_OPEN_HOURLY"
+                data = Uri.parse("pomo://hourly/${payload ?: "none"}")
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 if (payload != null) {
                     putExtra("pomo_notification_payload", payload)
                 }
             }
+            // Request code 13: distinct from timer content (0) and actions (10/11/12).
             val openAppPendingIntent = PendingIntent.getActivity(
-                context, 0, openAppIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                context, 13, openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             val coffeeColor = Color.parseColor("#8D6E63")
             val builder = NotificationCompat.Builder(context, HOURLY_CHANNEL_ID)
@@ -108,7 +127,7 @@ class TimerForegroundService : Service() {
                 .setContentIntent(openAppPendingIntent)
                 .setOngoing(false)
                 .setAutoCancel(true)
-                .setOnlyAlertOnce(false)
+                .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setSubText("Hourly Tracker")
@@ -133,6 +152,7 @@ class TimerForegroundService : Service() {
             val manager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             manager?.notify(HOURLY_NOTIFICATION_ID, builder.build())
+            HourlyAlarmScheduler.markHourlyBlockPosted(context, blockKey)
         }
 
         private fun postTimerFallbackNotification(
@@ -172,9 +192,12 @@ class TimerForegroundService : Service() {
             action: String,
             requestCode: Int,
         ): PendingIntent {
+            val actionPayload = "$basePayload:$action"
             val openIntent = Intent(context, MainActivity::class.java).apply {
+                this.action = "com.recoskyler.pomo.ACTION_HOURLY_$action"
+                data = Uri.parse("pomo://hourly/$actionPayload")
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("pomo_notification_payload", "$basePayload:$action")
+                putExtra("pomo_notification_payload", actionPayload)
             }
             return PendingIntent.getActivity(
                 context,

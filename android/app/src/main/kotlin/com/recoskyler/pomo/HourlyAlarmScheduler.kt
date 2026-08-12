@@ -30,6 +30,8 @@ object HourlyAlarmScheduler {
     private const val KEY_ENABLE_QUIET_HOURS = "enable_quiet_hours"
     private const val KEY_QUIET_START = "quiet_hours_start"
     private const val KEY_QUIET_END = "quiet_hours_end"
+    /** Last posted completed block as `hour:yyyy-MM-dd` (dedupe alarm + Dart backup). */
+    private const val KEY_LAST_POSTED_BLOCK = "last_posted_hourly_block"
 
     fun syncTrackerPrefs(
         context: Context,
@@ -118,17 +120,41 @@ object HourlyAlarmScheduler {
     }
 
     fun cancel(context: Context) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            ?: return
         alarmManager.cancel(pendingIntent(context))
     }
 
+    /**
+     * Defaults to false when the key is absent so BootReceiver does not schedule
+     * before Dart has synced prefs at least once (safe opt-out direction).
+     */
     fun isTimeTrackerEnabled(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return if (prefs.contains(KEY_ENABLE_TIME_TRACKER)) {
-            prefs.getBoolean(KEY_ENABLE_TIME_TRACKER, true)
-        } else {
-            true
-        }
+        return prefs.getBoolean(KEY_ENABLE_TIME_TRACKER, false)
+    }
+
+    /**
+     * Returns true if this completed hour block has not been posted yet.
+     * Callers must [markHourlyBlockPosted] after a successful notify.
+     */
+    fun shouldPostHourlyBlock(context: Context, blockKey: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_LAST_POSTED_BLOCK, null) != blockKey
+    }
+
+    fun markHourlyBlockPosted(context: Context, blockKey: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putString(KEY_LAST_POSTED_BLOCK, blockKey)
+            .apply()
+    }
+
+    /** `hourly:H:YYYY-MM-DD` or `hourly:H:YYYY-MM-DD:action` → `H:YYYY-MM-DD`. */
+    fun blockKeyFromPayload(payload: String?): String? {
+        if (payload == null) return null
+        val parts = payload.split(':')
+        if (parts.size < 3 || parts[0] != "hourly") return null
+        return "${parts[1]}:${parts[2]}"
     }
 
     fun isInQuietHours(context: Context, nowMillis: Long = System.currentTimeMillis()): Boolean {
