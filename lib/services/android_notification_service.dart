@@ -118,4 +118,26 @@ class AndroidNotificationService {
       // Ignore channel exceptions
     }
   }
+
+  Future<bool> isIgnoringBatteryOptimizations() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    try {
+      final result =
+          await _channel.invokeMethod<bool>('isIgnoringBatteryOptimizations');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> requestIgnoreBatteryOptimizations() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    try {
+      final result = await _channel
+          .invokeMethod<bool>('requestIgnoreBatteryOptimizations');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 }
