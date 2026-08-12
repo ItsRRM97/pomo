@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import java.util.Calendar
 
 /**
@@ -13,9 +14,15 @@ import java.util.Calendar
  * Dart [Timer.periodic] is an in-process backup; this is the source of truth
  * when the process is killed or Dozing. BootReceiver reschedules after reboot
  * when the time tracker pref is enabled.
+ *
+ * Exact-alarm policy (API 31+): prefer [AlarmManager.setExactAndAllowWhileIdle]
+ * when [AlarmManager.canScheduleExactAlarms] is true. If revoked or the call
+ * throws, soft-fail into [AlarmManager.setAndAllowWhileIdle] (inexact) so the
+ * receiver/boot chain never crashes; Dart periodic remains a further backup.
  */
 object HourlyAlarmScheduler {
     const val ACTION_HOURLY_ALARM = "com.recoskyler.pomo.ACTION_HOURLY_ALARM"
+    private const val TAG = "HourlyAlarmScheduler"
     private const val REQUEST_CODE = 4201
     /** Dedicated prefs mirrored from Dart (not Flutter SharedPreferences/DataStore). */
     private const val PREFS_NAME = "pomo_hourly_alarm_prefs"
@@ -46,17 +53,59 @@ object HourlyAlarmScheduler {
     }
 
     fun schedule(context: Context, triggerAtMillis: Long) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            ?: run {
+                Log.w(TAG, "AlarmManager unavailable; skip schedule")
+                return
+            }
         val pending = pendingIntent(context)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                pending,
-            )
+        val canExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                alarmManager.canScheduleExactAlarms()
+            } catch (e: Exception) {
+                Log.w(TAG, "canScheduleExactAlarms failed; treating as unavailable", e)
+                false
+            }
         } else {
-            @Suppress("DEPRECATION")
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending)
+            true
+        }
+
+        if (canExact) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerAtMillis,
+                        pending,
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending)
+                }
+                return
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Exact alarm denied; falling back to inexact", e)
+            } catch (e: Exception) {
+                Log.w(TAG, "Exact alarm schedule failed; falling back to inexact", e)
+            }
+        } else {
+            Log.i(TAG, "Exact alarms unavailable; using inexact setAndAllowWhileIdle")
+        }
+
+        // Soft fail: inexact Doze-friendly schedule (may drift; better than crash).
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pending,
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pending)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Inexact alarm schedule also failed; giving up", e)
         }
     }
 
