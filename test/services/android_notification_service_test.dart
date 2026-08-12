@@ -25,6 +25,26 @@ void main() {
       expect(AndroidNotificationService.actionFromNotificationTap(''), isNull);
     });
 
+    test('onNotificationTap routes hourly action suffixes', () {
+      expect(
+        AndroidNotificationService.actionFromNotificationTap(
+          'hourly:14:2026-08-12:log_work',
+        ),
+        isA<HourlyLogAction>(),
+      );
+      expect(
+        AndroidNotificationService.actionFromNotificationTap(
+          'hourly:14:2026-08-12:switch_tag',
+        ),
+        isA<HourlyLogAction>(),
+      );
+      expect(
+        AndroidNotificationService.actionFromNotificationTap(
+          'hourly:14:2026-08-12:open_grid',
+        ),
+        isA<OpenTrackerAction>(),
+      );
+    });
   });
 
   group('AndroidNotificationService pending pull', () {

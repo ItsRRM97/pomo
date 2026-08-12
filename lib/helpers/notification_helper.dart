@@ -140,6 +140,15 @@ mixin NotificationHelper {
     return 'hourly:$hour:$y-$m-$d';
   }
 
+  /// Hourly payload with a shade-action suffix (`:log_work`, etc.).
+  static String hourlyActionPayload({
+    required int hour,
+    required DateTime date,
+    required String action,
+  }) {
+    return '${hourlyPayload(hour: hour, date: date)}:$action';
+  }
+
   /// Payload for a timer lap notification.
   static String lapPayload(NotificationType type) => 'timer:${type.name}';
 
@@ -150,18 +159,30 @@ mixin NotificationHelper {
     }
     if (payload.startsWith('hourly:')) {
       final parts = payload.split(':');
-      if (parts.length < 3) {
+      // Base: hourly:H:YYYY-MM-DD ; action: hourly:H:YYYY-MM-DD:suffix
+      if (parts.length != 3 && parts.length != 4) {
         return null;
       }
       final hour = int.tryParse(parts[1]);
       if (hour == null || hour < 0 || hour > 23) {
         return null;
       }
-      final date = DateTime.tryParse(parts.sublist(2).join(':'));
+      final date = DateTime.tryParse(parts[2]);
       if (date == null) {
         return null;
       }
-      return HourlyLogAction(hour: hour, date: date);
+      if (parts.length == 3) {
+        return HourlyLogAction(hour: hour, date: date);
+      }
+      switch (parts[3]) {
+        case 'log_work':
+        case 'switch_tag':
+          return HourlyLogAction(hour: hour, date: date);
+        case 'open_grid':
+          return const OpenTrackerAction();
+        default:
+          return null;
+      }
     }
     if (payload.startsWith('timer:')) {
       return const FocusMainWindowAction();
@@ -181,6 +202,11 @@ final class HourlyLogAction extends NotificationAction {
 
   final int hour;
   final DateTime date;
+}
+
+/// Switch to the tracker tab only (no hourly log dialog).
+final class OpenTrackerAction extends NotificationAction {
+  const OpenTrackerAction();
 }
 
 /// Bring the main window to the front (timer events).

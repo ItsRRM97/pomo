@@ -91,6 +91,23 @@ class TimerForegroundService : Service() {
             if (isHourly) {
                 builder.setSubText("Hourly Tracker")
                 builder.setCategory(NotificationCompat.CATEGORY_REMINDER)
+                if (payload != null) {
+                    builder.addAction(
+                        0,
+                        "Log 60m Work",
+                        pendingHourlyAction(context, payload, "log_work", 10),
+                    )
+                    builder.addAction(
+                        0,
+                        "Switch Tag",
+                        pendingHourlyAction(context, payload, "switch_tag", 11),
+                    )
+                    builder.addAction(
+                        0,
+                        "Open Grid",
+                        pendingHourlyAction(context, payload, "open_grid", 12),
+                    )
+                }
             } else {
                 builder.setSubText("Focus Timer")
                 builder.setCategory(NotificationCompat.CATEGORY_PROGRESS)
@@ -100,6 +117,23 @@ class TimerForegroundService : Service() {
             manager?.notify(NOTIFICATION_ID, builder.build())
         }
 
+        private fun pendingHourlyAction(
+            context: Context,
+            basePayload: String,
+            action: String,
+            requestCode: Int,
+        ): PendingIntent {
+            val openIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("pomo_notification_payload", "$basePayload:$action")
+            }
+            return PendingIntent.getActivity(
+                context,
+                requestCode,
+                openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
 
         private fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -273,6 +307,12 @@ class TimerForegroundService : Service() {
         if (isHourly) {
             builder.setSubText("Hourly Tracker")
             builder.setCategory(NotificationCompat.CATEGORY_REMINDER)
+            val base = hourlyPayload
+            if (base != null) {
+                builder.addAction(0, "Log 60m Work", pendingFor("log_work", 10))
+                builder.addAction(0, "Switch Tag", pendingFor("switch_tag", 11))
+                builder.addAction(0, "Open Grid", pendingFor("open_grid", 12))
+            }
         } else {
             builder.setSubText("Focus Timer")
             builder.setCategory(NotificationCompat.CATEGORY_PROGRESS)
@@ -283,6 +323,19 @@ class TimerForegroundService : Service() {
         return builder.build()
     }
 
+    private fun pendingFor(action: String, requestCode: Int): PendingIntent {
+        val base = hourlyPayload ?: ""
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("pomo_notification_payload", "$base:$action")
+        }
+        return PendingIntent.getActivity(
+            this,
+            requestCode,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
 
     private fun startForegroundNotification() {
         val notification = buildNotification()

@@ -23,6 +23,8 @@ class AppNavigationController {
     switch (action) {
       case FocusMainWindowAction():
         tabIndex.value = 0;
+      case OpenTrackerAction():
+        tabIndex.value = 1;
       case HourlyLogAction(:final hour, :final date):
         tabIndex.value = 1;
         // Wait a beat so HomeShell can switch tabs before the dialog opens.

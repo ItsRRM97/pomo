@@ -207,9 +207,60 @@ void main() {
       expect(NotificationHelper.parsePayload('junk'), isNull);
     });
 
+    test('parsePayload accepts hourly action suffixes', () {
+      expect(
+        NotificationHelper.parsePayload('hourly:14:2026-08-12:log_work'),
+        isA<HourlyLogAction>(),
+      );
+      expect(
+        NotificationHelper.parsePayload('hourly:14:2026-08-12:switch_tag'),
+        isA<HourlyLogAction>(),
+      );
+      expect(
+        NotificationHelper.parsePayload('hourly:14:2026-08-12:open_grid'),
+        isA<OpenTrackerAction>(),
+      );
+    });
 
+    test('hourly action payloads preserve hour and date', () {
+      final logWork = NotificationHelper.parsePayload(
+        'hourly:14:2026-08-12:log_work',
+      )! as HourlyLogAction;
+      expect(logWork.hour, 14);
+      expect(logWork.date, DateTime(2026, 8, 12));
 
+      final switchTag = NotificationHelper.parsePayload(
+        'hourly:9:2026-08-12:switch_tag',
+      )! as HourlyLogAction;
+      expect(switchTag.hour, 9);
+      expect(switchTag.date, DateTime(2026, 8, 12));
+    });
 
+    test('hourlyActionPayload appends known suffixes', () {
+      expect(
+        NotificationHelper.hourlyActionPayload(
+          hour: 14,
+          date: DateTime(2026, 8, 12),
+          action: 'log_work',
+        ),
+        'hourly:14:2026-08-12:log_work',
+      );
+      expect(
+        NotificationHelper.hourlyActionPayload(
+          hour: 14,
+          date: DateTime(2026, 8, 12),
+          action: 'open_grid',
+        ),
+        'hourly:14:2026-08-12:open_grid',
+      );
+    });
+
+    test('rejects unknown hourly action suffix', () {
+      expect(
+        NotificationHelper.parsePayload('hourly:14:2026-08-12:nope'),
+        isNull,
+      );
+    });
   });
 
   group('NotificationHelper.lapNotificationCopy', () {
