@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:pomo/helpers/duration_helper.dart';
+import 'package:pomo/helpers/notification_helper.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
+import 'package:pomo/services/app_navigation_controller.dart';
 
 class AndroidNotificationService {
   factory AndroidNotificationService() => _instance;
@@ -15,6 +18,45 @@ class AndroidNotificationService {
       MethodChannel('com.recoskyler.pomo/timer_notification');
   bool _isServiceActive = false;
   TimerCubit? _timerCubit;
+
+  /// Parses a native `onNotificationTap` argument into a [NotificationAction].
+  @visibleForTesting
+  static NotificationAction? actionFromNotificationTap(Object? arguments) {
+    final payload = arguments as String?;
+    return NotificationHelper.parsePayload(payload);
+  }
+
+  /// Pulls and clears any cold-start launch payload stored in MainActivity.
+  @visibleForTesting
+  static Future<String?> pullPendingNotificationPayload(
+    MethodChannel channel,
+  ) async {
+    return channel.invokeMethod<String>('getPendingNotificationPayload');
+  }
+
+  /// Pulls pending payload and parses it (used by init + unit tests).
+  @visibleForTesting
+  static Future<NotificationAction?> actionFromPendingPull(
+    MethodChannel channel,
+  ) async {
+    final payload = await pullPendingNotificationPayload(channel);
+    return actionFromNotificationTap(payload);
+  }
+
+  /// Arguments passed to native `startForeground` for an hourly reminder.
+  @visibleForTesting
+  static Map<String, Object?> hourlyStartForegroundArgs({
+    required int hour,
+    required DateTime date,
+  }) {
+    return {
+      'title': NotificationHelper.hourlyNotificationTitle(),
+      'text': NotificationHelper.hourlyNotificationBody(hour),
+      'isRunning': false,
+      'isHourly': true,
+      'payload': NotificationHelper.hourlyPayload(hour: hour, date: date),
+    };
+  }
 
   void init(TimerCubit timerCubit) {
     if (kIsWeb || !Platform.isAndroid) return;
@@ -33,8 +75,32 @@ class AndroidNotificationService {
             }
           case 'onStop':
             _timerCubit?.reset();
+          case 'onNotificationTap':
+            await _routeNotificationPayload(call.arguments);
         }
       });
+    // Cold start: pull after the handler is registered (do not rely on a
+    // fixed native delay alone).
+    unawaited(_consumePendingLaunchPayload());
+  }
+
+  Future<void> _routeNotificationPayload(Object? arguments) async {
+    final action = actionFromNotificationTap(arguments);
+    await AppNavigationController.instance.handleNotificationAction(action);
+  }
+
+  Future<void> _consumePendingLaunchPayload() async {
+    try {
+      final payload = await pullPendingNotificationPayload(_channel);
+      if (payload == null || payload.isEmpty) {
+        return;
+      }
+      // Give navigator / HomeShell a beat on cold start before dialog.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await _routeNotificationPayload(payload);
+    } catch (_) {
+      // Ignore channel exceptions
+    }
   }
 
   Future<void> updateTimerState({
@@ -103,17 +169,16 @@ class AndroidNotificationService {
     }
   }
 
-  Future<void> showHourlyReminderNotification(int hour) async {
+  Future<void> showHourlyReminderNotification({
+    required int hour,
+    required DateTime date,
+  }) async {
     if (kIsWeb || !Platform.isAndroid) return;
     try {
-      final start = hour.toString().padLeft(2, '0');
-      final end = ((hour + 1) % 24).toString().padLeft(2, '0');
-      await _channel.invokeMethod<bool>('startForeground', {
-        'title': 'Time Tracker: Check-in Required',
-        'text': 'Log what you did between $start:00 and $end:00.',
-        'isRunning': false,
-        'isHourly': true,
-      });
+      await _channel.invokeMethod<bool>(
+        'startForeground',
+        hourlyStartForegroundArgs(hour: hour, date: date),
+      );
     } catch (e) {
       // Ignore channel exceptions
     }

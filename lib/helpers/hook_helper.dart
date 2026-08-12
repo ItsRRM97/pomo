@@ -145,8 +145,10 @@ mixin HookHelper {
 
     // 2. Show native foreground notification on Android
     try {
-      await AndroidNotificationService()
-          .showHourlyReminderNotification(block.hour);
+      await AndroidNotificationService().showHourlyReminderNotification(
+        hour: block.hour,
+        date: block.date,
+      );
     } catch (e) {
       Logger().w('HookHelper android notification failed: $e');
     }

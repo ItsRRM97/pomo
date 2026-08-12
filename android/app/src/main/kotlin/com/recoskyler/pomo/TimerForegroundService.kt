@@ -28,13 +28,23 @@ class TimerForegroundService : Service() {
 
         var actionListener: ((String) -> Unit)? = null
 
-        fun startService(context: Context, title: String, text: String, isRunning: Boolean, isHourly: Boolean = false) {
+        fun startService(
+            context: Context,
+            title: String,
+            text: String,
+            isRunning: Boolean,
+            isHourly: Boolean = false,
+            payload: String? = null,
+        ) {
             val intent = Intent(context, TimerForegroundService::class.java).apply {
                 action = ACTION_START
                 putExtra("title", title)
                 putExtra("text", text)
                 putExtra("isRunning", isRunning)
                 putExtra("isHourly", isHourly)
+                if (payload != null) {
+                    putExtra("payload", payload)
+                }
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 try {
@@ -42,7 +52,7 @@ class TimerForegroundService : Service() {
                 } catch (e: Exception) {
                     // D5: Android 16 may throw ForegroundServiceStartNotAllowedException
                     // when starting from the background. Fall back to a plain notification.
-                    postFallbackNotification(context, title, text, isHourly)
+                    postFallbackNotification(context, title, text, isHourly, payload)
                 }
             } else {
                 context.startService(intent)
@@ -54,10 +64,14 @@ class TimerForegroundService : Service() {
             title: String,
             text: String,
             isHourly: Boolean,
+            payload: String?,
         ) {
             ensureChannel(context)
             val openAppIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (isHourly && payload != null) {
+                    putExtra("pomo_notification_payload", payload)
+                }
             }
             val openAppPendingIntent = PendingIntent.getActivity(
                 context, 0, openAppIntent,
@@ -86,6 +100,7 @@ class TimerForegroundService : Service() {
             manager?.notify(NOTIFICATION_ID, builder.build())
         }
 
+
         private fun ensureChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val manager =
@@ -102,13 +117,23 @@ class TimerForegroundService : Service() {
             }
         }
 
-        fun updateService(context: Context, title: String, text: String, isRunning: Boolean, isHourly: Boolean = false) {
+        fun updateService(
+            context: Context,
+            title: String,
+            text: String,
+            isRunning: Boolean,
+            isHourly: Boolean = false,
+            payload: String? = null,
+        ) {
             val intent = Intent(context, TimerForegroundService::class.java).apply {
                 action = ACTION_UPDATE
                 putExtra("title", title)
                 putExtra("text", text)
                 putExtra("isRunning", isRunning)
                 putExtra("isHourly", isHourly)
+                if (payload != null) {
+                    putExtra("payload", payload)
+                }
             }
             context.startService(intent)
         }
@@ -125,6 +150,7 @@ class TimerForegroundService : Service() {
     private var currentText: String = "25:00"
     private var isCurrentlyRunning: Boolean = true
     private var isHourly: Boolean = false
+    private var hourlyPayload: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -140,6 +166,7 @@ class TimerForegroundService : Service() {
                 currentText = intent.getStringExtra("text") ?: currentText
                 isCurrentlyRunning = intent.getBooleanExtra("isRunning", true)
                 isHourly = intent.getBooleanExtra("isHourly", false)
+                hourlyPayload = if (isHourly) intent.getStringExtra("payload") else null
                 startForegroundNotification()
             }
             ACTION_UPDATE -> {
@@ -147,6 +174,11 @@ class TimerForegroundService : Service() {
                 currentText = intent.getStringExtra("text") ?: currentText
                 isCurrentlyRunning = intent.getBooleanExtra("isRunning", true)
                 isHourly = intent.getBooleanExtra("isHourly", false)
+                if (intent.hasExtra("payload")) {
+                    hourlyPayload = if (isHourly) intent.getStringExtra("payload") else null
+                } else if (!isHourly) {
+                    hourlyPayload = null
+                }
                 updateNotification()
             }
             ACTION_PLAY -> {
@@ -193,6 +225,9 @@ class TimerForegroundService : Service() {
     private fun buildNotification(): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            if (isHourly && hourlyPayload != null) {
+                putExtra("pomo_notification_payload", hourlyPayload)
+            }
         }
         val openAppPendingIntent = PendingIntent.getActivity(
             this, 0, openAppIntent,
@@ -247,6 +282,7 @@ class TimerForegroundService : Service() {
 
         return builder.build()
     }
+
 
     private fun startForegroundNotification() {
         val notification = buildNotification()

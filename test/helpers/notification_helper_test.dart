@@ -168,6 +168,14 @@ void main() {
   });
 
   group('NotificationHelper payloads', () {
+    test('onNotificationTap routes hourly payload via parsePayload', () async {
+      final action = NotificationHelper.parsePayload('hourly:14:2026-08-12');
+      expect(action, isA<HourlyLogAction>());
+      final hourly = action! as HourlyLogAction;
+      expect(hourly.hour, 14);
+      expect(hourly.date, DateTime(2026, 8, 12));
+    });
+
     test('round-trips hourly payload', () {
       final payload = NotificationHelper.hourlyPayload(
         hour: 14,
@@ -198,6 +206,10 @@ void main() {
       expect(NotificationHelper.parsePayload(''), isNull);
       expect(NotificationHelper.parsePayload('junk'), isNull);
     });
+
+
+
+
   });
 
   group('NotificationHelper.lapNotificationCopy', () {

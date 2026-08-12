@@ -21,9 +21,20 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.recoskyler.pomo/timer_notification"
     private var methodChannel: MethodChannel? = null
 
+    /// Cold-start safe store; Dart pulls via [getPendingNotificationPayload].
+    private var pendingNotificationPayload: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        captureNotificationPayload(intent)
         checkAndRequestNotificationPermission()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // Warm path: handler is usually already registered.
+        forwardNotificationPayload(intent)
     }
 
     private fun checkAndRequestNotificationPermission(): Boolean {
@@ -36,8 +47,22 @@ class MainActivity : FlutterActivity() {
         return true
     }
 
+    private fun captureNotificationPayload(intent: Intent?) {
+        val payload = intent?.getStringExtra("pomo_notification_payload") ?: return
+        pendingNotificationPayload = payload
+    }
+
+    private fun forwardNotificationPayload(intent: Intent?) {
+        val payload = intent?.getStringExtra("pomo_notification_payload") ?: return
+        pendingNotificationPayload = payload
+        Handler(Looper.getMainLooper()).post {
+            methodChannel?.invokeMethod("onNotificationTap", payload)
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        captureNotificationPayload(intent)
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -75,13 +100,19 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                 }
+                "getPendingNotificationPayload" -> {
+                    val payload = pendingNotificationPayload
+                    pendingNotificationPayload = null
+                    result.success(payload)
+                }
                 "startForeground" -> {
                     checkAndRequestNotificationPermission()
                     val title = call.argument<String>("title") ?: "Focus Timer"
                     val text = call.argument<String>("text") ?: "25:00"
                     val isRunning = call.argument<Boolean>("isRunning") ?: true
                     val isHourly = call.argument<Boolean>("isHourly") ?: (title.contains("Time Tracker") || title.contains("Check-in"))
-                    TimerForegroundService.startService(this, title, text, isRunning, isHourly)
+                    val payload = call.argument<String>("payload")
+                    TimerForegroundService.startService(this, title, text, isRunning, isHourly, payload)
                     result.success(true)
                 }
                 "updateNotification" -> {
@@ -89,7 +120,8 @@ class MainActivity : FlutterActivity() {
                     val text = call.argument<String>("text") ?: "25:00"
                     val isRunning = call.argument<Boolean>("isRunning") ?: true
                     val isHourly = call.argument<Boolean>("isHourly") ?: (title.contains("Time Tracker") || title.contains("Check-in"))
-                    TimerForegroundService.updateService(this, title, text, isRunning, isHourly)
+                    val payload = call.argument<String>("payload")
+                    TimerForegroundService.updateService(this, title, text, isRunning, isHourly, payload)
                     result.success(true)
                 }
                 "stopForeground" -> {
@@ -105,6 +137,8 @@ class MainActivity : FlutterActivity() {
                 methodChannel?.invokeMethod(action, null)
             }
         }
+        // Cold start: do not push onNotificationTap on a fixed delay. Dart pulls
+        // via getPendingNotificationPayload after setMethodCallHandler.
     }
 
     override fun onDestroy() {
