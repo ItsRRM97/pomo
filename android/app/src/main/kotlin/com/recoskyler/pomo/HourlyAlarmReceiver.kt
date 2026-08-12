@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Fires at each exact hour boundary. Posts the hourly check-in notification
- * (reusing TimerForegroundService / A4 payload path) unless quiet hours apply,
- * then reschedules the next hour.
+ * Fires at each exact hour boundary. Posts the hourly check-in shade
+ * notification (ID 1002) with A4 payload + A3 actions unless quiet hours
+ * apply, then reschedules the next hour.
+ *
+ * Does not require a running Dart isolate or timer FGS.
  */
 class HourlyAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -25,13 +27,10 @@ class HourlyAlarmReceiver : BroadcastReceiver() {
             val payload = HourlyAlarmScheduler.hourlyPayload(hour, dateYmd)
             val title = "Time Tracker: Check-in Required"
             val text = HourlyAlarmScheduler.hourlyBody(hour)
-            // Reuse FGS / fallback notification with A4 payload + A3 actions.
-            TimerForegroundService.startService(
+            TimerForegroundService.postHourlyNotification(
                 context,
                 title,
                 text,
-                false,
-                true,
                 payload,
             )
         }

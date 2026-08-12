@@ -94,7 +94,31 @@ When built for desktop (`macos`, `windows`, `linux`), `pomo` integrates with nat
 
 ---
 
-## 5. Audio & Sound System (`SoundHelper` & `generate-sounds.py`)
+## 5. Android Background: FGS, Alarms & Notifications
+
+Android uses a native MethodChannel (`com.recoskyler.pomo/timer_notification`) bridged by `AndroidNotificationService` (`lib/services/android_notification_service.dart`) and `MainActivity.kt`.
+
+### A. Focus Timer foreground service (FGS)
+- **Service**: `TimerForegroundService` (`SPECIAL_USE` on API 34+).
+- **Notification**: ID `TIMER_NOTIFICATION_ID = 1001`, channel `pomo_timer_channel_v2` (IMPORTANCE_DEFAULT), ongoing while a session is active (Play/Pause/Stop actions).
+- **Sticky policy**: `START_NOT_STICKY`. If the OS kills the service, it does not auto-restart without Dart session state (avoids a stale countdown tile). Dart restarts FGS on the next `updateTimerState` while a lap is non-zero / running.
+- **D5 guard**: `startForegroundService` failures (e.g. Android 16 background start denial) fall back to `NotificationManager.notify(1001)` without crashing.
+
+### B. Hourly check-in shade notification (not FGS)
+- **IDs**: `HOURLY_NOTIFICATION_ID = 1002`, channel `hourly_tracker` (IMPORTANCE_HIGH). Distinct from the timer tile so both can appear together.
+- **Paths that post without a Dart isolate**:
+  1. `HourlyAlarmReceiver` (exact `AlarmManager` fire after A1/A19) → `TimerForegroundService.postHourlyNotification`
+  2. In-process Dart loop (`HookHelper`) → channel `showHourlyNotification` (backup when the app is warm)
+- Hourly is **shade-only** (auto-cancel, not ongoing FGS). It never calls `startForeground` for ID 1002, so it cannot replace the timer FGS notification.
+- Tap / actions carry `hourly:H:YYYY-MM-DD` (+ optional `:log_work` / `:switch_tag` / `:open_grid`) into `MainActivity` → `AppNavigationController`.
+
+### C. Exact alarms & battery
+- `HourlyAlarmScheduler` + `BootReceiver` schedule/reschedule `RTC_WAKEUP` boundaries; quiet hours are mirrored into native prefs and gated at fire time.
+- Battery-optimization opt-in lives on the same MethodChannel (`isIgnoringBatteryOptimizations` / `requestIgnoreBatteryOptimizations`) and Settings UI (A2).
+
+---
+
+## 6. Audio & Sound System (`SoundHelper` & `generate-sounds.py`)
 
 Audio feedback is handled through `SoundHelper` (`lib/helpers/sound_helper.dart`) using the `audioplayers` package (`^6.0.0`):
 
@@ -109,7 +133,7 @@ When a lap starts or ends, `SoundHelper.play(...)` checks `SettingsState.enableS
 
 ---
 
-## 6. Webhook Automation Engine (`HookHelper`)
+## 7. Webhook Automation Engine (`HookHelper`)
 
 A key capability of `pomo` is its ability to trigger external HTTP endpoints when timer events occur (`lib/helpers/hook_helper.dart`):
 
@@ -146,7 +170,7 @@ action:
 
 ---
 
-## 7. Build Flavors & Entry Points
+## 8. Build Flavors & Entry Points
 
 To maintain strict separation between local development, staging, and live production environments, `pomo` defines three flavors:
 

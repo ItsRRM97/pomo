@@ -13,11 +13,28 @@ import android.os.IBinder
 import android.graphics.Color
 import androidx.core.app.NotificationCompat
 
+/**
+ * Focus Timer foreground service (FGS) plus hourly shade helpers.
+ *
+ * Sticky policy:
+ * - Timer FGS uses [TIMER_NOTIFICATION_ID] / [CHANNEL_ID], ongoing while a
+ *   session is active. [START_NOT_STICKY]: if the OS kills the service, do not
+ *   auto-restart without Dart session state.
+ * - Hourly check-ins use [HOURLY_NOTIFICATION_ID] / [HOURLY_CHANNEL_ID]
+ *   (IMPORTANCE_HIGH). They are shade notifications only (not FGS), so they
+ *   never replace the timer tile and can be posted from [HourlyAlarmReceiver]
+ *   without a running Dart isolate.
+ */
 class TimerForegroundService : Service() {
 
     companion object {
         const val CHANNEL_ID = "pomo_timer_channel_v2"
-        const val NOTIFICATION_ID = 1001
+        const val HOURLY_CHANNEL_ID = "hourly_tracker"
+        const val TIMER_NOTIFICATION_ID = 1001
+        const val HOURLY_NOTIFICATION_ID = 1002
+
+        /** @deprecated Prefer [TIMER_NOTIFICATION_ID]; kept for call-site clarity. */
+        const val NOTIFICATION_ID = TIMER_NOTIFICATION_ID
 
         const val ACTION_START = "ACTION_START"
         const val ACTION_UPDATE = "ACTION_UPDATE"
@@ -36,15 +53,17 @@ class TimerForegroundService : Service() {
             isHourly: Boolean = false,
             payload: String? = null,
         ) {
+            // Hourly is shade-only; never hijack the timer FGS notification.
+            if (isHourly) {
+                postHourlyNotification(context, title, text, payload)
+                return
+            }
             val intent = Intent(context, TimerForegroundService::class.java).apply {
                 action = ACTION_START
                 putExtra("title", title)
                 putExtra("text", text)
                 putExtra("isRunning", isRunning)
-                putExtra("isHourly", isHourly)
-                if (payload != null) {
-                    putExtra("payload", payload)
-                }
+                putExtra("isHourly", false)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 try {
@@ -52,26 +71,78 @@ class TimerForegroundService : Service() {
                 } catch (e: Exception) {
                     // D5: Android 16 may throw ForegroundServiceStartNotAllowedException
                     // when starting from the background. Fall back to a plain notification.
-                    postFallbackNotification(context, title, text, isHourly, payload)
+                    postTimerFallbackNotification(context, title, text)
                 }
             } else {
                 context.startService(intent)
             }
         }
 
-        private fun postFallbackNotification(
+        /**
+         * Posts the hourly check-in shade notification (ID 1002).
+         * Safe from [HourlyAlarmReceiver] with no Dart isolate.
+         */
+        fun postHourlyNotification(
             context: Context,
             title: String,
             text: String,
-            isHourly: Boolean,
             payload: String?,
         ) {
-            ensureChannel(context)
+            ensureChannels(context)
             val openAppIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                if (isHourly && payload != null) {
+                if (payload != null) {
                     putExtra("pomo_notification_payload", payload)
                 }
+            }
+            val openAppPendingIntent = PendingIntent.getActivity(
+                context, 0, openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val coffeeColor = Color.parseColor("#8D6E63")
+            val builder = NotificationCompat.Builder(context, HOURLY_CHANNEL_ID)
+                .setContentTitle(text)
+                .setContentText(title)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setColor(coffeeColor)
+                .setContentIntent(openAppPendingIntent)
+                .setOngoing(false)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(false)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setSubText("Hourly Tracker")
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            if (payload != null) {
+                builder.addAction(
+                    0,
+                    "Log 60m Work",
+                    pendingHourlyAction(context, payload, "log_work", 10),
+                )
+                builder.addAction(
+                    0,
+                    "Switch Tag",
+                    pendingHourlyAction(context, payload, "switch_tag", 11),
+                )
+                builder.addAction(
+                    0,
+                    "Open Grid",
+                    pendingHourlyAction(context, payload, "open_grid", 12),
+                )
+            }
+            val manager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            manager?.notify(HOURLY_NOTIFICATION_ID, builder.build())
+        }
+
+        private fun postTimerFallbackNotification(
+            context: Context,
+            title: String,
+            text: String,
+        ) {
+            ensureChannels(context)
+            val openAppIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val openAppPendingIntent = PendingIntent.getActivity(
                 context, 0, openAppIntent,
@@ -88,33 +159,11 @@ class TimerForegroundService : Service() {
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            if (isHourly) {
-                builder.setSubText("Hourly Tracker")
-                builder.setCategory(NotificationCompat.CATEGORY_REMINDER)
-                if (payload != null) {
-                    builder.addAction(
-                        0,
-                        "Log 60m Work",
-                        pendingHourlyAction(context, payload, "log_work", 10),
-                    )
-                    builder.addAction(
-                        0,
-                        "Switch Tag",
-                        pendingHourlyAction(context, payload, "switch_tag", 11),
-                    )
-                    builder.addAction(
-                        0,
-                        "Open Grid",
-                        pendingHourlyAction(context, payload, "open_grid", 12),
-                    )
-                }
-            } else {
-                builder.setSubText("Focus Timer")
-                builder.setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            }
+                .setSubText("Focus Timer")
+                .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             val manager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            manager?.notify(NOTIFICATION_ID, builder.build())
+            manager?.notify(TIMER_NOTIFICATION_ID, builder.build())
         }
 
         private fun pendingHourlyAction(
@@ -135,20 +184,31 @@ class TimerForegroundService : Service() {
             )
         }
 
-        private fun ensureChannel(context: Context) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val manager =
-                    context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "Focus Timer",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                ).apply {
-                    description = "Shows active Focus Pomodoro countdown"
-                    setShowBadge(true)
-                }
-                manager?.createNotificationChannel(channel)
+        fun ensureChannels(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val manager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                    ?: return
+            manager.deleteNotificationChannel("pomo_timer_channel")
+            val timerChannel = NotificationChannel(
+                CHANNEL_ID,
+                "Focus Timer",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Shows active Focus Pomodoro countdown"
+                setShowBadge(true)
             }
+            val hourlyChannel = NotificationChannel(
+                HOURLY_CHANNEL_ID,
+                "Hourly Tracker",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Hourly check-in reminders for time tracking"
+                setShowBadge(true)
+                enableVibration(true)
+            }
+            manager.createNotificationChannel(timerChannel)
+            manager.createNotificationChannel(hourlyChannel)
         }
 
         fun updateService(
@@ -159,15 +219,16 @@ class TimerForegroundService : Service() {
             isHourly: Boolean = false,
             payload: String? = null,
         ) {
+            if (isHourly) {
+                postHourlyNotification(context, title, text, payload)
+                return
+            }
             val intent = Intent(context, TimerForegroundService::class.java).apply {
                 action = ACTION_UPDATE
                 putExtra("title", title)
                 putExtra("text", text)
                 putExtra("isRunning", isRunning)
-                putExtra("isHourly", isHourly)
-                if (payload != null) {
-                    putExtra("payload", payload)
-                }
+                putExtra("isHourly", false)
             }
             context.startService(intent)
         }
@@ -183,12 +244,10 @@ class TimerForegroundService : Service() {
     private var currentTitle: String = "Focus Timer"
     private var currentText: String = "25:00"
     private var isCurrentlyRunning: Boolean = true
-    private var isHourly: Boolean = false
-    private var hourlyPayload: String? = null
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        ensureChannels(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -199,20 +258,12 @@ class TimerForegroundService : Service() {
                 currentTitle = intent.getStringExtra("title") ?: currentTitle
                 currentText = intent.getStringExtra("text") ?: currentText
                 isCurrentlyRunning = intent.getBooleanExtra("isRunning", true)
-                isHourly = intent.getBooleanExtra("isHourly", false)
-                hourlyPayload = if (isHourly) intent.getStringExtra("payload") else null
                 startForegroundNotification()
             }
             ACTION_UPDATE -> {
                 currentTitle = intent.getStringExtra("title") ?: currentTitle
                 currentText = intent.getStringExtra("text") ?: currentText
                 isCurrentlyRunning = intent.getBooleanExtra("isRunning", true)
-                isHourly = intent.getBooleanExtra("isHourly", false)
-                if (intent.hasExtra("payload")) {
-                    hourlyPayload = if (isHourly) intent.getStringExtra("payload") else null
-                } else if (!isHourly) {
-                    hourlyPayload = null
-                }
                 updateNotification()
             }
             ACTION_PLAY -> {
@@ -235,33 +286,16 @@ class TimerForegroundService : Service() {
             }
         }
 
+        // Timer FGS is not sticky: restarting without Dart session state would
+        // show a stale countdown. Hourly reminders use AlarmManager instead.
         return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.deleteNotificationChannel("pomo_timer_channel")
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Focus Timer",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Shows active Focus Pomodoro countdown"
-                setShowBadge(true)
-            }
-            manager?.createNotificationChannel(channel)
-        }
-    }
-
     private fun buildNotification(): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            if (isHourly && hourlyPayload != null) {
-                putExtra("pomo_notification_payload", hourlyPayload)
-            }
         }
         val openAppPendingIntent = PendingIntent.getActivity(
             this, 0, openAppIntent,
@@ -289,7 +323,7 @@ class TimerForegroundService : Service() {
 
         val coffeeColor = Color.parseColor("#8D6E63") // Warm coffee / mocha accent color
 
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(currentText)
             .setContentText(currentTitle)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
@@ -303,38 +337,11 @@ class TimerForegroundService : Service() {
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-
-        if (isHourly) {
-            builder.setSubText("Hourly Tracker")
-            builder.setCategory(NotificationCompat.CATEGORY_REMINDER)
-            val base = hourlyPayload
-            if (base != null) {
-                builder.addAction(0, "Log 60m Work", pendingFor("log_work", 10))
-                builder.addAction(0, "Switch Tag", pendingFor("switch_tag", 11))
-                builder.addAction(0, "Open Grid", pendingFor("open_grid", 12))
-            }
-        } else {
-            builder.setSubText("Focus Timer")
-            builder.setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            builder.addAction(toggleActionIcon, toggleActionTitle, togglePendingIntent)
-            builder.addAction(android.R.drawable.ic_delete, "Stop", stopPendingIntent)
-        }
-
-        return builder.build()
-    }
-
-    private fun pendingFor(action: String, requestCode: Int): PendingIntent {
-        val base = hourlyPayload ?: ""
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("pomo_notification_payload", "$base:$action")
-        }
-        return PendingIntent.getActivity(
-            this,
-            requestCode,
-            openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+            .setSubText("Focus Timer")
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .addAction(toggleActionIcon, toggleActionTitle, togglePendingIntent)
+            .addAction(android.R.drawable.ic_delete, "Stop", stopPendingIntent)
+            .build()
     }
 
     private fun startForegroundNotification() {
@@ -345,17 +352,17 @@ class TimerForegroundService : Service() {
                 fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
             }
             if (fgsType != 0) {
-                startForeground(NOTIFICATION_ID, notification, fgsType)
+                startForeground(TIMER_NOTIFICATION_ID, notification, fgsType)
             } else {
-                startForeground(NOTIFICATION_ID, notification)
+                startForeground(TIMER_NOTIFICATION_ID, notification)
             }
         } else {
-            startForeground(NOTIFICATION_ID, notification)
+            startForeground(TIMER_NOTIFICATION_ID, notification)
         }
     }
 
     private fun updateNotification() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        manager?.notify(NOTIFICATION_ID, buildNotification())
+        manager?.notify(TIMER_NOTIFICATION_ID, buildNotification())
     }
 }

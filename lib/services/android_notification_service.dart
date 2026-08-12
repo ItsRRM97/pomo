@@ -45,18 +45,32 @@ class AndroidNotificationService {
     return actionFromNotificationTap(payload);
   }
 
-  /// Arguments passed to native `startForeground` for an hourly reminder.
+  /// Arguments passed to native `showHourlyNotification` for a shade reminder.
+  ///
+  /// Hourly uses notification ID 1002 / channel `hourly_tracker` and must not
+  /// start or replace the timer FGS (ID 1001).
   @visibleForTesting
-  static Map<String, Object?> hourlyStartForegroundArgs({
+  static Map<String, Object?> hourlyNotificationArgs({
     required int hour,
     required DateTime date,
   }) {
     return {
       'title': NotificationHelper.hourlyNotificationTitle(),
       'text': NotificationHelper.hourlyNotificationBody(hour),
+      'payload': NotificationHelper.hourlyPayload(hour: hour, date: date),
+    };
+  }
+
+  /// Backward-compatible alias used by older tests / call sites.
+  @visibleForTesting
+  static Map<String, Object?> hourlyStartForegroundArgs({
+    required int hour,
+    required DateTime date,
+  }) {
+    return {
+      ...hourlyNotificationArgs(hour: hour, date: date),
       'isRunning': false,
       'isHourly': true,
-      'payload': NotificationHelper.hourlyPayload(hour: hour, date: date),
     };
   }
 
@@ -171,6 +185,7 @@ class AndroidNotificationService {
     }
   }
 
+  /// Posts the hourly shade notification (native ID 1002). Does not start FGS.
   Future<void> showHourlyReminderNotification({
     required int hour,
     required DateTime date,
@@ -178,8 +193,8 @@ class AndroidNotificationService {
     if (kIsWeb || !Platform.isAndroid) return;
     try {
       await _channel.invokeMethod<bool>(
-        'startForeground',
-        hourlyStartForegroundArgs(hour: hour, date: date),
+        'showHourlyNotification',
+        hourlyNotificationArgs(hour: hour, date: date),
       );
     } catch (e) {
       // Ignore channel exceptions

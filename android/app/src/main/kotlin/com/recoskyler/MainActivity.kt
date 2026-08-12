@@ -112,7 +112,16 @@ class MainActivity : FlutterActivity() {
                     val isRunning = call.argument<Boolean>("isRunning") ?: true
                     val isHourly = call.argument<Boolean>("isHourly") ?: (title.contains("Time Tracker") || title.contains("Check-in"))
                     val payload = call.argument<String>("payload")
+                    // Hourly routes to shade ID 1002; never replaces timer FGS.
                     TimerForegroundService.startService(this, title, text, isRunning, isHourly, payload)
+                    result.success(true)
+                }
+                "showHourlyNotification" -> {
+                    checkAndRequestNotificationPermission()
+                    val title = call.argument<String>("title") ?: "Time Tracker: Check-in Required"
+                    val text = call.argument<String>("text") ?: "Log the past hour."
+                    val payload = call.argument<String>("payload")
+                    TimerForegroundService.postHourlyNotification(this, title, text, payload)
                     result.success(true)
                 }
                 "updateNotification" -> {

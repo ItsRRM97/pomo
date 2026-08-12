@@ -98,8 +98,21 @@ void main() {
     });
   });
 
-  group('AndroidNotificationService hourly startForeground args', () {
+  group('AndroidNotificationService hourly notification args', () {
     test('includes pomo payload for completed hour block', () {
+      final args = AndroidNotificationService.hourlyNotificationArgs(
+        hour: 14,
+        date: DateTime(2026, 8, 12),
+      );
+      expect(args['payload'], 'hourly:14:2026-08-12');
+      expect(args['title'], 'Time Tracker: Check-in Required');
+      expect(
+        args['text'],
+        'Log what you did between 14:00 and 15:00.',
+      );
+    });
+
+    test('hourlyStartForegroundArgs keeps isHourly for legacy callers', () {
       final args = AndroidNotificationService.hourlyStartForegroundArgs(
         hour: 14,
         date: DateTime(2026, 8, 12),
@@ -107,11 +120,6 @@ void main() {
       expect(args['isHourly'], isTrue);
       expect(args['isRunning'], isFalse);
       expect(args['payload'], 'hourly:14:2026-08-12');
-      expect(args['title'], 'Time Tracker: Check-in Required');
-      expect(
-        args['text'],
-        'Log what you did between 14:00 and 15:00.',
-      );
     });
   });
 
