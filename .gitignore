@@ -115,8 +115,10 @@ app.*.map.json
 
 .env
 .env.*
+!.env.example
 
 dist/*
 .vercel
 .gstack/
 .env*
+!.env.example

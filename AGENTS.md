@@ -1,47 +1,65 @@
-# AGENTS.md - AI Coding Agent Operating Rules for Pomo
+# AGENTS.md - Pomo
 
-This file provides universal operating rules for all AI coding agents (Claude Code, Cursor, Antigravity, OpenClaw, Codex) working inside the `pomo` repository (`github.com/recoskyler/pomo`).
+Operating rules for AI agents in `pomo` (`github.com/recoskyler/pomo`).
 
-## 1. Fast Orientation
+**Sources of truth:** this file = agent operating rules; `CLAUDE.md` = topology & build; `ARCHITECTURE.md` = system design; `DESIGN.md` = approved product design (2026-07-13). Cursor always-on: `.cursor/rules/agent-guidance.mdc`.
 
-- **Product Overview**: `pomo` is an open-source, cross-platform Pomodoro timer built with Flutter. It supports adjustable work/break durations, custom sound alerts, RGB Webhook triggers (for HomeAssistant light synchronization), and multi-window desktop floating timers (`desktop_multi_window` / native macOS menu bar).
-- **Full Guidance**: Read `CLAUDE.md` and `ARCHITECTURE.md` before making architectural or state management modifications.
+## Product / purpose
 
-## 2. Command Prefixing with RTK
+Cross-platform Flutter Pomodoro + time tracker: work/break laps, sounds, RGB webhooks (HomeAssistant), Notion activity tags/sync, multi-window desktop / macOS menu bar, Android background ticks.
 
-To minimize context token usage during autonomous operations, all shell interactions must use the `rtk` prefix where applicable:
+## Layout
+
+| Path | Role |
+|------|------|
+| `lib/main_*.dart` | Flavor entry points (`development` / `staging` / `production`); `main.dart` is a stub |
+| `lib/app/` | Root `App` / `AppView`, `MultiBlocProvider` |
+| `lib/pages/` | Features: `timer`, `tracker`, `settings`, `tasks`, `about`, … |
+| `lib/helpers/` | Pure logic (`DurationHelper`, `LapHelper`, `HookHelper`, …) |
+| `lib/services/` | Platform / background (`TimerTickService`, notifications, …) |
+| `lib/desktop/` | Multi-window shell, overlay, macOS menu bar |
+| `lib/singletons/` | `Prefs` and shared singletons |
+| `scripts/` | `setup.sh`, `verify.sh`, `build-web.sh`, … |
+| `docs/superpowers/` | Process rails: specs, DESIGN gap matrix |
+| `DESIGN.md` / `TODOS.md` | Product design SoT / backlog |
+
+## Commands
+
 ```bash
-rtk git status
-rtk git diff
-rtk grep "TimerCubit"
-rtk ls lib/pages/timer/cubit
-```
+./scripts/setup.sh
+# or: flutter pub get && flutter gen-l10n
 
-## 3. Build & Run Prerequisites
-
-Never run `flutter build` or `flutter test` without ensuring `flutter pub get` and `flutter gen-l10n` have executed first:
-```bash
-flutter pub get
-flutter gen-l10n
-```
-Or run `./scripts/setup.sh` to ensure all prerequisites are satisfied.
-
-To run the application locally, always specify both `--flavor` and `--target`:
-```bash
 flutter run --flavor development -d macos --target lib/main_development.dart
-```
-
-## 4. Quality Assurance & Regression Verification
-
-Before finishing any task, you must verify code cleanliness and run regression tests:
-```bash
 ./scripts/verify.sh
+# inspect with rtk: rtk git status | rtk git diff | rtk grep "TimerCubit"
 ```
-If `./scripts/verify.sh` reports static analysis errors (`very_good_analysis`), formatting issues (`dart format`), or failing tests (`test/`), you must fix them before committing or opening a pull request.
 
-## 5. Coding & Style Constraints
+## Hard constraints
 
-- **Strict Analysis**: The project uses `very_good_analysis`. Do not suppress lint rules (`// ignore: ...`) without clear technical justification.
-- **State Immutable Updates**: `flutter_bloc` state mutations must use `state.copyWith(...)` with function-based parameter passing (as established in `TimerState` and `SettingsState`).
-- **Separation of Concerns**: Keep purely computational helpers (e.g., duration formatting, lap calculation, color math) inside `lib/helpers/` (`DurationHelper`, `LapHelper`, `LapColorHelper`). Do not couple helper logic directly to `BuildContext` or UI components.
-- **No Em Dashes**: Do not use the em dash (`\u2014`) in any generated markdown, comments, code strings, commit messages, or documentation. Use hyphens (`-`), colons (`:`), or semicolons instead.
+1. Always `--flavor` + `--target`; never treat `lib/main.dart` as the real entry.
+2. Run `flutter pub get` + `flutter gen-l10n` (or `./scripts/setup.sh`) before analyze/test/build.
+3. Prefix inspection shells with `rtk` where applicable.
+4. No em dash (`U+2014`) in docs, comments, commits, or UI strings; use `-`, `:`, or `;`.
+5. Keep helpers in `lib/helpers/` free of `BuildContext`; immutable Cubit states via `copyWith`.
+6. Do not invent remotes, force-push, or commit unless the user asks.
+
+## Agent workflow
+
+1. Read this file + `README.md`; for architecture/product changes also `CLAUDE.md`, `ARCHITECTURE.md`, `DESIGN.md`.
+2. Check `docs/superpowers/DESIGN-GAP-MATRIX.md` before scoping product work.
+3. Process path: brainstorming → writing-plans → TDD → implement → `./scripts/verify.sh` → review/ship skills as needed.
+4. Specs live under `docs/superpowers/specs/`; see `docs/superpowers/specs/2026-08-12-agentic-process-rails-design.md`.
+
+## Secrets / local-only
+
+- Never commit `.env`, `.env.*` (see `.gitignore`). Template: tracked `sample.env` (not `.env.example`).
+- Do not commit credentials, personal Notion tokens, or local session dumps.
+
+## Docs
+
+- `README.md` - human product/install
+- `CLAUDE.md` - detailed topology
+- `ARCHITECTURE.md` - system design
+- `DESIGN.md` - approved product design (2026-07-13)
+- `TODOS.md` - open backlog
+- `docs/superpowers/` - agent process rails + gap matrix
