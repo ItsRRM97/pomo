@@ -15,16 +15,16 @@
 | Notion activity tags / sync | Shipped | Integration present |
 | Battery-opt Settings UI | **Shipped (code)** / Partial: device QA pending | `AndroidBatteryOptTile` + MethodChannel in `android_notification_service.dart`; `android_battery_opt_tile_test.dart` (A2). Verify opt-in flow on device. |
 | Exact hourly alarms (Doze / killed) | **Shipped (code)** / Partial: device QA pending | `HourlyAlarmScheduler.kt`, `HourlyAlarmReceiver.kt`, `BootReceiver.kt`; manifest `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` / `RECEIVE_BOOT_COMPLETED`; Dart `scheduleNextHourlyAlarm` (A1/A19). Doze/kill/reboot QA not signed off. |
-| Persistent 1-tap notification actions | **Shipped (code)** / Partial: device QA pending | Timer Play/Pause/Stop unchanged. Hourly: Log / Switch Tag / Open Grid + tap payload `hourly:H:YYYY-MM-DD` → `AppNavigationController` (A3/A4). Separate channel `hourly_tracker` / ID 1002 (A20/A5). Shade/cold-start QA pending. |
+| Persistent 1-tap notification actions | **Partial (code)** / device QA pending | Timer Play/Pause/Stop unchanged. Hourly shade actions (`postHourlyNotification`): Log / Switch Tag / Open Grid open the app and show `HourlyLogDialog` / switch Tracker tab (YAGNI; not an instant one-tap write). DESIGN ongoing 1-tap log deferred → **A21**. Separate channel `hourly_tracker` / ID 1002 (A20/A5). Shade/cold-start QA pending. |
 | `fl_chart` analytics | Not started | Not in deps; custom UI instead |
 | Superpowers path | In progress | `docs/superpowers/` (+ Android improvements list + parity plan) |
 | Agent entry polish | In progress | `AGENTS.md` light pass + README pointer (Approach 1) |
 
 ## Top open product gaps (next plan)
 
-1. **Android device QA gate** - install from HEAD (not `v1.2.0+1`); A0 tabs, A2 battery tile, A1/A19 alarms (Doze/kill/reboot), A3/A4 shade actions and tap routing, A5 dual notification coexistence.
+1. **Android device QA gate** - install from HEAD (not `v1.2.0+1`); A0 tabs, A2 battery tile, A1/A19 alarms (Doze/kill/reboot), A3/A4 shade actions and tap routing (incl. tap hourly while a work lap is running), A5 dual notification coexistence.
 2. **Quiet hours product gaps** - auto-`Resting` logs (A6); honor `enableQuietHours` in missed-hours scan (A7).
-3. **Android polish** - bootstrap battery/notification prompts (A8), background chime reliability (A9), FGS fallback actions (A10).
+3. **Android polish** - bootstrap battery/notification prompts (A8), background chime reliability (A9), FGS fallback actions (A10); true one-tap hourly write (A21); Tracker phone-width overflow (A22).
 4. **Analytics presentation** - confirm DESIGN intent vs custom charts; only then consider `fl_chart` or keep custom.
 
 ## Explicitly deferred by Approach 1

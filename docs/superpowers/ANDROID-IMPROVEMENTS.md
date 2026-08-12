@@ -25,7 +25,7 @@
 | Pomodoro tick while process alive | `DesktopShell` starts `TimerTickService` on IO (including Android) |
 | Three-tab `HomeShell` | `lib/app/view/home_shell.dart` via `App` routes; Android uses bottom `NavigationBar` when width < 800. Widget test: `test/app/view/home_shell_test.dart`. Tagged `v1.2.0+1` APKs still lack tabs; rebuild from HEAD. |
 | Battery-opt Settings tile (A2) | `AndroidBatteryOptTile` in `settings_page.dart`; MethodChannel bridge in `android_notification_service.dart` |
-| Hourly notification actions + tap routing (A3/A4) | `TimerForegroundService.buildNotification` hourly branch: Log / Switch Tag / Open Grid; payload `hourly:H:YYYY-MM-DD` via `NotificationHelper` / `AppNavigationController` |
+| Hourly notification actions + tap routing (A3/A4) | `TimerForegroundService.postHourlyNotification`: Log / Switch Tag / Open Grid; payload `hourly:H:YYYY-MM-DD` via `NotificationHelper` / `AppNavigationController` (opens dialog / switches tab; not instant one-tap write) |
 | Exact hourly alarms + boot reschedule (A1/A19) | `HourlyAlarmScheduler.kt`, `HourlyAlarmReceiver.kt`, `BootReceiver.kt`; manifest `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` / `RECEIVE_BOOT_COMPLETED`; Dart `scheduleNextHourlyAlarm` |
 | Separate hourly channel + ID (A20/A5) | `HOURLY_NOTIFICATION_ID = 1002`, channel `hourly_tracker`; timer stays `1001` / `pomo_timer_channel_v2`; hourly is shade-only (no FGS replace) |
 | Android background architecture doc (A13) | `ARCHITECTURE.md` section 5 (FGS, alarms, notifications, battery) |
@@ -44,8 +44,8 @@
 | A0 | Three-tab shell (Focus / Tracker / Settings) | **Shipped (code)** | `HomeShell` routes in `app.dart`; `NavigationBar` when width < 800; `test/app/view/home_shell_test.dart` locks three destinations | **Pending:** install from HEAD (not `v1.2.0+1`); confirm bottom bar above gesture nav |
 | A1 | Exact hourly alarms (Doze / killed) | **Shipped (code)** | `HourlyAlarmScheduler.kt`, `HourlyAlarmReceiver.kt`; manifest permissions; `AndroidNotificationService.scheduleNextHourlyAlarm` | **Pending:** kill app + Doze on API 34/36; OEM battery savers |
 | A2 | Battery-optimization Settings UI | **Shipped (code)** | `AndroidBatteryOptTile`; `requestIgnoreBatteryOptimizations` / `isIgnoringBatteryOptimizations` bridge; `android_battery_opt_tile_test.dart` | **Pending:** Settings tap flow on physical device |
-| A3 | Hourly notification 1-tap actions | **Shipped (code)** | FGS hourly branch: `Log 60m Work`, `Switch Tag`, `Open Grid` in `TimerForegroundService.kt`; payload suffixes in `notification_helper_test.dart` | **Pending:** shade actions on locked screen / cold start |
-| A4 | Notification tap opens hourly log dialog | **Shipped (code)** | `hourly:H:YYYY-MM-DD` payload; `MainActivity` → `AppNavigationController`; `android_notification_service_test.dart` | **Pending:** cold launch from tap vs warm resume |
+| A3 | Hourly notification actions (open dialog) | **Shipped (code)** | `postHourlyNotification` actions: `Log 60m Work`, `Switch Tag`, `Open Grid` in `TimerForegroundService.kt`; payload suffixes in `notification_helper_test.dart`. Opens app prefilled / `HourlyLogDialog` (not DESIGN instant 1-tap write; see A21) | **Pending:** shade actions on locked screen / cold start |
+| A4 | Notification tap opens hourly log dialog | **Shipped (code)** | `hourly:H:YYYY-MM-DD` payload; content PendingIntent request code 13 + `pomo://hourly/...` URI; `MainActivity` → `AppNavigationController`; `android_notification_service_test.dart` | **Pending:** cold launch from tap vs warm resume; tap while work lap running |
 | A5 | Reliable hourly / tracker FGS strategy | **Shipped (code)** | Separate IDs/channels (1001 timer FGS vs 1002 hourly shade); hourly never `startForeground`; `START_NOT_STICKY` timer policy documented in `ARCHITECTURE.md` | **Pending:** timer + hourly both active; FGS fallback (D5) path |
 | A13 | Document Android background architecture | **Shipped (code)** | `ARCHITECTURE.md` section 5 | N/A (docs) |
 | A19 | Boot-complete reschedule | **Shipped (code)** | `BootReceiver.kt` → `HourlyAlarmScheduler.scheduleNextHour` | **Pending:** reboot + tracker enabled |
@@ -67,7 +67,7 @@ _No P0 Android parity items remain open in code. Next work is device QA for the 
 | A7 | Honor `enableQuietHours` in missed-hours scan | P1 | Reliability | `MissedTrackingView._isSleepHour` always applies window; never reads `Prefs.enableQuietHours` | Turning quiet hours off still hides those hours from “missed,” which is wrong. | Gate `_isSleepHour` on `Prefs.enableQuietHours`. |
 | A8 | Prompt battery-opt / notification status at bootstrap (Android) | P1 | Android parity | DESIGN success #2: prompt if denied; today only POST_NOTIFICATIONS on `onCreate`; battery opt-in is Settings-only (A2 shipped) | Users who deny once may miss the Settings tile. Soft prompt on first tracker enable reduces silent failure. | After `enableTimeTracker` or first launch on Android, check channel + show rationale dialog linking to Settings. |
 | A9 | Background audio for hourly chime | P1 | Reliability | `HookHelper` plays `digital_beep.wav` via `AudioPlayer` in Dart; DESIGN mentions `pop.aac`; no audio focus / short WakeLock around chime | When process is restricted, chime may be silent even if a notification posts. | Play via notification sound / channel attributes, or brief audio focus + WakeLock in the alarm callback. Align asset with DESIGN (`pop.aac`) if desired. |
-| A10 | FGS fallback notification lacks actions | P1 | Reliability | `postFallbackNotification` in `TimerForegroundService.kt` (D5 path): ongoing notify, no action buttons | On Android 16 background-start denial, user gets a mute tile without 1-tap actions. | Mirror timer/hourly actions on the fallback builder; document when fallback is expected. |
+| A10 | FGS fallback notification lacks actions | P1 | Reliability | `postTimerFallbackNotification` in `TimerForegroundService.kt` (D5 path): ongoing notify, no action buttons | On Android 16 background-start denial, user gets a mute tile without 1-tap actions. | Mirror timer/hourly actions on the fallback builder; document when fallback is expected. |
 | A11 | Custom small icon for notifications | P2 | DX | Uses `android.R.drawable.ic_lock_idle_alarm` | System icon looks generic; Play / OEM policies often expect a monochrome app icon. | Add white silhouette drawable and set `setSmallIcon`. |
 | A12 | Instrument / integration tests for Android notify path | P1 | DX | Unit tests cover `NotificationHelper`, `AndroidNotificationService`, battery tile, `HomeShell`; **no** on-device integration suite | Regression risk on the highest-value Android surface. | Add MethodChannel fake unit tests + a short device QA checklist (API 34/36) in `docs/superpowers/`. |
 
@@ -82,6 +82,8 @@ _No P0 Android parity items remain open in code. Next work is device QA for the 
 | A16 | `pendingTimeLogs` → sqflite | P2 | Product | `TODOS.md` scalability note | Only if offline queue grows large. | Monitor queue size; migrate when threshold hit. |
 | A17 | Unused `permission_handler` cleanup or real use | P2 | DX | In `pubspec.yaml`, no `lib/` imports; A2 uses MethodChannel only | Dead weight unless used for A8. | Use in bootstrap (A8) or remove. |
 | A18 | Android deep links / App Links | P2 | Product | Manifest has MAIN/LAUNCHER only; PWA has `/focus` routes | Optional share-to-log / Notion deep links. | Spec only if a concrete mobile deep-link use case appears. |
+| A21 | True one-tap hourly log from notification | P1 | Product | DESIGN criterion 1 / persistent ongoing tile; A3 ships dialog-open YAGNI | Shade actions still require app UI to confirm the log. | BroadcastReceiver / direct Prefs write path with undo; optional ongoing hourly tile. |
+| A22 | Tracker phone-width RenderFlex overflow | P1 | UI | `HourlyTrackerView` overflows at 390px (`:210`, `:510`, `:608`); HomeShell test drains overflows | Tracker tab broken on typical phone widths; contradicts three-tab parity claim visually. | Reflow / Flexible / scroll the grid and summary rows; add a sized widget test that fails on overflow. |
 
 ---
 
@@ -94,7 +96,7 @@ _No P0 Android parity items remain open in code. Next work is device QA for the 
 | Quiet hours gating | Yes | Yes (Dart loop) | Yes (Dart + native mirror at alarm fire) | |
 | Battery opt request UI | N/A | N/A | **Shipped (code)** Settings tile; device QA pending | A2 |
 | Persistent timer notify + actions | Menu bar | Document PiP | Yes (Play/Pause/Stop) | |
-| Persistent hourly 1-tap log actions | Tap opens dialog | Tap depends on SW | **Shipped (code)** actions + tap; device QA pending | A3/A4 |
+| Persistent hourly 1-tap log actions | Tap opens dialog | Tap depends on SW | **Shipped (code)** actions open dialog / switch tab; device QA pending. Instant one-tap write deferred (A21) | A3/A4 |
 | Notion / tags / missed hours | Yes | Yes | Yes | Shared Dart |
 | Overlay / menu bar / login item | Yes | PiP analog | N/A | Not gaps |
 

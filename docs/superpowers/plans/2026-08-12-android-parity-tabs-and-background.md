@@ -132,6 +132,7 @@ Confirm:
 1. Bottom bar shows Focus Timer | Hourly Tracker | Settings.
 2. Tapping each tab swaps content and preserves state via `IndexedStack`.
 3. System gesture nav does not fully obscure the bar (if obscured, wrap `NavigationBar` with `SafeArea` in `home_shell.dart`).
+4. **C1 regression:** with a work lap running, trigger/wait for the hourly notification and tap it (expect Tracker + `HourlyLogDialog`). Also tap the timer tile right after an hourly post and confirm it does **not** open the hourly dialog.
 
 Root-cause note for agents: tagged `v1.2.0+1` routes `/` → `TimerPage` only. Missing tabs on a device almost always means a stale APK.
 
