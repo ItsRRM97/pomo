@@ -57,6 +57,8 @@
 
 _No P0 Android parity items remain open in code. Next work is device QA for the rows above, then Should improve (A6-A10)._
 
+**Host QA (2026-08-12):** `docs/superpowers/qa-reports/2026-08-12-android-parity-a0-a5.md` - no device/AVD on CI Mac; static/unit PASS for A0–A5 paths; **A22** RenderFlex FAIL reproduced at 390px; Doze/force-stop/reboot still open.
+
 ---
 
 ## Should improve

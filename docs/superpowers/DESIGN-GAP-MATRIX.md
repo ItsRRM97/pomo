@@ -1,10 +1,11 @@
 # DESIGN vs shipped gap matrix
 
 **Baseline product design:** `DESIGN.md` (approved 2026-07-13)  
-**Last process update:** 2026-08-12 (Android A0-A5 parity plan shipped in code; device QA pending)  
+**Last process update:** 2026-08-12 (Android A0-A5 parity plan shipped in code; host QA report filed; device QA still blocked)  
 **How to use:** Prefer OPEN / Partial rows for the next writing-plans cycle. Do not treat this file as a substitute for `DESIGN.md`.  
 **Android detail:** `docs/superpowers/ANDROID-IMPROVEMENTS.md` (full prioritized backlog + what already works).  
-**Active plan:** `docs/superpowers/plans/2026-08-12-android-parity-tabs-and-background.md` (code complete; device QA gate open)
+**Active plan:** `docs/superpowers/plans/2026-08-12-android-parity-tabs-and-background.md` (code complete; device QA gate open)  
+**QA report:** `docs/superpowers/qa-reports/2026-08-12-android-parity-a0-a5.md` (no device/AVD; A22 FAIL reproduced; A0–A5 static/unit PASS)
 
 | Item | Status | Reality / notes |
 |------|--------|-----------------|
@@ -22,7 +23,7 @@
 
 ## Top open product gaps (next plan)
 
-1. **Android device QA gate** - install from HEAD (not `v1.2.0+1`); A0 tabs, A2 battery tile, A1/A19 alarms (Doze/kill/reboot), A3/A4 shade actions and tap routing (incl. tap hourly while a work lap is running), A5 dual notification coexistence.
+1. **Android device QA gate** - install from HEAD (not `v1.2.0+1`); A0 tabs, A2 battery tile, A1/A19 alarms (Doze/kill/reboot), A3/A4 shade actions and tap routing (incl. tap hourly while a work lap is running), A5 dual notification coexistence. Host report: `qa-reports/2026-08-12-android-parity-a0-a5.md` (device still required).
 2. **Quiet hours product gaps** - auto-`Resting` logs (A6); honor `enableQuietHours` in missed-hours scan (A7).
 3. **Android polish** - bootstrap battery/notification prompts (A8), background chime reliability (A9), FGS fallback actions (A10); true one-tap hourly write (A21); Tracker phone-width overflow (A22).
 4. **Analytics presentation** - confirm DESIGN intent vs custom charts; only then consider `fl_chart` or keep custom.
