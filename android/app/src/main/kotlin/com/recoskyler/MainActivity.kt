@@ -25,6 +25,17 @@ class MainActivity : FlutterActivity() {
     /// Cold-start safe store; Dart pulls via [getPendingNotificationPayload].
     private var pendingNotificationPayload: String? = null
 
+    companion object {
+        @Volatile
+        private var liveChannel: MethodChannel? = null
+
+        fun notifyDartNotificationTap(payload: String) {
+            Handler(Looper.getMainLooper()).post {
+                liveChannel?.invokeMethod("onNotificationTap", payload)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         captureNotificationPayload(intent)
@@ -74,6 +85,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         captureNotificationPayload(intent)
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        liveChannel = methodChannel
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "requestPermission" -> {
@@ -114,6 +126,10 @@ class MainActivity : FlutterActivity() {
                     val payload = pendingNotificationPayload
                     pendingNotificationPayload = null
                     result.success(payload)
+                }
+                "getPendingInstantHourlyWrites" -> {
+                    val pending = HourlyAlarmScheduler.drainPendingInstantWrites(this)
+                    result.success(pending)
                 }
                 "startForeground" -> {
                     checkAndRequestNotificationPermission()
@@ -192,6 +208,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         TimerForegroundService.actionListener = null
+        if (liveChannel === methodChannel) {
+            liveChannel = null
+        }
         methodChannel?.setMethodCallHandler(null)
         super.onDestroy()
     }

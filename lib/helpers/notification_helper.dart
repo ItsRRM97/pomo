@@ -176,6 +176,7 @@ mixin NotificationHelper {
       }
       switch (parts[3]) {
         case 'log_work':
+          return HourlyInstantWriteAction(hour: hour, date: date);
         case 'switch_tag':
           return HourlyLogAction(hour: hour, date: date);
         case 'open_grid':
@@ -194,6 +195,14 @@ mixin NotificationHelper {
 /// Result of parsing a notification tap payload.
 sealed class NotificationAction {
   const NotificationAction();
+}
+
+/// Instantly persist a 60-minute Work log for [hour] on [date] (A21).
+final class HourlyInstantWriteAction extends NotificationAction {
+  const HourlyInstantWriteAction({required this.hour, required this.date});
+
+  final int hour;
+  final DateTime date;
 }
 
 /// Open the tracker and prompt logging for [hour] on [date].

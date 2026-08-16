@@ -26,11 +26,11 @@
                 android:value="pomodoro_timer_countdown" />
         </service>
         <receiver
-            android:name=".HourlyAlarmReceiver"
+            android:name=".HourlyLogActionReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.recoskyler.pomo.ACTION_HOURLY_ALARM" />
+                <action android:name="com.recoskyler.pomo.ACTION_HOURLY_INSTANT_WRITE" />
             </intent-filter>
         </receiver>
         <receiver

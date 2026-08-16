@@ -193,6 +193,18 @@ class TimerForegroundService : Service() {
             requestCode: Int,
         ): PendingIntent {
             val actionPayload = "$basePayload:$action"
+            if (action == "log_work") {
+                val broadcast = Intent(context, HourlyLogActionReceiver::class.java).apply {
+                    this.action = HourlyLogActionReceiver.ACTION
+                    putExtra(HourlyLogActionReceiver.EXTRA_PAYLOAD, actionPayload)
+                }
+                return PendingIntent.getBroadcast(
+                    context,
+                    requestCode,
+                    broadcast,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            }
             val openIntent = Intent(context, MainActivity::class.java).apply {
                 this.action = "com.recoskyler.pomo.ACTION_HOURLY_$action"
                 data = Uri.parse("pomo://hourly/$actionPayload")

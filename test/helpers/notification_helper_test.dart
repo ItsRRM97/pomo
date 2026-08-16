@@ -210,7 +210,7 @@ void main() {
     test('parsePayload accepts hourly action suffixes', () {
       expect(
         NotificationHelper.parsePayload('hourly:14:2026-08-12:log_work'),
-        isA<HourlyLogAction>(),
+        isA<HourlyInstantWriteAction>(),
       );
       expect(
         NotificationHelper.parsePayload('hourly:14:2026-08-12:switch_tag'),
@@ -225,7 +225,7 @@ void main() {
     test('hourly action payloads preserve hour and date', () {
       final logWork = NotificationHelper.parsePayload(
         'hourly:14:2026-08-12:log_work',
-      )! as HourlyLogAction;
+      )! as HourlyInstantWriteAction;
       expect(logWork.hour, 14);
       expect(logWork.date, DateTime(2026, 8, 12));
 

@@ -30,7 +30,7 @@ void main() {
         AndroidNotificationService.actionFromNotificationTap(
           'hourly:14:2026-08-12:log_work',
         ),
-        isA<HourlyLogAction>(),
+        isA<HourlyInstantWriteAction>(),
       );
       expect(
         AndroidNotificationService.actionFromNotificationTap(
@@ -95,6 +95,25 @@ void main() {
       final action =
           await AndroidNotificationService.actionFromPendingPull(channel);
       expect(action, isNull);
+    });
+
+    test('pullPendingInstantHourlyWrites drains queued log_work payloads',
+        () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        channelCalls.add(call.method);
+        if (call.method == 'getPendingInstantHourlyWrites') {
+          return ['hourly:14:2026-08-12:log_work'];
+        }
+        return null;
+      });
+
+      final payloads =
+          await AndroidNotificationService.pullPendingInstantHourlyWrites(
+        channel,
+      );
+      expect(payloads, ['hourly:14:2026-08-12:log_work']);
+      expect(channelCalls, contains('getPendingInstantHourlyWrites'));
     });
   });
 

@@ -32,6 +32,7 @@ object HourlyAlarmScheduler {
     private const val KEY_QUIET_END = "quiet_hours_end"
     /** Last posted completed block as `hour:yyyy-MM-dd` (dedupe alarm + Dart backup). */
     private const val KEY_LAST_POSTED_BLOCK = "last_posted_hourly_block"
+    private const val KEY_PENDING_INSTANT_WRITES = "pending_instant_hourly_writes"
 
     fun syncTrackerPrefs(
         context: Context,
@@ -222,6 +223,22 @@ object HourlyAlarmScheduler {
     }
 
     fun hourlyPayload(hour: Int, dateYmd: String): String = "hourly:$hour:$dateYmd"
+
+    fun enqueuePendingInstantWrite(context: Context, payload: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = prefs.getStringSet(KEY_PENDING_INSTANT_WRITES, emptySet())?.toMutableSet()
+            ?: mutableSetOf()
+        current.add(payload)
+        prefs.edit().putStringSet(KEY_PENDING_INSTANT_WRITES, current).apply()
+    }
+
+    fun drainPendingInstantWrites(context: Context): List<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = prefs.getStringSet(KEY_PENDING_INSTANT_WRITES, emptySet())?.toList()
+            ?: emptyList()
+        prefs.edit().remove(KEY_PENDING_INSTANT_WRITES).apply()
+        return current
+    }
 
     fun hourlyBody(hour: Int): String {
         val start = hour.toString().padStart(2, '0')

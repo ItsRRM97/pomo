@@ -36,6 +36,20 @@ class AndroidNotificationService {
     return channel.invokeMethod<String>('getPendingNotificationPayload');
   }
 
+  /// Pulls queued one-tap shade writes stored natively when Dart was dead.
+  @visibleForTesting
+  static Future<List<String>> pullPendingInstantHourlyWrites(
+    MethodChannel channel,
+  ) async {
+    final raw = await channel.invokeMethod<List<dynamic>>(
+      'getPendingInstantHourlyWrites',
+    );
+    if (raw == null) {
+      return const [];
+    }
+    return raw.whereType<String>().toList();
+  }
+
   /// Pulls pending payload and parses it (used by init + unit tests).
   @visibleForTesting
   static Future<NotificationAction?> actionFromPendingPull(
@@ -98,6 +112,7 @@ class AndroidNotificationService {
     // Cold start: pull after the handler is registered (do not rely on a
     // fixed native delay alone).
     unawaited(_consumePendingLaunchPayload());
+    unawaited(_consumePendingInstantWrites());
   }
 
   Future<void> _routeNotificationPayload(Object? arguments) async {
@@ -114,6 +129,17 @@ class AndroidNotificationService {
       // Give navigator / HomeShell a beat on cold start before dialog.
       await Future<void>.delayed(const Duration(milliseconds: 500));
       await _routeNotificationPayload(payload);
+    } catch (_) {
+      // Ignore channel exceptions
+    }
+  }
+
+  Future<void> _consumePendingInstantWrites() async {
+    try {
+      final payloads = await pullPendingInstantHourlyWrites(_channel);
+      for (final payload in payloads) {
+        await _routeNotificationPayload(payload);
+      }
     } catch (_) {
       // Ignore channel exceptions
     }

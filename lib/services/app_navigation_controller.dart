@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:pomo/app/view/app.dart';
+import 'package:pomo/helpers/hourly_log_writer.dart';
 import 'package:pomo/helpers/notification_helper.dart';
+import 'package:pomo/helpers/quiet_hours_helper.dart';
+import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/pages/tracker/view/hourly_log_dialog.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -11,6 +14,11 @@ class AppNavigationController {
   AppNavigationController._();
 
   static final AppNavigationController instance = AppNavigationController._();
+
+  /// Default tag for shade "Log 60m Work" (DESIGN one-tap check-in).
+  static TrackerTag get instantWorkTag => TrackerTag.defaults.firstWhere(
+        (tag) => tag.id == 'tag_deep_work',
+      );
 
   final ValueNotifier<int?> tabIndex = ValueNotifier<int?>(null);
 
@@ -25,11 +33,60 @@ class AppNavigationController {
         tabIndex.value = 0;
       case OpenTrackerAction():
         tabIndex.value = 1;
+      case HourlyInstantWriteAction(:final hour, :final date):
+        tabIndex.value = 1;
+        await _writeInstantHourlyLog(hour: hour, date: date);
       case HourlyLogAction(:final hour, :final date):
         tabIndex.value = 1;
         // Wait a beat so HomeShell can switch tabs before the dialog opens.
         await Future<void>.delayed(const Duration(milliseconds: 250));
         await _openHourlyLogDialog(hour: hour, date: date);
+    }
+  }
+
+  Future<void> _writeInstantHourlyLog({
+    required int hour,
+    required DateTime date,
+  }) async {
+    final dateStr = QuietHoursHelper.dateStr(date);
+    final alreadyLogged = Prefs.hourlyLogs.any(
+      (log) => log.dateStr == dateStr && log.hour == hour,
+    );
+    if (alreadyLogged) {
+      return;
+    }
+
+    final log = HourlyLogWriter.build(
+      date: date,
+      hour: hour,
+      tag: instantWorkTag,
+    );
+    await HourlyLogWriter.persist([log]);
+
+    try {
+      final context = App.navigatorKey.currentContext;
+      if (context == null || !context.mounted) {
+        return;
+      }
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Logged ${log.tagName} for $dateStr '
+            '${hour.toString().padLeft(2, '0')}:00',
+          ),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              Prefs.hourlyLogs = Prefs.hourlyLogs
+                  .where((existing) => existing.id != log.id)
+                  .toList();
+            },
+          ),
+        ),
+      );
+    } catch (_) {
+      // Unit tests may run without a WidgetsBinding / navigator.
     }
   }
 
