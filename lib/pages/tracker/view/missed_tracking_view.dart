@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomo/helpers/quiet_hours_helper.dart';
 import 'package:pomo/pages/tracker/view/hourly_log_dialog.dart';
 import 'package:pomo/singletons/prefs.dart';
 
@@ -38,8 +39,14 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
 
       final maxHour = (d == 0) ? now.hour : 24;
       for (var h = 0; h < maxHour; h++) {
-        // Skip user configured quiet hours if they fall in sleep window
-        if (_isSleepHour(h)) continue;
+        if (QuietHoursHelper.isQuietHourIndex(
+          hour: h,
+          enableQuietHours: Prefs.enableQuietHours,
+          start: Prefs.quietHoursStart,
+          end: Prefs.quietHoursEnd,
+        )) {
+          continue;
+        }
 
         final key = '${dateStr}_$h';
         if (!loggedSet.contains(key)) {
@@ -51,22 +58,6 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
     setState(() {
       _missedBlocks = missed;
     });
-  }
-
-  bool _isSleepHour(int h) {
-    final quietStartStr = Prefs.quietHoursStart;
-    final quietEndStr = Prefs.quietHoursEnd;
-    try {
-      final startH = int.parse(quietStartStr.split(':')[0]);
-      final endH = int.parse(quietEndStr.split(':')[0]);
-      if (startH > endH) {
-        return h >= startH || h < endH;
-      } else {
-        return h >= startH && h < endH;
-      }
-    } catch (_) {
-      return false;
-    }
   }
 
   String _formatDateLabel(DateTime d) {
