@@ -56,7 +56,17 @@ class MainActivity : FlutterActivity() {
                 return false
             }
         }
-        return true
+        return areNotificationsEnabled()
+    }
+
+    private fun areNotificationsEnabled(): Boolean {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            ?: return true
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            manager.areNotificationsEnabled()
+        } else {
+            true
+        }
     }
 
     private fun captureNotificationPayload(intent: Intent?) {
@@ -91,6 +101,9 @@ class MainActivity : FlutterActivity() {
                 "requestPermission" -> {
                     val granted = checkAndRequestNotificationPermission()
                     result.success(granted)
+                }
+                "areNotificationsEnabled" -> {
+                    result.success(areNotificationsEnabled())
                 }
                 "isIgnoringBatteryOptimizations" -> {
                     val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager

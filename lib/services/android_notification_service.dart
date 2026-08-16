@@ -304,4 +304,25 @@ class AndroidNotificationService {
       return false;
     }
   }
+
+  Future<bool> areNotificationsEnabled() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    try {
+      final result =
+          await _channel.invokeMethod<bool>('areNotificationsEnabled');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> requestNotificationPermission() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    try {
+      final result = await _channel.invokeMethod<bool>('requestPermission');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 }
