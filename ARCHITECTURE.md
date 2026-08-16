@@ -102,19 +102,19 @@ Android uses a native MethodChannel (`com.recoskyler.pomo/timer_notification`) b
 - **Service**: `TimerForegroundService` (`SPECIAL_USE` on API 34+).
 - **Notification**: ID `TIMER_NOTIFICATION_ID = 1001`, channel `pomo_timer_channel_v2` (IMPORTANCE_DEFAULT), ongoing while a session is active (Play/Pause/Stop actions).
 - **Sticky policy**: `START_NOT_STICKY`. If the OS kills the service, it does not auto-restart without Dart session state (avoids a stale countdown tile). Dart restarts FGS on the next `updateTimerState` while a lap is non-zero / running.
-- **D5 guard**: `startForegroundService` failures (e.g. Android 16 background start denial) fall back to `NotificationManager.notify(1001)` without crashing.
+- **D5 guard**: `startForegroundService` failures (e.g. Android 16 background start denial) fall back to `NotificationManager.notify(1001)` with the same Play/Pause/Stop actions (A10).
 
 ### B. Hourly check-in shade notification (not FGS)
-- **IDs**: `HOURLY_NOTIFICATION_ID = 1002`, channel `hourly_tracker` (IMPORTANCE_HIGH). Distinct from the timer tile so both can appear together.
+- **IDs**: `HOURLY_NOTIFICATION_ID = 1002`, channel `hourly_tracker_v2` (IMPORTANCE_HIGH, `digital_beep`). Distinct from the timer tile so both can appear together.
 - **Paths that post without a Dart isolate**:
-  1. `HourlyAlarmReceiver` (exact `AlarmManager` fire after A1/A19) → `TimerForegroundService.postHourlyNotification`
+  1. `HourlyAlarmReceiver` (exact `AlarmManager` fire after A1/A19) → WakeLock + `digital_beep` + `TimerForegroundService.postHourlyNotification`
   2. In-process Dart loop (`HookHelper`) → channel `showHourlyNotification` (backup when the app is warm)
 - Hourly is **shade-only** (auto-cancel, not ongoing FGS). It never calls `startForeground` for ID 1002, so it cannot replace the timer FGS notification.
-- Tap / actions carry `hourly:H:YYYY-MM-DD` (+ optional `:log_work` / `:switch_tag` / `:open_grid`) into `MainActivity` → `AppNavigationController`.
+- Tap / actions carry `hourly:H:YYYY-MM-DD` (+ optional `:log_work` / `:switch_tag` / `:open_grid`) into `MainActivity` → `AppNavigationController`. `:log_work` writes immediately (A21); `:switch_tag` still opens the dialog.
 
 ### C. Exact alarms & battery
-- `HourlyAlarmScheduler` + `BootReceiver` schedule/reschedule `RTC_WAKEUP` boundaries; quiet hours are mirrored into native prefs and gated at fire time.
-- Battery-optimization opt-in lives on the same MethodChannel (`isIgnoringBatteryOptimizations` / `requestIgnoreBatteryOptimizations`) and Settings UI (A2).
+- `HourlyAlarmScheduler` + `BootReceiver` schedule/reschedule `RTC_WAKEUP` boundaries; quiet hours are mirrored into native prefs and gated at fire time. Dart reconciles missing quiet-hour blocks as Resting (`tag_sleep`).
+- Battery-optimization opt-in lives on the same MethodChannel (`isIgnoringBatteryOptimizations` / `requestIgnoreBatteryOptimizations`), Settings UI (A2), and a tracker soft prompt (A8).
 
 ---
 
