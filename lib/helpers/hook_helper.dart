@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logger/web.dart';
+import 'package:pomo/helpers/hourly_log_writer.dart';
 import 'package:pomo/helpers/notification_helper.dart';
 import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/services/android_notification_service.dart';
@@ -113,6 +114,7 @@ mixin HookHelper {
           end: Prefs.quietHoursEnd,
           now: now,
         )) {
+      unawaited(HourlyLogWriter.reconcileResting(now: now));
       return;
     }
 

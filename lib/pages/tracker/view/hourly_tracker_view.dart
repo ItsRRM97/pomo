@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomo/helpers/hourly_log_writer.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/pages/tracker/view/hourly_log_dialog.dart';
 import 'package:pomo/services/notion_service.dart';
@@ -28,6 +29,12 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
   void _loadLogs() {
     setState(() {
       _allLogs = Prefs.hourlyLogs;
+    });
+    HourlyLogWriter.reconcileResting().then((_) {
+      if (!mounted) return;
+      setState(() {
+        _allLogs = Prefs.hourlyLogs;
+      });
     });
     // Sync the tag registry before pulling logs so cross-device tag IDs can be
     // recovered by name while the remote rows are decoded.
@@ -714,20 +721,22 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                       ),
                                     ),
                                     child: Row(
-                                      mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
                                           log.tagIcon,
                                           style: const TextStyle(fontSize: 15),
                                         ),
                                         const SizedBox(width: 6),
-                                        Text(
-                                          '${log.tagName} '
-                                          '(${log.durationMinutes}m)',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13,
-                                            color: tagColor,
+                                        Expanded(
+                                          child: Text(
+                                            '${log.tagName} '
+                                            '(${log.durationMinutes}m)',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                              color: tagColor,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],

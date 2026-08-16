@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pomo/helpers/hourly_log_writer.dart';
 import 'package:pomo/helpers/quiet_hours_helper.dart';
 import 'package:pomo/pages/tracker/view/hourly_log_dialog.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -22,6 +23,14 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
   }
 
   void _scanMissedBlocks() {
+    HourlyLogWriter.reconcileResting().then((_) {
+      if (!mounted) return;
+      _scanMissedBlocksSync();
+    });
+    _scanMissedBlocksSync();
+  }
+
+  void _scanMissedBlocksSync() {
     final now = DateTime.now();
     final allLogs = Prefs.hourlyLogs;
     final loggedSet = <String>{};
