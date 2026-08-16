@@ -72,7 +72,7 @@ class TimerForegroundService : Service() {
                 } catch (e: Exception) {
                     // D5: Android 16 may throw ForegroundServiceStartNotAllowedException
                     // when starting from the background. Fall back to a plain notification.
-                    postTimerFallbackNotification(context, title, text)
+                    postTimerFallbackNotification(context, title, text, isRunning)
                 }
             } else {
                 context.startService(intent)
@@ -159,6 +159,7 @@ class TimerForegroundService : Service() {
             context: Context,
             title: String,
             text: String,
+            isRunning: Boolean,
         ) {
             ensureChannels(context)
             val openAppIntent = Intent(context, MainActivity::class.java).apply {
@@ -168,6 +169,26 @@ class TimerForegroundService : Service() {
                 context, 0, openAppIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            val toggleActionIntent = Intent(context, TimerForegroundService::class.java).apply {
+                action = if (isRunning) ACTION_PAUSE else ACTION_PLAY
+            }
+            val togglePendingIntent = PendingIntent.getService(
+                context, 1, toggleActionIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val stopActionIntent = Intent(context, TimerForegroundService::class.java).apply {
+                action = ACTION_STOP
+            }
+            val stopPendingIntent = PendingIntent.getService(
+                context, 2, stopActionIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val toggleActionTitle = if (isRunning) "Pause" else "Play"
+            val toggleActionIcon = if (isRunning) {
+                android.R.drawable.ic_media_pause
+            } else {
+                android.R.drawable.ic_media_play
+            }
             val coffeeColor = Color.parseColor("#8D6E63")
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(text)
@@ -181,6 +202,8 @@ class TimerForegroundService : Service() {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setSubText("Focus Timer")
                 .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+                .addAction(toggleActionIcon, toggleActionTitle, togglePendingIntent)
+                .addAction(android.R.drawable.ic_delete, "Stop", stopPendingIntent)
             val manager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             manager?.notify(TIMER_NOTIFICATION_ID, builder.build())
