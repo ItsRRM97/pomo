@@ -207,8 +207,11 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   Text(
                     'Activity Analytics',
@@ -217,27 +220,28 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                   ),
                   DropdownButton<String>(
                     value: _timeframe,
+                    isDense: true,
                     underline: const SizedBox(),
                     items: const [
                       DropdownMenuItem(
                         value: 'daily',
-                        child: Text('Daily (24h Stats)'),
+                        child: Text('Daily'),
                       ),
                       DropdownMenuItem(
                         value: 'weekly',
-                        child: Text('Weekly (7 Days)'),
+                        child: Text('Weekly'),
                       ),
                       DropdownMenuItem(
                         value: '14d',
-                        child: Text('14-Day Stats'),
+                        child: Text('14 days'),
                       ),
                       DropdownMenuItem(
                         value: 'monthly',
-                        child: Text('Monthly (30 Days)'),
+                        child: Text('Monthly'),
                       ),
                       DropdownMenuItem(
                         value: 'quarterly',
-                        child: Text('Quarterly (90 Days)'),
+                        child: Text('Quarterly'),
                       ),
                     ],
                     onChanged: (val) {
@@ -501,27 +505,28 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
         // Date Picker Bar for 24-Hour Grid
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.view_timeline_outlined, size: 20),
                   const SizedBox(width: 8),
-                  Text(
-                    '24-Hour Grid: ${_formatDateLabel(_selectedDate)}',
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      '24-Hour Grid: ${_formatDateLabel(_selectedDate)}',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
               Wrap(
+                alignment: WrapAlignment.end,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: 4,
+                runSpacing: 4,
                 children: [
                   TextButton.icon(
                     onPressed: () => _openLogDialog(0, null),
@@ -531,35 +536,30 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                       visualDensity: VisualDensity.compact,
                     ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, size: 20),
-                        onPressed: () => setState(
-                          () => _selectedDate =
-                              _selectedDate.subtract(const Duration(days: 1)),
-                        ),
-                        tooltip: 'Previous Day',
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.calendar_today, size: 18),
-                        onPressed: _pickDate,
-                        tooltip: 'Pick Date',
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, size: 20),
-                        onPressed: _selectedDate.day == DateTime.now().day &&
-                                _selectedDate.month == DateTime.now().month &&
-                                _selectedDate.year == DateTime.now().year
-                            ? null
-                            : () => setState(
-                                  () => _selectedDate = _selectedDate
-                                      .add(const Duration(days: 1)),
-                                ),
-                        tooltip: 'Next Day',
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left, size: 20),
+                    onPressed: () => setState(
+                      () => _selectedDate =
+                          _selectedDate.subtract(const Duration(days: 1)),
+                    ),
+                    tooltip: 'Previous Day',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today, size: 18),
+                    onPressed: _pickDate,
+                    tooltip: 'Pick Date',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right, size: 20),
+                    onPressed: _selectedDate.day == DateTime.now().day &&
+                            _selectedDate.month == DateTime.now().month &&
+                            _selectedDate.year == DateTime.now().year
+                        ? null
+                        : () => setState(
+                              () => _selectedDate =
+                                  _selectedDate.add(const Duration(days: 1)),
+                            ),
+                    tooltip: 'Next Day',
                   ),
                 ],
               ),
@@ -606,43 +606,41 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                         vertical: 12,
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 44,
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  '${hour.toString().padLeft(2, '0')}:00',
-                                  style: TextStyle(
-                                    fontWeight: isCurrentHour
-                                        ? FontWeight.bold
-                                        : FontWeight.w500,
-                                    color: isCurrentHour
-                                        ? theme.colorScheme.primary
-                                        : theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
+                          Container(
+                            width: 44,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '${hour.toString().padLeft(2, '0')}:00',
+                              style: TextStyle(
+                                fontWeight: isCurrentHour
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: isCurrentHour
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurfaceVariant,
                               ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                Icons.add_circle_outline,
-                                size: 18,
-                                color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.add_circle_outline,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              isCurrentHour
+                                  ? 'Current Hour (Tap to Log)'
+                                  : 'Unlogged Hour Block',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                                fontSize: 13,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                isCurrentHour
-                                    ? 'Current Hour (Tap to Log)'
-                                    : 'Unlogged Hour Block',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                           Icon(
                             Icons.chevron_right,

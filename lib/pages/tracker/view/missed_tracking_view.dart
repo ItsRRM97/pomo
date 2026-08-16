@@ -115,8 +115,11 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           color:
               theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Text(
                 'Unlogged Time Blocks (${_missedBlocks.length})',
@@ -125,11 +128,12 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
               ),
               DropdownButton<int>(
                 value: _daysBack,
+                isDense: true,
                 underline: const SizedBox(),
                 items: const [
-                  DropdownMenuItem(value: 1, child: Text('Past 24h / Today')),
-                  DropdownMenuItem(value: 7, child: Text('Past 7 Days')),
-                  DropdownMenuItem(value: 14, child: Text('Past 14 Days')),
+                  DropdownMenuItem(value: 1, child: Text('Today')),
+                  DropdownMenuItem(value: 7, child: Text('7 days')),
+                  DropdownMenuItem(value: 14, child: Text('14 days')),
                 ],
                 onChanged: (val) {
                   if (val != null) {
