@@ -61,7 +61,7 @@ class AndroidNotificationService {
 
   /// Arguments passed to native `showHourlyNotification` for a shade reminder.
   ///
-  /// Hourly uses notification ID 1002 / channel `hourly_tracker` and must not
+  /// Hourly uses notification ID 1002 / channel `hourly_tracker_v2` and must not
   /// start or replace the timer FGS (ID 1001).
   @visibleForTesting
   static Map<String, Object?> hourlyNotificationArgs({

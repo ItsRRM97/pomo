@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Color
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
@@ -30,7 +31,7 @@ class TimerForegroundService : Service() {
 
     companion object {
         const val CHANNEL_ID = "pomo_timer_channel_v2"
-        const val HOURLY_CHANNEL_ID = "hourly_tracker"
+        const val HOURLY_CHANNEL_ID = "hourly_tracker_v2"
         const val TIMER_NOTIFICATION_ID = 1001
         const val HOURLY_NOTIFICATION_ID = 1002
 
@@ -248,6 +249,7 @@ class TimerForegroundService : Service() {
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
                     ?: return
             manager.deleteNotificationChannel("pomo_timer_channel")
+            manager.deleteNotificationChannel("hourly_tracker")
             val timerChannel = NotificationChannel(
                 CHANNEL_ID,
                 "Focus Timer",
@@ -256,6 +258,13 @@ class TimerForegroundService : Service() {
                 description = "Shows active Focus Pomodoro countdown"
                 setShowBadge(true)
             }
+            val beepUri = Uri.parse(
+                "android.resource://${context.packageName}/${R.raw.digital_beep}",
+            )
+            val hourlyAttrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
             val hourlyChannel = NotificationChannel(
                 HOURLY_CHANNEL_ID,
                 "Hourly Tracker",
@@ -264,6 +273,7 @@ class TimerForegroundService : Service() {
                 description = "Hourly check-in reminders for time tracking"
                 setShowBadge(true)
                 enableVibration(true)
+                setSound(beepUri, hourlyAttrs)
             }
             manager.createNotificationChannel(timerChannel)
             manager.createNotificationChannel(hourlyChannel)
