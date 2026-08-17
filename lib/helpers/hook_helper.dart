@@ -114,7 +114,7 @@ mixin HookHelper {
           end: Prefs.quietHoursEnd,
           now: now,
         )) {
-      unawaited(HourlyLogWriter.reconcileResting(now: now));
+      unawaited(HourlyLogWriter.pullThenReconcileResting(now: now));
       return;
     }
 

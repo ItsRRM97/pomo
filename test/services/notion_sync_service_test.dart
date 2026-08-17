@@ -80,6 +80,71 @@ void main() {
       expect(current.single.durationMinutes, 60);
     });
 
+    test('user Work wins over newer auto-Resting for the same full hour', () {
+      final workAt = DateTime.utc(2026, 8, 16, 23, 5);
+      final logs = [
+        _log(
+          id: 'hlog_2026-08-16_23_tag_deep_work',
+          tagId: 'tag_deep_work',
+          minutes: 60,
+          loggedAt: workAt,
+        ).copyWith(
+          dateStr: '2026-08-16',
+          hour: 23,
+          tagName: 'Deep Work',
+        ),
+        _log(
+          id: 'hlog_2026-08-16_23_tag_sleep',
+          tagId: 'tag_sleep',
+          minutes: 60,
+          loggedAt: workAt.add(const Duration(hours: 11)),
+        ).copyWith(
+          dateStr: '2026-08-16',
+          hour: 23,
+          tagName: 'Sleep & Rest',
+          notes: 'Resting',
+        ),
+      ];
+
+      final current = NotionSyncService.currentHourlySlotRevision(logs);
+
+      expect(current, hasLength(1));
+      expect(current.single.tagId, 'tag_deep_work');
+    });
+
+    test('newer remote Work replaces local Resting in a combined slot', () {
+      final restingAt = DateTime.utc(2026, 8, 16, 23, 1);
+      final workAt = DateTime.utc(2026, 8, 16, 23, 30);
+      final logs = [
+        _log(
+          id: 'hlog_2026-08-16_23_tag_sleep',
+          tagId: 'tag_sleep',
+          minutes: 60,
+          loggedAt: restingAt,
+        ).copyWith(
+          dateStr: '2026-08-16',
+          hour: 23,
+          tagName: 'Sleep & Rest',
+          notes: 'Resting',
+        ),
+        _log(
+          id: 'hlog_2026-08-16_23_tag_deep_work',
+          tagId: 'tag_deep_work',
+          minutes: 60,
+          loggedAt: workAt,
+        ).copyWith(
+          dateStr: '2026-08-16',
+          hour: 23,
+          tagName: 'Deep Work',
+        ),
+      ];
+
+      final current = NotionSyncService.currentHourlySlotRevision(logs);
+
+      expect(current, hasLength(1));
+      expect(current.single.tagId, 'tag_deep_work');
+    });
+
     test('supports legacy multi-tag writes timestamped seconds apart', () {
       final latest = DateTime.utc(2026, 7, 19, 14, 30, 4);
       final logs = [

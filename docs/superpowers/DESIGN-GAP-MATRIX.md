@@ -11,7 +11,7 @@
 |------|--------|-----------------|
 | Nav shell | **Shipped (code)** / Partial: device QA pending | `HomeShell` 3 tabs (`home_shell.dart`, `test/app/view/home_shell_test.dart`). Tagged `v1.2.0+1` APKs still `/` → `TimerPage` only. Rebuild from HEAD (A0). |
 | Activity grid + missed hours | Shipped | Under `lib/pages/tracker/`; 390 dp overflow fixed (A22) |
-| Quiet hours | **Shipped (code)** | Settings + Dart gating; `QuietHoursHelper` honors `enableQuietHours` (A7); auto-`Resting` logs via `HourlyLogWriter.reconcileResting` (A6) |
+| Quiet hours | **Shipped (code)** | Settings + Dart gating; `QuietHoursHelper` honors `enableQuietHours` (A7); auto-`Resting` after `pullHourlyLogs` (A6); user Work wins vs auto-Resting |
 | `pendingTimeLogs` + tests | Shipped | Prefs queue; scalability note in `TODOS.md` (A16 Nice) |
 | Notion activity tags / sync | Shipped | Integration present |
 | Battery-opt Settings UI | **Shipped (code)** | `AndroidBatteryOptTile` (A2) plus tracker soft prompt (A8). Overnight OEM still residual. |

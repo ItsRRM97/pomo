@@ -31,12 +31,22 @@ class HourlyLogWriter {
   }
 
   /// Saves [logs] locally. Optionally queues Notion sync when enabled.
+  ///
+  /// Auto-Resting uses replace-slot semantics and never appends beside a
+  /// user tag. Resting is not synced to Notion here; callers should pull
+  /// first so only empty slots are filled.
   static Future<int> persist(
     Iterable<HourlyLog> logs, {
     bool syncToNotion = true,
   }) async {
     var count = 0;
     for (final log in logs) {
+      if (QuietHoursHelper.isAutoResting(log)) {
+        if (await _persistRestingIfSlotEmpty(log)) {
+          count++;
+        }
+        continue;
+      }
       await Prefs.saveHourlyLog(log);
       count++;
       if (syncToNotion &&
@@ -47,6 +57,23 @@ class HourlyLogWriter {
       }
     }
     return count;
+  }
+
+  static Future<bool> _persistRestingIfSlotEmpty(HourlyLog log) async {
+    final slot = Prefs.hourlyLogs
+        .where((row) => row.dateStr == log.dateStr && row.hour == log.hour)
+        .toList();
+    if (slot.any((row) => !QuietHoursHelper.isAutoResting(row))) {
+      return false;
+    }
+    await Prefs.replaceHourlyLogsForHour(log.dateStr, log.hour, [log]);
+    return true;
+  }
+
+  /// Pulls remote hourly logs, then fills remaining empty quiet-hour slots.
+  static Future<int> pullThenReconcileResting({DateTime? now}) async {
+    await NotionSyncService().pullHourlyLogs();
+    return reconcileResting(now: now);
   }
 
   /// Writes missing quiet-hour Resting logs for the recent lookback.
@@ -61,6 +88,6 @@ class HourlyLogWriter {
       start: Prefs.quietHoursStart,
       end: Prefs.quietHoursEnd,
     );
-    return persist(missing);
+    return persist(missing, syncToNotion: false);
   }
 }

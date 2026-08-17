@@ -116,4 +116,9 @@ class QuietHoursHelper {
     }
     return missing;
   }
+
+  /// Auto-written quiet-hour Resting row (`tag_sleep` and/or notes Resting).
+  static bool isAutoResting(HourlyLog log) {
+    return log.tagId == 'tag_sleep' || log.notes.trim() == 'Resting';
+  }
 }

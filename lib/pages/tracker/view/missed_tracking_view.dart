@@ -23,7 +23,7 @@ class _MissedTrackingViewState extends State<MissedTrackingView> {
   }
 
   void _scanMissedBlocks() {
-    HourlyLogWriter.reconcileResting().then((_) {
+    HourlyLogWriter.pullThenReconcileResting().then((_) {
       if (!mounted) return;
       _scanMissedBlocksSync();
     });

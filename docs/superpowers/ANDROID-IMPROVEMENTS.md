@@ -48,7 +48,7 @@
 | A3 | Hourly notification actions | **Shipped (code)** | `Log 60m Work` / `Switch Tag` / `Open Grid` in `TimerForegroundService.kt` | Shade actions on locked screen still residual |
 | A4 | Notification tap opens hourly log dialog | **Shipped (code)** | `hourly:H:YYYY-MM-DD` payload; `MainActivity` → `AppNavigationController` | Cold launch vs warm resume residual |
 | A5 | Reliable hourly / tracker FGS strategy | **Shipped (code)** | IDs/channels 1001 vs 1002; hourly never `startForeground` | Dual-tile coexistence confirmed on device 2026-08-17 |
-| A6 | Auto-mark quiet hours as `Resting` | **Shipped (code)** | `QuietHoursHelper.missingRestingLogs` + `HourlyLogWriter.reconcileResting`; `tag_sleep` / Sleep & Rest | Overnight reconcile residual |
+| A6 | Auto-mark quiet hours as `Resting` | **Shipped (code)** | `QuietHoursHelper.missingRestingLogs` + `HourlyLogWriter.reconcileResting`; pull-then-Resting; user Work wins slot vs auto-Resting | Overnight reconcile residual; Resting not auto-pushed to Notion |
 | A7 | Honor `enableQuietHours` in missed-hours scan | **Shipped (code)** | `QuietHoursHelper.isQuietHourIndex` gated on `Prefs.enableQuietHours` | N/A (Dart) |
 | A8 | Prompt battery-opt / notification status | **Shipped (code)** | `AndroidBackgroundPrompt` + `AndroidTrackerStatusPrompt` on tracker enable / Tracker shell | Host tests are not Android; dialog on-device residual |
 | A9 | Background audio for hourly chime | **Shipped (code)** | Channel `hourly_tracker_v2` + `R.raw.digital_beep`; `HourlyAlarmReceiver` WakeLock + audio focus | Chime under OEM restriction residual |

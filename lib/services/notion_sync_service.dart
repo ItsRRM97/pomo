@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
+import 'package:pomo/helpers/quiet_hours_helper.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/models/tracker_tag.dart';
@@ -333,10 +334,28 @@ class NotionSyncService {
   /// hour is allocated recovers older clients that timestamped each tag
   /// separately, while preventing two device writes from turning one hour
   /// into 120 minutes.
+  ///
+  /// When a user (non-`tag_sleep` / non-auto-Resting) row and an auto-Resting
+  /// row both claim a full hour, the user row wins even if Resting is newer.
   static List<HourlyLog> currentHourlySlotRevision(List<HourlyLog> logs) {
     if (logs.isEmpty) return [];
-    final sorted = List<HourlyLog>.from(logs)
-      ..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
+    var candidates = List<HourlyLog>.from(logs);
+    final hasUserFullHour = candidates.any(
+      (log) =>
+          !QuietHoursHelper.isAutoResting(log) &&
+          log.durationMinutes.clamp(0, 60) == 60,
+    );
+    final hasRestingFullHour = candidates.any(
+      (log) =>
+          QuietHoursHelper.isAutoResting(log) &&
+          log.durationMinutes.clamp(0, 60) == 60,
+    );
+    if (hasUserFullHour && hasRestingFullHour) {
+      candidates = candidates
+          .where((log) => !QuietHoursHelper.isAutoResting(log))
+          .toList();
+    }
+    final sorted = candidates..sort((a, b) => b.loggedAt.compareTo(a.loggedAt));
     final result = <HourlyLog>[];
     final selectedTags = <String>{};
     var allocatedMinutes = 0;
@@ -503,20 +522,29 @@ class NotionSyncService {
       var changed = 0;
 
       for (final entry in remoteBySlot.entries) {
-        if (pendingSlots.contains(entry.key)) {
+        final firstRemote = entry.value.first;
+        final existing = local
+            .where(
+              (log) =>
+                  log.dateStr == firstRemote.dateStr &&
+                  log.hour == firstRemote.hour,
+            )
+            .toList();
+        final remoteHasUser = entry.value.any(
+          (log) => !QuietHoursHelper.isAutoResting(log),
+        );
+        if (pendingSlots.contains(entry.key) && !remoteHasUser) {
           continue;
         }
 
-        final remoteRevision = currentHourlySlotRevision(entry.value);
+        final remoteRevision = currentHourlySlotRevision([
+          ...existing,
+          ...entry.value,
+        ]);
         final first = remoteRevision.firstOrNull;
         if (first == null) {
           continue;
         }
-        final existing = local
-            .where(
-              (log) => log.dateStr == first.dateStr && log.hour == first.hour,
-            )
-            .toList();
         final existingById = {for (final log in existing) log.id: log};
         final mergedRevision = remoteRevision.map((remoteLog) {
           final previous = existingById[remoteLog.id];

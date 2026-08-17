@@ -30,22 +30,18 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
     setState(() {
       _allLogs = Prefs.hourlyLogs;
     });
-    HourlyLogWriter.reconcileResting().then((_) {
+    // Sync the tag registry before pulling logs so cross-device tag IDs can be
+    // recovered by name while the remote rows are decoded. Pull first, then
+    // Resting-fill empty slots only.
+    NotionSyncService().syncActivityTags().then((_) {
+      return NotionSyncService().pullHourlyLogs();
+    }).then((_) {
+      return HourlyLogWriter.reconcileResting();
+    }).then((_) {
       if (!mounted) return;
       setState(() {
         _allLogs = Prefs.hourlyLogs;
       });
-    });
-    // Sync the tag registry before pulling logs so cross-device tag IDs can be
-    // recovered by name while the remote rows are decoded.
-    NotionSyncService().syncActivityTags().then((_) {
-      return NotionSyncService().pullHourlyLogs();
-    }).then((changed) {
-      if (mounted && changed > 0) {
-        setState(() {
-          _allLogs = Prefs.hourlyLogs;
-        });
-      }
     });
     NotionService().resolveLogTitles(Prefs.hourlyLogs).then((updated) {
       if (mounted &&
