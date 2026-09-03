@@ -160,6 +160,8 @@ class Prefs {
   static const String _quietHoursStartVarName = 'pomo_quiet_hours_start';
   static const String _quietHoursEndVarName = 'pomo_quiet_hours_end';
   static const String _trackerTagsVarName = 'pomo_tracker_tags';
+  static const String _activityTagDedupMigrationVersionVarName =
+      'pomo_activity_tag_dedup_migration_version';
   static const String _lastTimerTagIdsVarName = 'pomo_last_timer_tag_ids';
   static const String _hourlyLogsVarName = 'pomo_hourly_logs';
   static const String _pendingHourlyLogsVarName = 'pomo_pending_hourly_logs';
@@ -849,6 +851,20 @@ class Prefs {
   static set trackerTags(List<TrackerTag> value) {
     final encoded = value.map((e) => jsonEncode(e.toJson())).toList();
     Prefs().sharedPreferences.setStringList(_trackerTagsVarName, encoded);
+  }
+
+  static int get activityTagDedupMigrationVersion {
+    return Prefs()
+            .sharedPreferences
+            .getInt(_activityTagDedupMigrationVersionVarName) ??
+        0;
+  }
+
+  static set activityTagDedupMigrationVersion(int value) {
+    Prefs().sharedPreferences.setInt(
+          _activityTagDedupMigrationVersionVarName,
+          value,
+        );
   }
 
   static Future<void> saveTrackerTag(TrackerTag tag) async {

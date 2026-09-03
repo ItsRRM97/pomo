@@ -192,10 +192,19 @@ class TimerCubit extends Cubit<TimerState> {
     emit(state.copyWith(activeTags: () => tags));
   }
 
+  /// Whether activity tags can be added, removed, or toggled.
+  ///
+  /// Locked while a work lap is running so hourly credit cannot split across
+  /// mid-session tag changes.
+  bool get canModifyTags =>
+      state.status != TimerStatus.running || state.lap != TimerLap.work;
+
   /// Toggle an activity tag used for hourly credit.
-  void toggleTag(TrackerTag tag) {
-    if (state.status == TimerStatus.running && state.lap == TimerLap.work) {
-      _creditActiveTags();
+  ///
+  /// Returns false when [canModifyTags] is false.
+  bool toggleTag(TrackerTag tag) {
+    if (!canModifyTags) {
+      return false;
     }
     final next = List<TrackerTag>.from(state.activeTags);
     if (next.any((item) => item.id == tag.id)) {
@@ -204,15 +213,26 @@ class TimerCubit extends Cubit<TimerState> {
       next.add(tag);
     }
     _persistActiveTags(next);
-    if (state.status == TimerStatus.running && state.lap == TimerLap.work) {
-      _tagCreditedMinutes = state.duration.inMinutes;
-      _beginTagSegment();
-    }
+    return true;
   }
 
   /// Drop a tag from the timer selection after it is deleted.
   void removeActiveTag(String tagId) {
     final next = state.activeTags.where((tag) => tag.id != tagId).toList();
+    _persistActiveTags(next);
+  }
+
+  /// Replace a deleted tag with its reassignment target in the selection.
+  void replaceActiveTag({
+    required String fromId,
+    required TrackerTag toTag,
+  }) {
+    final next = state.activeTags
+        .where((tag) => tag.id != fromId)
+        .toList(growable: true);
+    if (!next.any((tag) => tag.id == toTag.id)) {
+      next.add(toTag);
+    }
     _persistActiveTags(next);
   }
 

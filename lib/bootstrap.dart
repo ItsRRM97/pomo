@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:pomo/desktop/desktop_window_service.dart';
 import 'package:pomo/helpers/hook_helper.dart';
 import 'package:pomo/helpers/hourly_log_writer.dart';
+import 'package:pomo/helpers/tag_dedup_migration.dart';
+import 'package:pomo/helpers/tag_registry_writer.dart';
 import 'package:pomo/services/local_notification_service.dart';
 import 'package:pomo/services/notion_sync_service.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -41,6 +43,8 @@ Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Prefs().init();
+  await TagDedupMigration.runIfNeeded();
+  await TagRegistryWriter.writeIfPossible();
   HookHelper.startHourlyTrackerLoop();
   unawaited(NotionSyncService().flushPendingHourlyLogs());
   // Pull logs created on other devices (e.g. the PWA) first, then reconcile

@@ -244,5 +244,30 @@ void main() {
       expect(Prefs.hourlyLogs, isEmpty);
       await cubit.close();
     });
+
+    test('toggleTag is blocked while work lap is running', () {
+      const deepWork = TrackerTag(
+        id: 'tag_deep_work',
+        name: 'Deep Work',
+        icon: '🧠',
+        colorHex: '#34A853',
+        isDefault: true,
+      );
+      const reading = TrackerTag(
+        id: 'tag_reading',
+        name: 'Reading & Learning',
+        icon: '📚',
+        colorHex: '#AB47BC',
+        isDefault: true,
+      );
+      final cubit = TimerCubit()
+        ..toggleTag(deepWork)
+        ..start();
+
+      expect(cubit.canModifyTags, isFalse);
+      expect(cubit.toggleTag(reading), isFalse);
+      expect(cubit.state.activeTags, [deepWork]);
+      cubit.close();
+    });
   });
 }

@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:pomo/helpers/quiet_hours_helper.dart';
+import 'package:pomo/helpers/tag_reassign_helper.dart';
+import 'package:pomo/helpers/tag_registry_writer.dart';
+import 'package:pomo/helpers/tracker_tag_helper.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/models/tracker_tag.dart';
@@ -652,6 +655,9 @@ class NotionSyncService {
       );
 
       Prefs.trackerTags = local;
+      if (changed > 0) {
+        await TagRegistryWriter.writeIfPossible();
+      }
       Logger().i(
         'NotionSyncService: Reconciled activity tags '
         '(${latestRemote.length} remote, $changed changes).',
@@ -714,7 +720,19 @@ class NotionSyncService {
 
     var recovered = 0;
     for (final entry in candidates.entries) {
-      if (knownNames.contains(entry.key)) continue;
+      if (knownNames.contains(entry.key)) {
+        final canonical = TrackerTagHelper.findDuplicate(
+          entry.value.name,
+          existing: local,
+        );
+        if (canonical != null) {
+          recovered += await TagReassignHelper.rewriteOrphanLogsToCanonical(
+            canonical: canonical,
+            notionSync: this,
+          );
+        }
+        continue;
+      }
       final deletedAt = tombstonedAt[entry.key];
       // A deletion newer than the tag's last use wins; the user removed it
       // on purpose and we must not resurrect it on every sync.
@@ -757,6 +775,7 @@ class NotionSyncService {
     if (!Prefs.enableNotionSync ||
         Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty ||
         Prefs.notionApiKey.isEmpty) {
+      await TagRegistryWriter.writeIfPossible();
       return;
     }
     try {
@@ -768,6 +787,22 @@ class NotionSyncService {
         stackTrace: st,
       );
     }
+    await TagRegistryWriter.writeIfPossible();
+  }
+
+  /// Reassigns hourly logs then deletes a custom tag.
+  Future<int> reassignAndDeleteActivityTag({
+    required TrackerTag from,
+    required TrackerTag to,
+  }) async {
+    final count = await TagReassignHelper.reassignTagId(
+      fromId: from.id,
+      toTag: to,
+      notionSync: this,
+    );
+    await deleteActivityTag(from);
+    await TagRegistryWriter.writeIfPossible();
+    return count;
   }
 
   /// Deletes a custom tag locally and publishes a tombstone to all devices.
@@ -776,6 +811,7 @@ class NotionSyncService {
     if (!Prefs.enableNotionSync ||
         Prefs.notionHourlyTimelineDatabaseId.trim().isEmpty ||
         Prefs.notionApiKey.isEmpty) {
+      await TagRegistryWriter.writeIfPossible();
       return;
     }
     try {
@@ -787,6 +823,7 @@ class NotionSyncService {
         stackTrace: st,
       );
     }
+    await TagRegistryWriter.writeIfPossible();
   }
 
   void _removePendingHourlyLogsForHour(String dateStr, int hour) {

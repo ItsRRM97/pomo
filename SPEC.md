@@ -26,6 +26,7 @@ This file is the **entrypoint**. Shipped contracts live under [`specs/`](specs/)
 | [specs/shared.md](specs/shared.md) | Prefs, models, helpers, constraints | `lib/singletons/`, `lib/helpers/`, `lib/models/` |
 | [specs/timer.md](specs/timer.md) | Pomodoro focus timer + PARA task sessions | `lib/pages/timer/`, `lib/pages/tasks/` |
 | [specs/hourly-tracker.md](specs/hourly-tracker.md) | Activity tags, 24h grid, missed hours | `lib/pages/tracker/` |
+| [specs/activity-tags.md](specs/activity-tags.md) | Auto-generated tag registry snapshot | `specs/activity-tags.md` |
 | [specs/notion.md](specs/notion.md) | Dual Notion DBs, sync queues, tag registry | `lib/services/notion_*.dart` |
 | [specs/settings.md](specs/settings.md) | Settings UI and `SettingsCubit` | `lib/pages/settings/`, `lib/widgets/settings_segments/` |
 | [specs/desktop.md](specs/desktop.md) | macOS menu bar, overlay, notifications, login | `lib/desktop/` |

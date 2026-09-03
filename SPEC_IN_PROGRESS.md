@@ -7,12 +7,6 @@ This file is the backlog of **discussed or approved-but-unbuilt** product work. 
 
 ---
 
-## Timer credits hourly activity tags (Approach A)
-
-**Status:** Shipped (2026-09-03). Contract: [`specs/timer.md`](specs/timer.md).
-
----
-
 ## Other open / partial items
 
 From `docs/superpowers/DESIGN-GAP-MATRIX.md` and `TODOS.md`:
@@ -31,4 +25,5 @@ From `docs/superpowers/DESIGN-GAP-MATRIX.md` and `TODOS.md`:
 
 | Date | Change |
 |------|--------|
+| 2026-09-03 | Activity tag dedup shipped; cleared from backlog |
 | 2026-09-03 | Seeded with timer-tag credit agreement + gap-matrix leftovers |

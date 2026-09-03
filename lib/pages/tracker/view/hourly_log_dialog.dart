@@ -5,6 +5,7 @@ import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/pages/tracker/view/tag_create_dialog.dart';
+import 'package:pomo/pages/tracker/view/tag_delete_dialog.dart';
 import 'package:pomo/services/notion_service.dart';
 import 'package:pomo/services/notion_sync_service.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -94,32 +95,32 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
     if (tag.isDefault) {
       return;
     }
-    final confirm = await showDialog<bool>(
+    final result = await showDialog<TagDeleteResult>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Tag?'),
-        content: Text(
-          'Are you sure you want to remove '
-          '"${tag.icon} ${tag.name}" from your tags list?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      builder: (ctx) => TagDeleteDialog(tag: tag),
     );
-    if ((confirm ?? false) && mounted) {
-      await NotionSyncService().deleteActivityTag(tag);
+    if ((result != null) && mounted) {
       setState(() {
         _tags = Prefs.trackerTags;
-        _selectedTags.removeWhere((t) => t.id == tag.id);
+        if (_selectedTags.any((t) => t.id == result.deleted.id)) {
+          _selectedTags.removeWhere((t) => t.id == result.deleted.id);
+          if (!_selectedTags.any((t) => t.id == result.target.id)) {
+            _selectedTags.add(result.target);
+          }
+        }
       });
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Reassigned ${result.reassignedLogCount} log row'
+            '${result.reassignedLogCount == 1 ? '' : 's'} to '
+            '${result.target.icon} ${result.target.name}',
+          ),
+        ),
+      );
     }
   }
 

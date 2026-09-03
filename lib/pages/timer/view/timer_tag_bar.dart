@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/pages/timer/timer.dart';
 import 'package:pomo/pages/tracker/view/tag_create_dialog.dart';
-import 'package:pomo/services/notion_sync_service.dart';
+import 'package:pomo/pages/tracker/view/tag_delete_dialog.dart';
 import 'package:pomo/singletons/prefs.dart';
 
 /// Multi-select activity tags that receive Pomodoro hourly credit.
@@ -32,7 +32,20 @@ class _TimerTagBarState extends State<TimerTagBar> {
     }
   }
 
+  void _showTagsLockedMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Pause the timer to change activity tags.'),
+      ),
+    );
+  }
+
   Future<void> _createTag() async {
+    final cubit = context.read<TimerCubit>();
+    if (!cubit.canModifyTags) {
+      _showTagsLockedMessage();
+      return;
+    }
     final created = await showDialog<TrackerTag>(
       context: context,
       builder: (ctx) => const TagCreateDialog(),
@@ -41,7 +54,6 @@ class _TimerTagBarState extends State<TimerTagBar> {
       return;
     }
     setState(() => _tags = Prefs.trackerTags);
-    final cubit = context.read<TimerCubit>();
     if (!cubit.state.activeTags.any((tag) => tag.id == created.id)) {
       cubit.toggleTag(created);
     }
@@ -51,42 +63,40 @@ class _TimerTagBarState extends State<TimerTagBar> {
     if (tag.isDefault) {
       return;
     }
-    final confirm = await showDialog<bool>(
+    final cubit = context.read<TimerCubit>();
+    if (!cubit.canModifyTags) {
+      _showTagsLockedMessage();
+      return;
+    }
+    final result = await showDialog<TagDeleteResult>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Tag?'),
+      builder: (ctx) => TagDeleteDialog(tag: tag),
+    );
+    if (!mounted || result == null) {
+      return;
+    }
+    cubit.replaceActiveTag(fromId: result.deleted.id, toTag: result.target);
+    setState(() => _tags = Prefs.trackerTags);
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
         content: Text(
-          'Remove "${tag.icon} ${tag.name}" from your tags list? '
-          'Past hourly logs keep their names.',
+          'Reassigned ${result.reassignedLogCount} log row'
+          '${result.reassignedLogCount == 1 ? '' : 's'} to '
+          '${result.target.icon} ${result.target.name}',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
       ),
     );
-    if ((confirm ?? false) && mounted) {
-      await NotionSyncService().deleteActivityTag(tag);
-      if (!mounted) {
-        return;
-      }
-      context.read<TimerCubit>().removeActiveTag(tag.id);
-      setState(() => _tags = Prefs.trackerTags);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final selected = context.select(
-      (TimerCubit cubit) => cubit.state.activeTags,
-    );
+    final cubit = context.watch<TimerCubit>();
+    final canModifyTags = cubit.canModifyTags;
+    final selected = cubit.state.activeTags;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -110,8 +120,12 @@ class _TimerTagBarState extends State<TimerTagBar> {
                   borderRadius: BorderRadius.circular(20),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: () => context.read<TimerCubit>().toggleTag(tag),
-                    onLongPress: tag.isDefault ? null : () => _deleteTag(tag),
+                    onTap: canModifyTags
+                        ? () => cubit.toggleTag(tag)
+                        : _showTagsLockedMessage,
+                    onLongPress: tag.isDefault || !canModifyTags
+                        ? null
+                        : () => _deleteTag(tag),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -133,6 +147,21 @@ class _TimerTagBarState extends State<TimerTagBar> {
                                   : theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
+                          if (!tag.isDefault && canModifyTags) ...[
+                            const SizedBox(width: 4),
+                            InkWell(
+                              onTap: () => _deleteTag(tag),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -142,7 +171,7 @@ class _TimerTagBarState extends State<TimerTagBar> {
               ActionChip(
                 avatar: const Icon(Icons.add, size: 18),
                 label: const Text('Add tag'),
-                onPressed: _createTag,
+                onPressed: canModifyTags ? _createTag : _showTagsLockedMessage,
               ),
             ],
           ),

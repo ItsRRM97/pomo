@@ -22,7 +22,11 @@ App bar can open the Notion Hourly Timeline database in the browser when sync is
 
 Stored in `Prefs.trackerTags`. Create: `TagCreateDialog` (name, emoji, color). Duplicate names (trim + case-insensitive) are blocked, with **Use existing**. Save: `NotionSyncService.saveActivityTag`.
 
-Delete: custom tags only (close on chip or long-press on timer). Historical `HourlyLog` rows keep denormalized name/icon/color.
+Canonical inventory: auto-generated [`activity-tags.md`](activity-tags.md) (do not edit manually).
+
+Delete: custom tags only via `TagDeleteDialog` (Focus timer or hourly dialog). Requires reassigning all hourly logs to another tag; same-hour rows merge minutes. Built-in defaults cannot be deleted.
+
+Focus timer: tag add/remove/toggle is **blocked while a work lap is running**; pause first.
 
 ## Logging an hour (`HourlyLogDialog`)
 

@@ -27,7 +27,7 @@ Notable keys (prefix `pomo_`):
 |------|----------------|
 | Timer | duration, status, lap, lapNumber, activeTask JSON, activeLogPageId, syncedMinutes, session external id |
 | Settings | durations, theme, fonts, webhooks, sounds, Notion IDs, time tracker, quiet hours, desktop notifications, launch at login, window size |
-| Hourly | `trackerTags`, `hourlyLogs`, `pendingHourlyLogs` |
+| Hourly | `trackerTags`, `hourlyLogs`, `pendingHourlyLogs`, `activityTagDedupMigrationVersion` |
 | Task sessions offline | `pendingTimeLogs` |
 
 Empty tag list falls back to `TrackerTag.defaults`.
@@ -43,6 +43,8 @@ Hour slot replace: `Prefs.replaceHourlyLogsForHour(dateStr, hour, logs)` (does n
 Built-in IDs: `tag_coding`, `tag_meetings`, `tag_deep_work`, `tag_reading`, `tag_workout`, `tag_admin`, `tag_sleep`.
 
 Custom IDs: `tag_custom_<epoch>_<slug>`.
+
+Registry snapshot: [`activity-tags.md`](activity-tags.md) (auto-generated; do not edit manually).
 
 ### `HourlyLog` (`lib/models/hourly_log.dart`)
 

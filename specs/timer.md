@@ -12,7 +12,7 @@ Tab 0 is the original Pomodoro: work and break laps, circular progress, sounds, 
 ## UI (`TimerPage`)
 
 - Circular progress + countdown (`TimerProgress`, `TimerText`).
-- **Activity tag chips** (`TimerTagBar`): multi-select hourly tags; add tag; long-press deletes custom tags.
+- **Activity tag chips** (`TimerTagBar`): multi-select hourly tags; add tag; delete custom tags via reassign dialog. Tag changes are blocked while a work lap is running.
 - Action buttons: start/pause, skip lap, reset (`widgets/timer/action_buttons.dart`).
 - **Select Task** pill: opens `NotionTasksModal`; optional **Log past time** (`ManualLogDialog`) when a task is selected; clear task.
 - Keyboard: Space/Enter toggle, `s` skip, `r` / Backspace reset.

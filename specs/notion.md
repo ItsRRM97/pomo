@@ -42,8 +42,8 @@ Pull-then-reconcile on bootstrap so PWA and desktop converge.
 Tags are **not** a separate Notion database. They are rows in Hourly Timeline with `Source = pomo-activity-tag`.
 
 - `syncActivityTags`: bidirectional reconcile.
-- `saveActivityTag` / `deleteActivityTag`: local Prefs + registry / **tombstone** so other devices drop the tag.
-- `_recoverTagsFromHourlyLogs`: rebuild custom tags from historical hourly rows after an upgrade.
+- `saveActivityTag` / `deleteActivityTag` / `reassignAndDeleteActivityTag`: local Prefs + registry / **tombstone** so other devices drop the tag.
+- `_recoverTagsFromHourlyLogs`: rebuild custom tags from historical hourly rows after an upgrade; rewrites orphan logs to existing canonical names instead of creating duplicates.
 
 ## Tasks and projects
 
