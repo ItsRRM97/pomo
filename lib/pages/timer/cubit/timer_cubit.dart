@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:logger/logger.dart';
 import 'package:pomo/helpers/duration_helper.dart';
+import 'package:pomo/helpers/hourly_log_writer.dart';
 import 'package:pomo/helpers/lap_helper.dart';
 import 'package:pomo/helpers/sound_helper.dart';
 import 'package:pomo/models/notion_task.dart';
+import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/services/notion_sync_service.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -12,8 +16,9 @@ import 'package:pomo/singletons/prefs.dart';
 part 'timer_state.dart';
 
 class TimerCubit extends Cubit<TimerState> {
-  TimerCubit()
-      : super(
+  TimerCubit({DateTime Function()? clock})
+      : _clock = clock ?? DateTime.now,
+        super(
           TimerState(
             duration: Prefs.duration,
             status: Prefs.timerStatus,
@@ -21,10 +26,15 @@ class TimerCubit extends Cubit<TimerState> {
             lapNumber: Prefs.lapNumber,
             activeTask: Prefs.activeTask,
             activeLogPageId: Prefs.activeLogPageId,
+            activeTags: Prefs.lastTimerTags,
           ),
         );
+
+  final DateTime Function() _clock;
   bool _isMovingToInProgress = false;
   bool _isCreatingRecord = false;
+  DateTime? _tagSegmentStartedAt;
+  int _tagCreditedMinutes = 0;
 
   void _checkAndMoveActiveTaskToInProgress() {
     final currentTask = state.activeTask;
@@ -142,6 +152,70 @@ class TimerCubit extends Cubit<TimerState> {
     }
   }
 
+  void _creditActiveTags() {
+    if (!Prefs.enableTimeTracker) {
+      return;
+    }
+    if (state.lap != TimerLap.work) {
+      return;
+    }
+    if (state.activeTags.isEmpty) {
+      return;
+    }
+    final uncredited = state.duration.inMinutes - _tagCreditedMinutes;
+    if (uncredited < 1) {
+      return;
+    }
+    final endedAt = _clock();
+    final startedAt =
+        _tagSegmentStartedAt ?? endedAt.subtract(Duration(minutes: uncredited));
+    unawaited(
+      HourlyLogWriter.creditTimerMinutes(
+        tags: List<TrackerTag>.from(state.activeTags),
+        from: startedAt,
+        to: endedAt,
+        totalMinutes: uncredited,
+        loggedAt: endedAt,
+      ),
+    );
+    _tagCreditedMinutes += uncredited;
+  }
+
+  void _beginTagSegment() {
+    if (state.lap == TimerLap.work) {
+      _tagSegmentStartedAt = _clock();
+    }
+  }
+
+  void _persistActiveTags(List<TrackerTag> tags) {
+    Prefs.lastTimerTagIds = tags.map((tag) => tag.id).toList();
+    emit(state.copyWith(activeTags: () => tags));
+  }
+
+  /// Toggle an activity tag used for hourly credit.
+  void toggleTag(TrackerTag tag) {
+    if (state.status == TimerStatus.running && state.lap == TimerLap.work) {
+      _creditActiveTags();
+    }
+    final next = List<TrackerTag>.from(state.activeTags);
+    if (next.any((item) => item.id == tag.id)) {
+      next.removeWhere((item) => item.id == tag.id);
+    } else {
+      next.add(tag);
+    }
+    _persistActiveTags(next);
+    if (state.status == TimerStatus.running && state.lap == TimerLap.work) {
+      _tagCreditedMinutes = state.duration.inMinutes;
+      _beginTagSegment();
+    }
+  }
+
+  /// Drop a tag from the timer selection after it is deleted.
+  void removeActiveTag(String tagId) {
+    final next = state.activeTags.where((tag) => tag.id != tagId).toList();
+    _persistActiveTags(next);
+  }
+
   void start() {
     emit(
       state.copyWith(
@@ -150,6 +224,7 @@ class TimerCubit extends Cubit<TimerState> {
     );
 
     Prefs.timerStatus = TimerStatus.running;
+    _beginTagSegment();
 
     if (state.lap == TimerLap.work && state.activeTask != null) {
       _checkAndMoveActiveTaskToInProgress();
@@ -159,8 +234,9 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void stop() {
-    // Update the Notion record with current elapsed time
+    _creditActiveTags();
     _updateNotionRecord();
+    _tagSegmentStartedAt = null;
 
     emit(
       state.copyWith(
@@ -172,11 +248,14 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void reset() {
-    // Finalize or delete the current Notion record before resetting
+    _creditActiveTags();
     _finalizeSession();
 
     final currentTask = state.activeTask;
-    emit(TimerState(activeTask: currentTask));
+    final currentTags = state.activeTags;
+    emit(TimerState(activeTask: currentTask, activeTags: currentTags));
+    _tagCreditedMinutes = 0;
+    _tagSegmentStartedAt = null;
 
     Prefs.resetTimer();
   }
@@ -185,8 +264,9 @@ class TimerCubit extends Cubit<TimerState> {
     if (state.activeTask?.id != task?.id) {
       final wasRunning = state.status == TimerStatus.running;
 
-      // Finalize or delete any existing session before switching
+      _creditActiveTags();
       _finalizeSession();
+      _tagCreditedMinutes = 0;
 
       Prefs.duration = Duration.zero;
       Prefs.clearSessionSyncState();
@@ -202,6 +282,7 @@ class TimerCubit extends Cubit<TimerState> {
         _checkAndMoveActiveTaskToInProgress();
         // D2-A: keep timer running and open a new session for the new task
         if (wasRunning) {
+          _beginTagSegment();
           _createNotionRecord();
         }
       }
@@ -209,8 +290,9 @@ class TimerCubit extends Cubit<TimerState> {
   }
 
   void clearTask() {
-    // Finalize or delete any existing session before clearing
+    _creditActiveTags();
     _finalizeSession();
+    _tagCreditedMinutes = 0;
 
     Prefs.duration = Duration.zero;
     Prefs.clearSessionSyncState();
@@ -222,11 +304,16 @@ class TimerCubit extends Cubit<TimerState> {
         activeLogPageId: () => null,
       ),
     );
+    if (state.status == TimerStatus.running && state.lap == TimerLap.work) {
+      _beginTagSegment();
+    }
   }
 
   void lap({required SettingsState settingsState, bool autoAdvance = true}) {
-    // Finalize or delete the current Notion record before transitioning laps
+    _creditActiveTags();
     _finalizeSession();
+    _tagCreditedMinutes = 0;
+    _tagSegmentStartedAt = null;
 
     final nextLap = LapHelper.getNextLap(
       state.lap,
@@ -258,6 +345,11 @@ class TimerCubit extends Cubit<TimerState> {
         state.activeTask != null &&
         state.status == TimerStatus.running) {
       _createNotionRecord();
+    }
+    if (autoAdvance &&
+        nextLap == TimerLap.work &&
+        state.status == TimerStatus.running) {
+      _beginTagSegment();
     }
   }
 

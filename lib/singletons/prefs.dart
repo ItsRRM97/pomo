@@ -160,6 +160,7 @@ class Prefs {
   static const String _quietHoursStartVarName = 'pomo_quiet_hours_start';
   static const String _quietHoursEndVarName = 'pomo_quiet_hours_end';
   static const String _trackerTagsVarName = 'pomo_tracker_tags';
+  static const String _lastTimerTagIdsVarName = 'pomo_last_timer_tag_ids';
   static const String _hourlyLogsVarName = 'pomo_hourly_logs';
   static const String _pendingHourlyLogsVarName = 'pomo_pending_hourly_logs';
   static const String _requestNotificationPermissionVarName =
@@ -527,6 +528,11 @@ class Prefs {
         <String>[];
   }
 
+  static List<String> get lastTimerTagIds {
+    return Prefs().sharedPreferences.getStringList(_lastTimerTagIdsVarName) ??
+        <String>[];
+  }
+
   //* Setters
 
   static set themeMode(ThemeMode value) {
@@ -821,6 +827,10 @@ class Prefs {
     Prefs().sharedPreferences.setStringList(_pendingHourlyLogsVarName, value);
   }
 
+  static set lastTimerTagIds(List<String> value) {
+    Prefs().sharedPreferences.setStringList(_lastTimerTagIdsVarName, value);
+  }
+
   static set pendingTimeLogs(List<String> value) {
     Prefs().sharedPreferences.setStringList(_pendingTimeLogsVarName, value);
   }
@@ -856,6 +866,19 @@ class Prefs {
     final current = List<TrackerTag>.from(trackerTags)
       ..removeWhere((e) => e.id == tagId);
     trackerTags = current;
+    lastTimerTagIds = lastTimerTagIds.where((id) => id != tagId).toList();
+  }
+
+  /// Tags last selected on the focus timer, resolved against [trackerTags].
+  static List<TrackerTag> get lastTimerTags {
+    final ids = lastTimerTagIds;
+    if (ids.isEmpty) {
+      return const [];
+    }
+    final all = trackerTags;
+    return [
+      for (final id in ids) ...all.where((tag) => tag.id == id),
+    ];
   }
 
   static List<HourlyLog> get hourlyLogs {

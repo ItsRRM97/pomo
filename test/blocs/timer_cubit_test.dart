@@ -1,5 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/timer/cubit/timer_cubit.dart';
 import 'package:pomo/singletons/prefs.dart';
@@ -189,6 +190,59 @@ void main() {
         ),
         isTrue,
       );
+    });
+
+    test('stop credits selected tags once using duration delta', () async {
+      Prefs.enableTimeTracker = true;
+      Prefs.enableNotionSync = false;
+      const deepWork = TrackerTag(
+        id: 'tag_deep_work',
+        name: 'Deep Work',
+        icon: '🧠',
+        colorHex: '#34A853',
+        isDefault: true,
+      );
+      final cubit = TimerCubit(clock: () => DateTime(2026, 9, 3, 14, 30));
+      cubit.toggleTag(deepWork);
+      cubit
+        ..start()
+        ..tick(
+          const SettingsState(workMinutes: 50),
+          const Duration(minutes: 25),
+        )
+        ..stop();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(Prefs.hourlyLogs, hasLength(1));
+      expect(Prefs.hourlyLogs.single.tagId, 'tag_deep_work');
+      expect(Prefs.hourlyLogs.single.durationMinutes, 25);
+      expect(Prefs.hourlyLogs.single.hour, 14);
+
+      cubit
+        ..start()
+        ..tick(
+          const SettingsState(workMinutes: 50),
+          const Duration(minutes: 10),
+        )
+        ..stop();
+      await Future<void>.delayed(Duration.zero);
+      expect(Prefs.hourlyLogs.single.durationMinutes, 35);
+      await cubit.close();
+    });
+
+    test('stop without tags does not write hourly logs', () async {
+      Prefs.enableTimeTracker = true;
+      Prefs.enableNotionSync = false;
+      final cubit = TimerCubit(clock: () => DateTime(2026, 9, 3, 14, 30))
+        ..start()
+        ..tick(
+          const SettingsState(workMinutes: 50),
+          const Duration(minutes: 25),
+        )
+        ..stop();
+      await Future<void>.delayed(Duration.zero);
+      expect(Prefs.hourlyLogs, isEmpty);
+      await cubit.close();
     });
   });
 }

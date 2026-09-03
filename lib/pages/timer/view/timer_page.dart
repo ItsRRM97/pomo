@@ -18,6 +18,7 @@ import 'package:pomo/pages/settings/cubit/settings_cubit.dart';
 import 'package:pomo/pages/tasks/view/manual_log_dialog.dart';
 import 'package:pomo/pages/tasks/view/notion_tasks_modal.dart';
 import 'package:pomo/pages/timer/timer.dart';
+import 'package:pomo/pages/timer/view/timer_tag_bar.dart';
 import 'package:pomo/services/android_notification_service.dart';
 import 'package:pomo/services/local_notification_service.dart';
 import 'package:pomo/services/web_pwa_service.dart';
@@ -656,6 +657,7 @@ class _TimerViewState extends State<TimerView> {
                           },
                           child: Column(
                             children: [
+                              const TimerTagBar(),
                               const _ActiveTaskPill(),
                               Expanded(
                                 child: Stack(

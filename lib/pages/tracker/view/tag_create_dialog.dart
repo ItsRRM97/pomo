@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:pomo/helpers/tracker_tag_helper.dart';
 import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/services/notion_sync_service.dart';
+import 'package:pomo/singletons/prefs.dart';
 
 /// Modal dialog allowing users to create new custom activity tags.
 class TagCreateDialog extends StatefulWidget {
@@ -15,6 +17,7 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
   final TextEditingController _customIconController = TextEditingController();
   String _selectedIcon = '💼';
   String _selectedColorHex = '#4285F4';
+  TrackerTag? _duplicate;
 
   final List<String> _emojiOptions = [
     // Work & Focus
@@ -78,6 +81,15 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
       return;
     }
 
+    final duplicate = TrackerTagHelper.findDuplicate(
+      name,
+      existing: Prefs.trackerTags,
+    );
+    if (duplicate != null) {
+      setState(() => _duplicate = duplicate);
+      return;
+    }
+
     final iconToUse = _customIconController.text.trim().isNotEmpty
         ? _customIconController.text.trim().characters.first
         : _selectedIcon;
@@ -116,13 +128,28 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
           children: [
             TextField(
               controller: _nameController,
+              autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Tag Name',
                 hintText: 'e.g., Client Work, Side Project',
                 border: OutlineInputBorder(),
               ),
               textCapitalization: TextCapitalization.words,
+              onChanged: (_) {
+                if (_duplicate != null) {
+                  setState(() => _duplicate = null);
+                }
+              },
             ),
+            if (_duplicate != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Tag already exists: ${_duplicate!.icon} ${_duplicate!.name}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Text(
               'Select Icon / Emoji',
@@ -232,10 +259,16 @@ class _TagCreateDialogState extends State<TagCreateDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _saveTag,
-          child: const Text('Create Tag'),
-        ),
+        if (_duplicate != null)
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(_duplicate),
+            child: const Text('Use existing'),
+          )
+        else
+          FilledButton(
+            onPressed: _saveTag,
+            child: const Text('Create Tag'),
+          ),
       ],
     );
   }

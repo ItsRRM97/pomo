@@ -196,4 +196,42 @@ void main() {
     expect(Prefs.hourlyLogs.first.id, 'hlog_2026-08-17_14_tag_deep_work');
     expect(Prefs.hourlyLogs.first.durationMinutes, 60);
   });
+
+  test('creditTimerMinutes splits two tags and stays additive', () async {
+    Prefs.enableNotionSync = false;
+    const deep = TrackerTag(
+      id: 'tag_deep_work',
+      name: 'Deep Work',
+      icon: '🧠',
+      colorHex: '#34A853',
+      isDefault: true,
+    );
+    const coding = TrackerTag(
+      id: 'tag_coding',
+      name: 'Coding & Dev',
+      icon: '💻',
+      colorHex: '#4285F4',
+      isDefault: true,
+    );
+    await HourlyLogWriter.creditTimerMinutes(
+      tags: const [deep, coding],
+      from: DateTime(2026, 9, 3, 14, 52),
+      to: DateTime(2026, 9, 3, 15, 17),
+      totalMinutes: 25,
+      loggedAt: DateTime(2026, 9, 3, 15, 17),
+      syncToNotion: false,
+    );
+
+    final hour14 = Prefs.hourlyLogs.where((log) => log.hour == 14).toList();
+    final hour15 = Prefs.hourlyLogs.where((log) => log.hour == 15).toList();
+    expect(
+      hour14.fold<int>(0, (sum, log) => sum + log.durationMinutes),
+      8,
+    );
+    expect(
+      hour15.fold<int>(0, (sum, log) => sum + log.durationMinutes),
+      17,
+    );
+    expect(hour14, hasLength(2));
+  });
 }

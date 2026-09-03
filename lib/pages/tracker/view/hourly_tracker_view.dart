@@ -659,6 +659,10 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
 
               final firstLog = logs.first;
               final primaryColor = _parseHexColor(firstLog.tagColorHex);
+              final hourTotalMinutes = logs.fold<int>(
+                0,
+                (sum, log) => sum + log.durationMinutes,
+              );
 
               return Card(
                 elevation: 0,
@@ -740,6 +744,17 @@ class _HourlyTrackerViewState extends State<HourlyTrackerView> {
                                   );
                                 }).toList(),
                               ),
+                              if (hourTotalMinutes > 60) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Over 60m in this hour '
+                                  '(${hourTotalMinutes}m total)',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.tertiary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                               if (firstLog.projectTitle != null &&
                                   firstLog.projectTitle!.isNotEmpty) ...[
                                 const SizedBox(height: 6),

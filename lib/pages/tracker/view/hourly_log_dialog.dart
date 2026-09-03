@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:pomo/helpers/timer_tag_credit_helper.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/notion_task.dart';
 import 'package:pomo/models/tracker_tag.dart';
@@ -90,6 +91,9 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
   }
 
   Future<void> _deleteTag(TrackerTag tag) async {
+    if (tag.isDefault) {
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -254,8 +258,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
           ];
 
     final k = tagsToSave.length;
-    final baseMins = 60 ~/ k;
-    final firstMins = 60 - (baseMins * (k - 1));
+    final minsPerTag = TimerTagCreditHelper.splitEqually(60, k);
 
     HourlyLog? firstOrExisting;
     for (var h = _startHour; h < _endHour; h++) {
@@ -263,7 +266,7 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
       final revisionTime = DateTime.now();
       for (var i = 0; i < k; i++) {
         final tag = tagsToSave[i];
-        final mins = (i == 0) ? firstMins : baseMins;
+        final mins = minsPerTag[i];
         final logId = 'hlog_${dateStr}_${h}_${tag.id}';
         final existingCandidates = widget.existingLogsForHour ??
             (widget.existingLog == null
@@ -533,24 +536,25 @@ class _HourlyLogDialogState extends State<HourlyLogDialog> {
                           ),
                         ),
                       ),
-                      InkWell(
-                        onTap: () => _deleteTag(tag),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            right: 8,
-                            top: 6,
-                            bottom: 6,
-                          ),
-                          child: Icon(
-                            Icons.close,
-                            size: 14,
-                            color: isSelected
-                                ? badgeColor
-                                : theme.colorScheme.onSurfaceVariant,
+                      if (!tag.isDefault)
+                        InkWell(
+                          onTap: () => _deleteTag(tag),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              right: 8,
+                              top: 6,
+                              bottom: 6,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: isSelected
+                                  ? badgeColor
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 );

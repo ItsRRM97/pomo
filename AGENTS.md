@@ -2,7 +2,7 @@
 
 Operating rules for AI agents in `pomo` (`github.com/recoskyler/pomo`).
 
-**Sources of truth:** this file = agent operating rules; `CLAUDE.md` = topology & build; `ARCHITECTURE.md` = system design; `DESIGN.md` = approved product design (2026-07-13). Cursor always-on: `.cursor/rules/agent-guidance.mdc`.
+**Sources of truth:** this file = agent operating rules; `SPEC.md` + `specs/` = shipped product contracts; `CLAUDE.md` = topology & build; `ARCHITECTURE.md` = system design; `DESIGN.md` = original product design (2026-07-13). Cursor always-on: `.cursor/rules/agent-guidance.mdc`.
 
 ## Product / purpose
 
@@ -20,8 +20,10 @@ Cross-platform Flutter Pomodoro + time tracker: work/break laps, sounds, RGB web
 | `lib/desktop/` | Multi-window shell, overlay, macOS menu bar |
 | `lib/singletons/` | `Prefs` and shared singletons |
 | `scripts/` | `setup.sh`, `verify.sh`, `build-web.sh`, … |
-| `docs/superpowers/` | Process rails: specs, DESIGN gap matrix |
-| `DESIGN.md` / `TODOS.md` | Product design SoT / backlog |
+| `SPEC.md` / `specs/` | Shipped product specs (index + per feature) |
+| `SPEC_IN_PROGRESS.md` | Unshipped / agreed-not-built work |
+| `docs/superpowers/` | Process rails, gap matrix, dated plans, QA |
+| `DESIGN.md` / `TODOS.md` | Original design SoT / scalability backlog |
 
 ## Commands
 
@@ -45,10 +47,10 @@ flutter run --flavor development -d macos --target lib/main_development.dart
 
 ## Agent workflow
 
-1. Read this file + `README.md`; for architecture/product changes also `CLAUDE.md`, `ARCHITECTURE.md`, `DESIGN.md`.
-2. Check `docs/superpowers/DESIGN-GAP-MATRIX.md` before scoping product work.
-3. Process path: brainstorming → writing-plans → TDD → implement → `./scripts/verify.sh` → review/ship skills as needed.
-4. Specs live under `docs/superpowers/specs/`; see `docs/superpowers/specs/2026-08-12-agentic-process-rails-design.md`.
+1. Read this file + `README.md` + `SPEC.md`; for architecture also `CLAUDE.md`, `ARCHITECTURE.md`.
+2. Change one feature → edit that file under `specs/`. Unshipped ideas → `SPEC_IN_PROGRESS.md`.
+3. Check `docs/superpowers/DESIGN-GAP-MATRIX.md` before scoping product work.
+4. Process path: brainstorming → writing-plans → TDD → implement → `./scripts/verify.sh` → review/ship as needed.
 
 ## Secrets / local-only
 
@@ -58,6 +60,7 @@ flutter run --flavor development -d macos --target lib/main_development.dart
 ## Docs
 
 - `README.md` - human product/install
+- `SPEC.md` / `specs/` - shipped contracts
 - `CLAUDE.md` - detailed topology
 - `ARCHITECTURE.md` - system design
 - `DESIGN.md` - approved product design (2026-07-13)

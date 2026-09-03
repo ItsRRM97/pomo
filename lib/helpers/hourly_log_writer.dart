@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:pomo/helpers/quiet_hours_helper.dart';
+import 'package:pomo/helpers/timer_tag_credit_helper.dart';
 import 'package:pomo/models/hourly_log.dart';
 import 'package:pomo/models/tracker_tag.dart';
 import 'package:pomo/services/notion_sync_service.dart';
@@ -89,5 +90,56 @@ class HourlyLogWriter {
       end: Prefs.quietHoursEnd,
     );
     return persist(missing, syncToNotion: false);
+  }
+
+  /// Credits Pomodoro minutes onto hourly tag rows (additive, hour-aware).
+  static Future<int> creditTimerMinutes({
+    required List<TrackerTag> tags,
+    required DateTime from,
+    required DateTime to,
+    required int totalMinutes,
+    DateTime? loggedAt,
+    bool syncToNotion = true,
+  }) async {
+    if (tags.isEmpty || totalMinutes < 1) {
+      return 0;
+    }
+    final slices = TimerTagCreditHelper.sliceByHour(
+      from: from,
+      to: to,
+      totalMinutes: totalMinutes,
+    );
+    final now = loggedAt ?? DateTime.now();
+    var count = 0;
+    for (final slice in slices) {
+      final splits =
+          TimerTagCreditHelper.splitEqually(slice.minutes, tags.length);
+      if (splits.isEmpty) {
+        continue;
+      }
+      final existing = Prefs.hourlyLogs
+          .where(
+              (row) => row.dateStr == slice.dateStr && row.hour == slice.hour)
+          .toList();
+      final merged = TimerTagCreditHelper.mergeCredit(
+        existingForHour: existing,
+        dateStr: slice.dateStr,
+        hour: slice.hour,
+        tags: tags,
+        minutesPerTag: splits,
+        loggedAt: now,
+      );
+      await Prefs.replaceHourlyLogsForHour(slice.dateStr, slice.hour, merged);
+      count += splits.where((mins) => mins > 0).length;
+      if (syncToNotion &&
+          Prefs.enableNotionSync &&
+          Prefs.notionApiKey.isNotEmpty &&
+          Prefs.notionHourlyTimelineDatabaseId.isNotEmpty) {
+        for (final log in merged) {
+          unawaited(NotionSyncService().syncHourlyLog(log));
+        }
+      }
+    }
+    return count;
   }
 }

@@ -2,7 +2,7 @@
 
 **Baseline product design:** `DESIGN.md` (approved 2026-07-13)  
 **Last process update:** 2026-08-17 (Android Must/Should A22, A6-A10, A12, A21 shipped in code; A1/A19 overnight device QA still residual)  
-**How to use:** Prefer OPEN / Partial rows for the next writing-plans cycle. Do not treat this file as a substitute for `DESIGN.md`.  
+**How to use:** Prefer OPEN / Partial rows for the next writing-plans cycle. Do not treat this file as a substitute for `DESIGN.md`. Shipped contracts: `SPEC.md` + `specs/`. Unshipped: `SPEC_IN_PROGRESS.md`.  
 **Android detail:** `docs/superpowers/ANDROID-IMPROVEMENTS.md` (full prioritized backlog + what already works).  
 **Active plan:** `docs/superpowers/plans/2026-08-17-android-must-should.md` (code complete; overnight Doze/reboot/force-stop still residual)  
 **QA reports:** `docs/superpowers/qa-reports/2026-08-12-android-parity-a0-a5.md` (host) · `docs/superpowers/qa-reports/2026-08-17-android-parity-device.md` (interactive device; overnight gates open)
@@ -19,7 +19,8 @@
 | Persistent 1-tap notification actions | **Shipped (code)** / Partial: residual device QA | Timer Play/Pause/Stop including D5 fallback (A10). Hourly: `Log 60m Work` instant write (A21); `Switch Tag` still dialog; `Open Grid` switches tab. Channel `hourly_tracker_v2` / ID 1002 (A20/A5/A9). |
 | `fl_chart` analytics | Not started | Not in deps; custom UI instead (A15 Nice) |
 | Superpowers path | In progress | `docs/superpowers/` (+ Android improvements list + parity plans) |
-| Agent entry polish | In progress | `AGENTS.md` light pass + README pointer (Approach 1) |
+| Agent entry polish | **Shipped (docs)** | `AGENTS.md` + LinkedIn-style `SPEC.md` / `specs/` (2026-09-03) |
+| Timer → hourly tags | **Shipped** | Approach A: `TimerTagBar` + `HourlyLogWriter.creditTimerMinutes` |
 
 ## Top open product gaps (next plan)
 
